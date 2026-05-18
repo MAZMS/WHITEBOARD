@@ -256,7 +256,7 @@
       animation: none;
     }
     body.phase-sleeping .chat-area {
-      opacity: 0.4;
+      opacity: 0.6;
       transition: opacity 4s ease-out;
     }
     body.phase-sleeping .input-area {
@@ -829,13 +829,17 @@
       input.disabled = true; sendBtn.disabled = true;
       input.placeholder = 'The Guardian rests...';
 
-      // Show return link after everything fades
+      // Show "seek again" after everything fades
       setTimeout(() => {
         const div = document.createElement('div');
         div.className = 'message return-link';
-        div.innerHTML = '<a href="/">Return to the Library...</a>';
+        div.innerHTML = '<a href="#" id="seekAgainBtn">Seek new knowledge...</a><br><span style="font-size: 12px; color: #3a3528; margin-top: 6px; display: inline-block;">Your tome is preserved above. This will awaken a new session.</span>';
         chatArea.appendChild(div);
         chatArea.scrollTop = chatArea.scrollHeight;
+        document.getElementById('seekAgainBtn').addEventListener('click', (e) => {
+          e.preventDefault();
+          location.reload();
+        });
       }, 6000);
     }
 
