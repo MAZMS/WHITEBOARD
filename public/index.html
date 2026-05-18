@@ -943,11 +943,23 @@
       // Shuffle and pick a sequence
       const messages = allMessages.sort(() => Math.random() - 0.5);
       let msgIndex = 0;
+      let notFoundCount = 0;
 
       const interval = setInterval(async () => {
         try {
           const res = await fetch(`/api/ebook/${ebookId}/status`);
-          if (res.status === 404) return; // still generating, keep polling
+          if (res.status === 404) {
+            notFoundCount++;
+            if (notFoundCount > 60) { // 5 min timeout
+              clearInterval(interval);
+              statusMsg.remove();
+              addMessage('The archives have grown silent... the tome was lost. Try again, Seeker.', 'error');
+              enterPhase('alive');
+            } else if (msgIndex < messages.length) {
+              statusMsg.textContent = messages[msgIndex++];
+            }
+            return;
+          }
           const data = await res.json();
 
           if (data.status === 'ready') {

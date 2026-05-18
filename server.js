@@ -63,18 +63,25 @@ RULES:
 
 const conversations = new Map();
 
-// Persist ebook jobs to disk so they survive redeploys
+// Ebook job tracking — in-memory + file backup
+const ebookJobs = new Map();
 const JOBS_FILE = path.join(EBOOKS_DIR, 'jobs.json');
-function loadJobs() {
+
+function loadJobsFromDisk() {
   try { return JSON.parse(fs.readFileSync(JOBS_FILE, 'utf8')); } catch { return {}; }
 }
 function saveJob(id, data) {
-  const jobs = loadJobs();
-  jobs[id] = data;
-  fs.writeFileSync(JOBS_FILE, JSON.stringify(jobs));
+  ebookJobs.set(id, data);
+  try {
+    const diskJobs = loadJobsFromDisk();
+    diskJobs[id] = data;
+    fs.writeFileSync(JOBS_FILE, JSON.stringify(diskJobs));
+  } catch (err) {
+    console.error('Failed to save job to disk:', err.message);
+  }
 }
 function getJob(id) {
-  return loadJobs()[id];
+  return ebookJobs.get(id) || loadJobsFromDisk()[id];
 }
 
 // --- Chat endpoint ---
@@ -117,8 +124,8 @@ app.post('/api/chat', async (req, res) => {
       const ebookId = crypto.randomUUID();
       saveJob(ebookId, { status: 'generating', sessionId: id });
       generateEbook(ebookId, trimmed).catch(err => {
-        console.error('Ebook generation failed:', err.message);
-        saveJob(ebookId, { status: 'failed', sessionId: id });
+        console.error('Ebook generation failed:', err.message, err.stack);
+        saveJob(ebookId, { status: 'failed', sessionId: id, error: err.message });
       });
       res.json({ reply, tomeGenerating: true, ebookId });
     } else {
@@ -283,7 +290,7 @@ function createPDF(filepath, outline, chapters) {
 app.get('/api/ebook/:id/status', (req, res) => {
   const job = getJob(req.params.id);
   if (!job) return res.status(404).json({ error: 'Not found' });
-  res.json({ status: job.status, title: job.title });
+  res.json({ status: job.status, title: job.title, error: job.error });
 });
 
 app.get('/api/ebook/:id/download', (req, res) => {
