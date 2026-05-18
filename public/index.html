@@ -401,6 +401,11 @@
       return div;
     }
 
+    // --- Guardian greeting on load ---
+    setTimeout(() => {
+      addMessage('I am the Guardian of the Great Library — keeper of infinite knowledge, watcher of forgotten truths. Within these halls, every question finds its answer, every seeker finds their path. Speak, Traveler, and I shall turn the pages of eternity for you.', 'guardian');
+    }, 1500);
+
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const text = input.value.trim();
