@@ -71,6 +71,23 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+app.get('/api/greet', async (req, res) => {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: 'Greet me. Introduce yourself as the Guardian of the Great Library. Be mysterious, powerful, and welcoming. Mention your infinite knowledge and the ancient tomes you guard. Keep it to 2-3 sentences. Each greeting should be unique and varied.' }
+      ],
+      max_completion_tokens: 200,
+      temperature: 1,
+    });
+    res.json({ reply: completion.choices[0].message.content });
+  } catch (err) {
+    res.json({ reply: 'I am the Guardian of the Great Library — keeper of infinite knowledge, watcher of forgotten truths. Speak, Traveler, and I shall turn the pages of eternity for you.' });
+  }
+});
+
 app.get('/api/status', async (req, res) => {
   try {
     const models = await openai.models.list();

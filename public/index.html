@@ -402,9 +402,18 @@
     }
 
     // --- Guardian greeting on load ---
-    setTimeout(() => {
-      addMessage('I am the Guardian of the Great Library — keeper of infinite knowledge, watcher of forgotten truths. Within these halls, every question finds its answer, every seeker finds their path. Speak, Traveler, and I shall turn the pages of eternity for you.', 'guardian');
-    }, 1500);
+    setTimeout(async () => {
+      const thinking = addMessage('The Guardian stirs...', 'thinking');
+      try {
+        const res = await fetch('/api/greet');
+        const data = await res.json();
+        thinking.remove();
+        addMessage(data.reply, 'guardian');
+      } catch {
+        thinking.remove();
+        addMessage('I am the Guardian of the Great Library — keeper of infinite knowledge, watcher of forgotten truths. Speak, Traveler, and I shall turn the pages of eternity for you.', 'guardian');
+      }
+    }, 800);
 
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
