@@ -9,9 +9,10 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Ensure ebooks directory exists
-const EBOOKS_DIR = path.join(__dirname, 'ebooks');
-if (!fs.existsSync(EBOOKS_DIR)) fs.mkdirSync(EBOOKS_DIR);
+// Use /tmp for ebooks — always writable on Railway
+const EBOOKS_DIR = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks' : path.join(__dirname, 'ebooks');
+if (!fs.existsSync(EBOOKS_DIR)) fs.mkdirSync(EBOOKS_DIR, { recursive: true });
+console.log('Ebooks directory:', EBOOKS_DIR);
 
 // LLM Provider: 'openai' (default) or 'selfhosted' (Azure VM with Ollama)
 const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
@@ -71,6 +72,7 @@ function loadJobsFromDisk() {
   try { return JSON.parse(fs.readFileSync(JOBS_FILE, 'utf8')); } catch { return {}; }
 }
 function saveJob(id, data) {
+  console.log(`saveJob(${id}):`, data.status);
   ebookJobs.set(id, data);
   try {
     const diskJobs = loadJobsFromDisk();

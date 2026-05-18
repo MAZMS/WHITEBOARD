@@ -362,7 +362,10 @@
       overflow-y: hidden;
       max-height: 120px;
       line-height: 1.4;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
+    .input-area textarea::-webkit-scrollbar { display: none; }
 
     .input-area textarea::placeholder { color: #5a5040; }
     .input-area textarea:focus { border-color: #4a4030; box-shadow: 0 0 20px rgba(180, 160, 100, 0.05); }
