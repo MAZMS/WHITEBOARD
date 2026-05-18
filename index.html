@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Great Library AI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0a;
+      color: #c8b88a;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 8vh;
+      position: relative;
+    }
+
+    /* Ambient glow behind the eye */
+    .eye-container {
+      position: relative;
+    }
+
+    .eye-container::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(180, 160, 100, 0.06) 0%, transparent 70%);
+      border-radius: 50%;
+      animation: aura-pulse 4s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .eye-container::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(180, 160, 100, 0.03) 0%, transparent 60%);
+      border-radius: 50%;
+      animation: aura-pulse 6s ease-in-out infinite reverse;
+      pointer-events: none;
+    }
+
+    @keyframes aura-pulse {
+      0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    }
+
+    .eye-symbol {
+      width: 120px;
+      height: 120px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .eye-symbol svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 8px rgba(180, 160, 100, 0.05));
+      animation: breathe 5s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% {
+        filter: drop-shadow(0 0 6px rgba(180, 160, 100, 0.04));
+      }
+      50% {
+        filter: drop-shadow(0 0 18px rgba(180, 160, 100, 0.12));
+      }
+    }
+
+    /* Triangle subtle shimmer */
+    .triangle-line {
+      stroke: #3a3528;
+      stroke-dasharray: 300;
+      stroke-dashoffset: 0;
+      animation: triangle-shimmer 8s linear infinite;
+    }
+
+    @keyframes triangle-shimmer {
+      0% { stroke-opacity: 0.6; }
+      25% { stroke-opacity: 1; }
+      50% { stroke-opacity: 0.6; }
+      75% { stroke-opacity: 0.9; }
+      100% { stroke-opacity: 0.6; }
+    }
+
+    /* Eye stroke glow pulse */
+    .eye-outline {
+      animation: eye-glow 4s ease-in-out infinite;
+    }
+
+    @keyframes eye-glow {
+      0%, 100% { stroke: #3a3528; }
+      50% { stroke: #5a5038; }
+    }
+
+    /* Iris ring pulse */
+    .iris-ring {
+      animation: iris-pulse 3s ease-in-out infinite;
+      transform-origin: 60px 68px;
+    }
+
+    @keyframes iris-pulse {
+      0%, 100% { transform: scale(1); stroke: #3a3528; }
+      50% { transform: scale(1.08); stroke: #4a4530; }
+    }
+
+    /* Pupil - follows mouse */
+    .pupil {
+      fill: #5a5038;
+      transition: transform 0.15s ease-out, fill 0.3s;
+      animation: pupil-idle 6s ease-in-out infinite;
+    }
+
+    @keyframes pupil-idle {
+      0%, 100% { fill: #4a4030; }
+      50% { fill: #6a6048; }
+    }
+
+    /* Blink animation */
+    .eyelid-upper, .eyelid-lower {
+      transition: d 0.15s ease-in-out;
+    }
+
+    .eye-symbol.blink .eyelid-upper {
+      d: path("M34 68 Q60 68 86 68");
+    }
+
+    .eye-symbol.blink .eyelid-lower {
+      d: path("M34 68 Q60 68 86 68");
+    }
+
+    .eye-symbol.blink .eye-outline {
+      ry: 0.5;
+    }
+
+    .eye-symbol.blink .iris-ring,
+    .eye-symbol.blink .pupil {
+      opacity: 0;
+    }
+
+    /* Floating particles */
+    .particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: rgba(180, 160, 100, 0.15);
+      border-radius: 50%;
+      animation: float-up linear infinite;
+    }
+
+    @keyframes float-up {
+      0% {
+        transform: translateY(0) scale(1);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-200px) scale(0);
+        opacity: 0;
+      }
+    }
+
+    .input-area {
+      border-top: 1px solid #2a2520;
+      padding: 20px 24px 28px;
+      display: flex;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .input-area input {
+      width: 100%;
+      max-width: 680px;
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 14px 18px;
+      color: #c8b88a;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .input-area input::placeholder {
+      color: #5a5040;
+    }
+
+    .input-area input:focus {
+      border-color: #4a4030;
+      box-shadow: 0 0 20px rgba(180, 160, 100, 0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="main">
+    <div class="particles" id="particles"></div>
+    <div class="eye-container">
+      <div class="eye-symbol" id="eyeSymbol">
+        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Triangle -->
+          <path class="triangle-line" d="M60 10 L110 105 L10 105 Z" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+          <!-- Eye shape -->
+          <ellipse class="eye-outline" cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+          <!-- Iris -->
+          <circle class="iris-ring" cx="60" cy="68" r="8" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+          <!-- Pupil (moves with mouse) -->
+          <circle class="pupil" id="pupil" cx="60" cy="68" r="3.5" fill="#4a4030"/>
+          <!-- Upper eyelid -->
+          <path class="eyelid-upper" d="M34 68 Q60 48 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+          <!-- Lower eyelid -->
+          <path class="eyelid-lower" d="M34 68 Q60 88 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="input-area">
+    <input type="text" placeholder="Speak unto the Guardian..." id="guardianInput">
+  </div>
+
+  <script>
+    const pupil = document.getElementById('pupil');
+    const eyeSymbol = document.getElementById('eyeSymbol');
+    const particlesContainer = document.getElementById('particles');
+
+    // --- Eye follows cursor ---
+    const eyeCenter = { x: 60, y: 68 };
+    const maxMove = 4;
+
+    document.addEventListener('mousemove', (e) => {
+      const rect = eyeSymbol.getBoundingClientRect();
+      const symCenterX = rect.left + rect.width / 2;
+      const symCenterY = rect.top + rect.height / 2;
+
+      const dx = e.clientX - symCenterX;
+      const dy = e.clientY - symCenterY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const clamp = Math.min(dist / 300, 1);
+
+      const moveX = (dx / (dist || 1)) * maxMove * clamp;
+      const moveY = (dy / (dist || 1)) * maxMove * clamp;
+
+      pupil.setAttribute('cx', eyeCenter.x + moveX);
+      pupil.setAttribute('cy', eyeCenter.y + moveY);
+    });
+
+    // --- Blinking ---
+    function blink() {
+      eyeSymbol.classList.add('blink');
+      setTimeout(() => eyeSymbol.classList.remove('blink'), 160);
+    }
+
+    function scheduleBlink() {
+      const next = 2500 + Math.random() * 5000;
+      setTimeout(() => {
+        blink();
+        // Occasionally double-blink
+        if (Math.random() < 0.25) {
+          setTimeout(blink, 300);
+        }
+        scheduleBlink();
+      }, next);
+    }
+    scheduleBlink();
+
+    // --- Floating particles ---
+    function spawnParticle() {
+      const p = document.createElement('div');
+      p.className = 'particle';
+
+      const eyeRect = eyeSymbol.getBoundingClientRect();
+      const cx = eyeRect.left + eyeRect.width / 2;
+      const cy = eyeRect.top + eyeRect.height / 2;
+
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 40 + Math.random() * 80;
+      p.style.left = (cx + Math.cos(angle) * radius) + 'px';
+      p.style.top = (cy + Math.sin(angle) * radius) + 'px';
+      p.style.width = (1 + Math.random() * 2) + 'px';
+      p.style.height = p.style.width;
+      p.style.animationDuration = (4 + Math.random() * 6) + 's';
+      p.style.opacity = 0.1 + Math.random() * 0.2;
+
+      particlesContainer.appendChild(p);
+      setTimeout(() => p.remove(), 10000);
+    }
+
+    setInterval(spawnParticle, 600);
+
+    // --- Input glow reaction: eye brightens when typing ---
+    const input = document.getElementById('guardianInput');
+    input.addEventListener('focus', () => {
+      eyeSymbol.querySelector('svg').style.filter = 'drop-shadow(0 0 24px rgba(200, 180, 110, 0.15))';
+    });
+    input.addEventListener('blur', () => {
+      eyeSymbol.querySelector('svg').style.filter = '';
+    });
+  </script>
+</body>
+</html>
