@@ -433,17 +433,12 @@
       stroke-width: 2;
       stroke-dasharray: var(--perimeter);
       stroke-dashoffset: var(--perimeter);
-      transition: stroke-dashoffset 3s ease-in-out, stroke 1s ease;
+      transition: stroke 1s ease;
     }
-    .border-loader.active rect {
-      stroke: rgba(180, 160, 100, 0.4);
-    }
-    .border-loader.complete rect {
-      stroke-dashoffset: 0 !important;
+    .border-loader.complete path {
       stroke: rgba(200, 180, 110, 0.7);
-      transition: stroke-dashoffset 1.5s ease-out, stroke 1s ease;
     }
-    .border-loader.fade-out rect {
+    .border-loader.fade-out path {
       opacity: 0;
       transition: opacity 2s ease-out;
     }
@@ -1084,12 +1079,15 @@
     const borderPath = document.getElementById('borderPath');
 
     let borderPerimeter = 0;
+    let borderCurrent = 0;
+    let borderTarget = 0;
+    let borderRAF = null;
+    let borderDone = false;
 
     function sizeBorderLoader() {
       const w = window.innerWidth;
       const h = window.innerHeight;
       borderLoader.setAttribute('viewBox', `0 0 ${w} ${h}`);
-      // Path starts at top center, goes right, down, left, up, back to top center
       const mx = w / 2, my = 1;
       borderPath.setAttribute('d',
         `M ${mx} ${my} L ${w-1} ${my} L ${w-1} ${h-1} L 1 ${h-1} L 1 ${my} Z`
@@ -1101,22 +1099,55 @@
     sizeBorderLoader();
     window.addEventListener('resize', sizeBorderLoader);
 
+    function borderAnimLoop() {
+      if (borderDone) return;
+
+      if (borderCurrent < borderTarget) {
+        borderCurrent += (borderTarget - borderCurrent) * 0.08;
+      } else if (borderCurrent < 0.92) {
+        borderCurrent += 0.0003;
+      }
+
+      if (borderTarget < 1) {
+        borderCurrent = Math.min(borderCurrent, 0.95);
+      }
+
+      if (borderTarget >= 1) {
+        borderCurrent += (1 - borderCurrent) * 0.06;
+        if (borderCurrent > 0.999) {
+          borderCurrent = 1;
+          borderDone = true;
+          borderLoader.classList.add('complete');
+          setTimeout(() => borderLoader.classList.add('fade-out'), 3000);
+        }
+      }
+
+      borderPath.style.strokeDashoffset = borderPerimeter * (1 - borderCurrent);
+      borderRAF = requestAnimationFrame(borderAnimLoop);
+    }
+
     function startBorderLoader() {
       sizeBorderLoader();
+      borderCurrent = 0;
+      borderTarget = 0;
+      borderDone = false;
       borderLoader.classList.remove('complete', 'fade-out');
-      borderLoader.classList.add('active');
+      if (borderRAF) cancelAnimationFrame(borderRAF);
+      borderRAF = requestAnimationFrame(borderAnimLoop);
     }
     function updateBorderProgress(progress) {
-      const offset = borderPerimeter * (1 - Math.min(progress, 0.95));
-      borderPath.style.strokeDashoffset = offset;
+      borderTarget = Math.max(borderTarget, progress);
     }
     function completeBorderLoader() {
-      borderLoader.classList.remove('active');
-      borderLoader.classList.add('complete');
-      setTimeout(() => borderLoader.classList.add('fade-out'), 3000);
+      borderTarget = 1;
     }
     function resetBorderLoader() {
-      borderLoader.classList.remove('active', 'complete', 'fade-out');
+      if (borderRAF) cancelAnimationFrame(borderRAF);
+      borderRAF = null;
+      borderCurrent = 0;
+      borderTarget = 0;
+      borderDone = false;
+      borderLoader.classList.remove('complete', 'fade-out');
       sizeBorderLoader();
     }
 
