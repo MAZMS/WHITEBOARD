@@ -66,7 +66,7 @@ app.post('/api/chat', async (req, res) => {
         { role: 'system', content: SYSTEM_PROMPT },
         ...trimmed
       ],
-      max_completion_tokens: LLM_PROVIDER === 'selfhosted' ? 2048 : 512,
+      max_tokens: LLM_PROVIDER === 'selfhosted' ? 2048 : 512,
       temperature: 0.8,
     });
 
@@ -128,7 +128,7 @@ Respond in this exact JSON format only, no other text:
   const outlineRes = await openai.chat.completions.create({
     model: MODEL,
     messages: [{ role: 'user', content: outlinePrompt }],
-    max_completion_tokens: 1024,
+    max_tokens: 1024,
     temperature: 0.7,
   });
 
@@ -158,7 +158,7 @@ Description: ${ch.description}
 
 Write in a knowledgeable, engaging, and authoritative tone. Include insights, examples, and depth. Write at least 800 words for this chapter. Do not include the chapter title in your response — just the body text.`
       }],
-      max_completion_tokens: 4096,
+      max_tokens: 4096,
       temperature: 0.75,
     });
     chapters.push({
@@ -270,7 +270,7 @@ app.get('/api/greet', async (req, res) => {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: 'Greet me. Introduce yourself as the Guardian of the Great Library. Be mysterious, powerful, and welcoming. Mention your infinite knowledge and the ancient tomes you guard. Ask what knowledge I seek. Keep it to 2-3 sentences. Each greeting should be unique and varied.' }
       ],
-      max_completion_tokens: 200,
+      max_tokens: 200,
       temperature: 1,
     });
     res.json({ reply: completion.choices[0].message.content });
