@@ -301,6 +301,31 @@ app.get('/api/ebook/:id/download', (req, res) => {
   res.download(job.path, `${job.title || 'ebook'}.pdf`);
 });
 
+// --- Outro (seek again text) ---
+app.get('/api/outro', async (req, res) => {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [{
+        role: 'user',
+        content: `Generate two short texts for a "start over" button on a mystical AI library site. The Guardian has just delivered a tome and gone to sleep.
+
+1. linkText: A cryptic, poetic call-to-action to seek more knowledge (3-6 words). Examples: "The halls await another question...", "What else hides in the dark?", "Another door stands ajar..."
+2. noteText: A brief reassurance that the tome is safe and this starts fresh (one short sentence). Examples: "The tome endures. A new chapter begins.", "Your knowledge is sealed. The cycle renews."
+
+Respond in JSON only: {"linkText": "...", "noteText": "..."}`
+      }],
+      ...tokenLimit(150),
+      temperature: 1,
+    });
+    const raw = completion.choices[0].message.content;
+    const match = raw.match(/\{[\s\S]*\}/);
+    res.json(JSON.parse(match[0]));
+  } catch {
+    res.json({ linkText: 'Seek new knowledge...', noteText: 'Your tome is preserved above. This will awaken a new session.' });
+  }
+});
+
 // --- Greeting ---
 app.get('/api/greet', async (req, res) => {
   try {

@@ -829,11 +829,19 @@
       input.disabled = true; sendBtn.disabled = true;
       input.placeholder = 'The Guardian rests...';
 
-      // Show "seek again" after everything fades
-      setTimeout(() => {
+      // Show "seek again" after everything fades — AI generated
+      setTimeout(async () => {
+        let linkText = 'Seek new knowledge...';
+        let noteText = 'Your tome is preserved above. This will awaken a new session.';
+        try {
+          const r = await fetch('/api/outro');
+          const d = await r.json();
+          if (d.linkText) linkText = d.linkText;
+          if (d.noteText) noteText = d.noteText;
+        } catch {}
         const div = document.createElement('div');
         div.className = 'message return-link';
-        div.innerHTML = '<a href="#" id="seekAgainBtn">Seek new knowledge...</a><br><span style="font-size: 12px; color: #3a3528; margin-top: 6px; display: inline-block;">Your tome is preserved above. This will awaken a new session.</span>';
+        div.innerHTML = `<a href="#" id="seekAgainBtn">${linkText}</a><br><span style="font-size: 12px; color: #3a3528; margin-top: 6px; display: inline-block;">${noteText}</span>`;
         chatArea.appendChild(div);
         chatArea.scrollTop = chatArea.scrollHeight;
         document.getElementById('seekAgainBtn').addEventListener('click', (e) => {
