@@ -29,6 +29,9 @@ A mystical, dark-themed AI chat interface called "The Great Library AI". The gua
 - Production URL: greatlibraryai-production.up.railway.app
 - Custom domain: greatlibrary.ai
 
+## Workflow
+- **Always commit and push** to GitHub after completing any task or making changes
+
 ## Git Remote
 - Origin: https://github.com/MAZMS/greatlibraryai.git
 - Branch: main
