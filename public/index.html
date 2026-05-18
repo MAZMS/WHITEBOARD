@@ -285,6 +285,26 @@
     .input-area input:disabled {
       opacity: 0.5;
     }
+
+    .download-link {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 10px 20px;
+      background: rgba(180, 160, 100, 0.08);
+      border: 1px solid #3a3528;
+      border-radius: 6px;
+      color: #c8b88a;
+      text-decoration: none;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 14px;
+      transition: background 0.3s, border-color 0.3s;
+      cursor: pointer;
+    }
+
+    .download-link:hover {
+      background: rgba(180, 160, 100, 0.15);
+      border-color: #5a5038;
+    }
   </style>
 </head>
 <body>
@@ -440,6 +460,12 @@
           addMessage(data.error || 'The Guardian is silent...', 'error');
         } else {
           addMessage(data.reply, 'guardian');
+
+          // If tome is being generated, poll for it
+          if (data.tomeGenerating && data.ebookId) {
+            const searchMsg = addMessage('The Guardian descends into the ancient archives...', 'thinking');
+            pollEbook(data.ebookId, searchMsg);
+          }
         }
       } catch {
         thinking.remove();
@@ -449,6 +475,44 @@
       input.disabled = false;
       input.focus();
     });
+
+    // --- Ebook polling ---
+    async function pollEbook(ebookId, statusMsg) {
+      const messages = [
+        'Searching the infinite shelves...',
+        'Turning the pages of forgotten tomes...',
+        'The ancient scrolls reveal their secrets...',
+        'Binding the knowledge into form...',
+        'The tome nears completion...'
+      ];
+      let msgIndex = 0;
+
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/ebook/${ebookId}/status`);
+          const data = await res.json();
+
+          if (data.status === 'ready') {
+            clearInterval(interval);
+            statusMsg.remove();
+
+            const div = document.createElement('div');
+            div.className = 'message guardian';
+            div.innerHTML = `The tome has been found — <strong>"${data.title}"</strong>. It is yours, Seeker.<br><a class="download-link" href="/api/ebook/${ebookId}/download" target="_blank">Receive the Tome</a>`;
+            chatArea.appendChild(div);
+            chatArea.scrollTop = chatArea.scrollHeight;
+          } else if (data.status === 'failed') {
+            clearInterval(interval);
+            statusMsg.remove();
+            addMessage('The archives tremble... the tome could not be retrieved. Speak again, Seeker.', 'error');
+          } else if (msgIndex < messages.length) {
+            statusMsg.textContent = messages[msgIndex++];
+          }
+        } catch {
+          // keep polling
+        }
+      }, 5000);
+    }
   </script>
 </body>
 </html>
