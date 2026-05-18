@@ -843,7 +843,15 @@
         chatArea.scrollTop = chatArea.scrollHeight;
         document.getElementById('seekAgainBtn').addEventListener('click', (e) => {
           e.preventDefault();
-          location.reload();
+          // Restart the border so it can unwind
+          startBorderLoader();
+          borderCurrent = 1;
+          borderTarget = 1;
+          borderDone = false;
+          // Reverse it, then reload
+          setTimeout(() => {
+            reverseBorderLoader(() => location.reload());
+          }, 300);
         });
       }, 6000);
     }
@@ -1151,6 +1159,26 @@
       borderDone = false;
       borderLoader.classList.remove('complete', 'fade-out');
       sizeBorderLoader();
+    }
+
+    function reverseBorderLoader(onComplete) {
+      borderDone = false;
+      borderTarget = -1; // signal reverse
+      borderLoader.classList.remove('complete', 'fade-out');
+
+      function reverseLoop() {
+        borderCurrent -= borderCurrent * 0.05 + 0.003;
+        if (borderCurrent <= 0.001) {
+          borderCurrent = 0;
+          borderPath.style.strokeDashoffset = borderPerimeter;
+          if (onComplete) onComplete();
+          return;
+        }
+        borderPath.style.strokeDashoffset = borderPerimeter * (1 - borderCurrent);
+        requestAnimationFrame(reverseLoop);
+      }
+      if (borderRAF) cancelAnimationFrame(borderRAF);
+      requestAnimationFrame(reverseLoop);
     }
 
     // ===== START: DORMANT → AWAKENING =====
