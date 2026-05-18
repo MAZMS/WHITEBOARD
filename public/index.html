@@ -427,7 +427,7 @@
       pointer-events: none;
       z-index: 100;
     }
-    .border-loader rect {
+    .border-loader path {
       fill: none;
       stroke: rgba(180, 160, 100, 0.4);
       stroke-width: 2;
@@ -521,7 +521,7 @@
 </head>
 <body class="phase-dormant">
   <svg class="border-loader" id="borderLoader" preserveAspectRatio="none">
-    <rect x="1" y="1" rx="0" ry="0" />
+    <path id="borderPath" fill="none" />
   </svg>
   <div class="main">
     <div class="particles" id="particles"></div>
@@ -1081,7 +1081,7 @@
 
     // ===== BORDER LOADER =====
     const borderLoader = document.getElementById('borderLoader');
-    const borderRect = borderLoader.querySelector('rect');
+    const borderPath = document.getElementById('borderPath');
 
     let borderPerimeter = 0;
 
@@ -1089,11 +1089,14 @@
       const w = window.innerWidth;
       const h = window.innerHeight;
       borderLoader.setAttribute('viewBox', `0 0 ${w} ${h}`);
-      borderRect.setAttribute('width', w - 2);
-      borderRect.setAttribute('height', h - 2);
+      // Path starts at top center, goes right, down, left, up, back to top center
+      const mx = w / 2, my = 1;
+      borderPath.setAttribute('d',
+        `M ${mx} ${my} L ${w-1} ${my} L ${w-1} ${h-1} L 1 ${h-1} L 1 ${my} Z`
+      );
       borderPerimeter = 2 * (w - 2) + 2 * (h - 2);
       borderLoader.style.setProperty('--perimeter', borderPerimeter);
-      borderRect.style.strokeDashoffset = borderPerimeter;
+      borderPath.style.strokeDashoffset = borderPerimeter;
     }
     sizeBorderLoader();
     window.addEventListener('resize', sizeBorderLoader);
@@ -1104,9 +1107,8 @@
       borderLoader.classList.add('active');
     }
     function updateBorderProgress(progress) {
-      // progress: 0 to 1 — smoothly animate via CSS transition
-      const offset = borderPerimeter * (1 - Math.min(progress, 0.95)); // cap at 95% until complete
-      borderRect.style.strokeDashoffset = offset;
+      const offset = borderPerimeter * (1 - Math.min(progress, 0.95));
+      borderPath.style.strokeDashoffset = offset;
     }
     function completeBorderLoader() {
       borderLoader.classList.remove('active');
