@@ -288,7 +288,7 @@ app.get('/api/greet', async (req, res) => {
       model: MODEL,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: 'Greet me. One sentence only. Be cryptic, powerful, sphinx-like. Make the seeker feel small before infinite knowledge. End by implying you are waiting for them to speak. Each greeting must be unique.' }
+        { role: 'user', content: 'Greet me and ask what knowledge I seek — in one sphinx-like sentence. Cryptic, powerful. You already know I came for a tome. Each greeting must be unique.' }
       ],
       ...tokenLimit(200),
       temperature: 1,
