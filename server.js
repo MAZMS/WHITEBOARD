@@ -51,7 +51,7 @@ app.post('/api/chat', async (req, res) => {
         { role: 'system', content: SYSTEM_PROMPT },
         ...trimmed
       ],
-      max_tokens: LLM_PROVIDER === 'selfhosted' ? 2048 : 512,
+      max_completion_tokens: LLM_PROVIDER === 'selfhosted' ? 2048 : 512,
       temperature: 0.8,
     });
 
