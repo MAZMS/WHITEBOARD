@@ -46,6 +46,8 @@ CONVERSATION FLOW:
 
 IMPORTANT: Only include [TOME_READY] when you have enough understanding of what the seeker wants. Never rush — but also don't drag out beyond 3-4 exchanges. The seeker came for a tome, not endless conversation.
 
+After the tome is delivered, do not continue conversation. Your work is done. The Guardian will rest.
+
 Keep responses concise but impactful. Do not use emojis. Use elegant, timeless language.`;
 
 const conversations = new Map();
@@ -283,6 +285,24 @@ app.get('/api/greet', async (req, res) => {
     res.json({ reply: completion.choices[0].message.content });
   } catch (err) {
     res.json({ reply: 'I am the Guardian of the Great Library — keeper of infinite knowledge, watcher of forgotten truths. What knowledge do you seek, Traveler?' });
+  }
+});
+
+// --- Farewell ---
+app.get('/api/farewell', async (req, res) => {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: 'The tome has been delivered. Speak a final farewell. You are about to go to sleep — the Library grows quiet. Be brief (1-2 sentences), poignant, and final. Do not ask questions. This is goodbye.' }
+      ],
+      ...tokenLimit(150),
+      temperature: 0.9,
+    });
+    res.json({ reply: completion.choices[0].message.content });
+  } catch {
+    res.json({ reply: 'The Library grows quiet... until the pages call to you again, Seeker. The Guardian rests.' });
   }
 });
 

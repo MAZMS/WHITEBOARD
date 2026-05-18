@@ -5,11 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Great Library AI</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       background: #0a0a0a;
@@ -31,38 +27,35 @@
       overflow: hidden;
     }
 
-    /* Ambient glow behind the eye */
+    /* ===== EYE CONTAINER & AURA ===== */
     .eye-container {
       position: relative;
       flex-shrink: 0;
     }
 
-    .eye-container::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 200px;
-      height: 200px;
-      background: radial-gradient(circle, rgba(180, 160, 100, 0.06) 0%, transparent 70%);
-      border-radius: 50%;
-      animation: aura-pulse 4s ease-in-out infinite;
-      pointer-events: none;
-    }
-
+    .eye-container::before,
     .eye-container::after {
       content: '';
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 2s ease-in, width 2s ease, height 2s ease, background 2s ease;
+    }
+
+    .eye-container::before {
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(180, 160, 100, 0.06) 0%, transparent 70%);
+    }
+
+    .eye-container::after {
       width: 300px;
       height: 300px;
       background: radial-gradient(circle, rgba(180, 160, 100, 0.03) 0%, transparent 60%);
-      border-radius: 50%;
-      animation: aura-pulse 6s ease-in-out infinite reverse;
-      pointer-events: none;
     }
 
     @keyframes aura-pulse {
@@ -70,6 +63,7 @@
       50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
     }
 
+    /* ===== EYE SYMBOL ===== */
     .eye-symbol {
       width: 120px;
       height: 120px;
@@ -80,22 +74,22 @@
     .eye-symbol svg {
       width: 100%;
       height: 100%;
-      filter: drop-shadow(0 0 8px rgba(180, 160, 100, 0.05));
-      animation: breathe 5s ease-in-out infinite;
     }
 
     @keyframes breathe {
-      0%, 100% {
-        filter: drop-shadow(0 0 6px rgba(180, 160, 100, 0.04));
-      }
-      50% {
-        filter: drop-shadow(0 0 18px rgba(180, 160, 100, 0.12));
-      }
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(180, 160, 100, 0.04)); }
+      50% { filter: drop-shadow(0 0 18px rgba(180, 160, 100, 0.12)); }
+    }
+
+    @keyframes breathe-intense {
+      0%, 100% { filter: drop-shadow(0 0 12px rgba(200, 180, 110, 0.1)); }
+      50% { filter: drop-shadow(0 0 30px rgba(200, 180, 110, 0.25)); }
     }
 
     .triangle-line {
       stroke: #3a3528;
-      animation: triangle-shimmer 8s linear infinite;
+      stroke-opacity: 0.2;
+      transition: stroke-opacity 2s ease, stroke 2s ease;
     }
 
     @keyframes triangle-shimmer {
@@ -107,7 +101,7 @@
     }
 
     .eye-outline {
-      animation: eye-glow 4s ease-in-out infinite;
+      transition: stroke 1s ease;
     }
 
     @keyframes eye-glow {
@@ -116,8 +110,9 @@
     }
 
     .iris-ring {
-      animation: iris-pulse 3s ease-in-out infinite;
+      opacity: 0;
       transform-origin: 60px 68px;
+      transition: opacity 0.8s ease;
     }
 
     @keyframes iris-pulse {
@@ -127,8 +122,8 @@
 
     .pupil {
       fill: #5a5038;
-      transition: transform 0.15s ease-out, fill 0.3s;
-      animation: pupil-idle 6s ease-in-out infinite;
+      opacity: 0;
+      transition: opacity 0.8s ease;
     }
 
     @keyframes pupil-idle {
@@ -137,33 +132,128 @@
     }
 
     .eyelid-upper, .eyelid-lower {
-      transition: d 0.15s ease-in-out;
+      transition: stroke 2s ease;
     }
 
-    .eye-symbol.blink .eyelid-upper {
-      d: path("M34 68 Q60 68 86 68");
-    }
-
-    .eye-symbol.blink .eyelid-lower {
-      d: path("M34 68 Q60 68 86 68");
-    }
-
-    .eye-symbol.blink .eye-outline {
-      ry: 0.5;
-    }
-
+    /* Blink (used during alive phase only) */
+    .eye-symbol.blink .eyelid-upper { d: path("M34 68 Q60 68 86 68"); }
+    .eye-symbol.blink .eyelid-lower { d: path("M34 68 Q60 68 86 68"); }
+    .eye-symbol.blink .eye-outline { ry: 0.5; }
     .eye-symbol.blink .iris-ring,
-    .eye-symbol.blink .pupil {
-      opacity: 0;
+    .eye-symbol.blink .pupil { opacity: 0; }
+
+    /* ===== PHASE: ALIVE ===== */
+    body.phase-alive .eye-container::before {
+      opacity: 1;
+      animation: aura-pulse 4s ease-in-out infinite;
+    }
+    body.phase-alive .eye-container::after {
+      opacity: 1;
+      animation: aura-pulse 6s ease-in-out infinite reverse;
+    }
+    body.phase-alive .eye-symbol svg {
+      animation: breathe 5s ease-in-out infinite;
+    }
+    body.phase-alive .triangle-line {
+      stroke-opacity: 0.6;
+      animation: triangle-shimmer 8s linear infinite;
+    }
+    body.phase-alive .eye-outline {
+      animation: eye-glow 4s ease-in-out infinite;
+    }
+    body.phase-alive .iris-ring {
+      animation: iris-pulse 3s ease-in-out infinite;
+    }
+    body.phase-alive .pupil {
+      animation: pupil-idle 6s ease-in-out infinite;
     }
 
-    /* Floating particles */
+    /* ===== PHASE: AWAKENING ===== */
+    body.phase-awakening .eye-container::before,
+    body.phase-awakening .eye-container::after {
+      opacity: 1;
+    }
+    body.phase-awakening .triangle-line {
+      stroke-opacity: 0.5;
+    }
+
+    /* ===== PHASE: SEARCHING ===== */
+    body.phase-searching .eye-container::before {
+      opacity: 1;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(200, 180, 110, 0.12) 0%, transparent 70%);
+      animation: aura-pulse 2.5s ease-in-out infinite;
+    }
+    body.phase-searching .eye-container::after {
+      opacity: 1;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(200, 180, 110, 0.06) 0%, transparent 60%);
+      animation: aura-pulse 3.5s ease-in-out infinite reverse;
+    }
+    body.phase-searching .eye-symbol svg {
+      animation: breathe-intense 2.5s ease-in-out infinite;
+    }
+    body.phase-searching .triangle-line {
+      stroke: #5a5038;
+      stroke-opacity: 1;
+      animation: triangle-shimmer 3s linear infinite;
+    }
+    body.phase-searching .eye-outline {
+      animation: eye-glow 2s ease-in-out infinite;
+    }
+    body.phase-searching .iris-ring {
+      animation: iris-pulse 1.5s ease-in-out infinite;
+      stroke: #6a6048;
+    }
+
+    /* ===== PHASE: SLEEPING ===== */
+    body.phase-sleeping .eye-symbol svg {
+      animation: none;
+      filter: drop-shadow(0 0 0px transparent);
+      transition: filter 3s ease-out;
+    }
+    body.phase-sleeping .eye-container::before,
+    body.phase-sleeping .eye-container::after {
+      opacity: 0;
+      animation: none;
+      transition: opacity 3s ease-out;
+    }
+    body.phase-sleeping .triangle-line {
+      stroke-opacity: 0.1;
+      stroke: #1a1510;
+      animation: none;
+      transition: stroke-opacity 4s ease-out, stroke 4s ease-out;
+    }
+    body.phase-sleeping .eye-outline,
+    body.phase-sleeping .eyelid-upper,
+    body.phase-sleeping .eyelid-lower {
+      stroke: #1a1510;
+      transition: stroke 3s ease-out;
+    }
+    body.phase-sleeping .iris-ring,
+    body.phase-sleeping .pupil {
+      animation: none;
+    }
+    body.phase-sleeping .chat-area {
+      opacity: 0.4;
+      transition: opacity 4s ease-out;
+    }
+    body.phase-sleeping .input-area {
+      opacity: 0.2;
+      transition: opacity 3s ease-out;
+    }
+    body.phase-sleeping .input-area input {
+      border-color: #1a1510;
+      cursor: not-allowed;
+    }
+
+    /* ===== PARTICLES ===== */
     .particles {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       pointer-events: none;
       overflow: hidden;
     }
@@ -177,6 +267,10 @@
       animation: float-up linear infinite;
     }
 
+    body.phase-searching .particle {
+      background: rgba(200, 180, 110, 0.25);
+    }
+
     @keyframes float-up {
       0% { transform: translateY(0) scale(1); opacity: 0; }
       10% { opacity: 1; }
@@ -184,7 +278,7 @@
       100% { transform: translateY(-200px) scale(0); opacity: 0; }
     }
 
-    /* Chat messages area */
+    /* ===== CHAT ===== */
     .chat-area {
       flex: 1;
       width: 100%;
@@ -194,44 +288,17 @@
       display: flex;
       flex-direction: column;
       gap: 16px;
-      scrollbar-width: thin;
-      scrollbar-color: #2a2520 transparent;
+      transition: opacity 4s ease-out;
     }
 
-    .chat-area::-webkit-scrollbar {
-      display: none;
-    }
+    .chat-area::-webkit-scrollbar { display: none; }
+    .chat-area { -ms-overflow-style: none; scrollbar-width: none; }
 
-    .chat-area {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-
-    .message {
-      animation: fade-in 0.4s ease-out;
-    }
-
-    .message.user {
-      text-align: right;
-      color: #8a8070;
-      font-style: italic;
-    }
-
-    .message.guardian {
-      color: #c8b88a;
-      line-height: 1.6;
-    }
-
-    .message.error {
-      color: #7a4040;
-      font-style: italic;
-    }
-
-    .thinking {
-      color: #5a5040;
-      font-style: italic;
-      animation: pulse-text 1.5s ease-in-out infinite;
-    }
+    .message { animation: fade-in 0.6s ease-out; }
+    .message.user { text-align: right; color: #8a8070; font-style: italic; }
+    .message.guardian { color: #c8b88a; line-height: 1.6; }
+    .message.error { color: #7a4040; font-style: italic; }
+    .thinking { color: #5a5040; font-style: italic; animation: pulse-text 1.5s ease-in-out infinite; }
 
     @keyframes pulse-text {
       0%, 100% { opacity: 0.4; }
@@ -243,7 +310,7 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Input area */
+    /* ===== INPUT ===== */
     .input-area {
       border-top: 1px solid #2a2520;
       padding: 20px 24px 28px;
@@ -251,6 +318,7 @@
       justify-content: center;
       position: relative;
       z-index: 2;
+      transition: opacity 3s ease-out;
     }
 
     .input-area form {
@@ -273,18 +341,9 @@
       transition: border-color 0.3s, box-shadow 0.3s;
     }
 
-    .input-area input::placeholder {
-      color: #5a5040;
-    }
-
-    .input-area input:focus {
-      border-color: #4a4030;
-      box-shadow: 0 0 20px rgba(180, 160, 100, 0.05);
-    }
-
-    .input-area input:disabled {
-      opacity: 0.5;
-    }
+    .input-area input::placeholder { color: #5a5040; }
+    .input-area input:focus { border-color: #4a4030; box-shadow: 0 0 20px rgba(180, 160, 100, 0.05); }
+    .input-area input:disabled { opacity: 0.5; }
 
     .download-link {
       display: inline-block;
@@ -300,25 +359,31 @@
       transition: background 0.3s, border-color 0.3s;
       cursor: pointer;
     }
+    .download-link:hover { background: rgba(180, 160, 100, 0.15); border-color: #5a5038; }
 
-    .download-link:hover {
-      background: rgba(180, 160, 100, 0.15);
-      border-color: #5a5038;
+    .return-link { text-align: center; margin-top: 24px; }
+    .return-link a {
+      color: #5a5040;
+      text-decoration: none;
+      font-style: italic;
+      transition: color 0.5s;
     }
+    .return-link a:hover { color: #c8b88a; }
   </style>
 </head>
-<body>
+<body class="phase-dormant">
   <div class="main">
     <div class="particles" id="particles"></div>
     <div class="eye-container">
       <div class="eye-symbol" id="eyeSymbol">
         <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polygon class="triangle-line" points="60,10 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="miter" fill="none"/>
-          <ellipse class="eye-outline" cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+          <polygon class="triangle-line" points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+          <!-- Eye starts closed: ry=0.5, eyelids flat -->
+          <ellipse class="eye-outline" cx="60" cy="68" rx="26" ry="0.5" stroke="#3a3528" stroke-width="1.2" fill="none"/>
           <circle class="iris-ring" cx="60" cy="68" r="8" stroke="#3a3528" stroke-width="1.2" fill="none"/>
           <circle class="pupil" id="pupil" cx="60" cy="68" r="3.5" fill="#4a4030"/>
-          <path class="eyelid-upper" d="M34 68 Q60 48 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
-          <path class="eyelid-lower" d="M34 68 Q60 88 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+          <path class="eyelid-upper" d="M34 68 Q60 68 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+          <path class="eyelid-lower" d="M34 68 Q60 68 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
         </svg>
       </div>
     </div>
@@ -326,68 +391,119 @@
   </div>
   <div class="input-area">
     <form id="chatForm">
-      <input type="text" placeholder="Speak unto the Guardian..." id="guardianInput" autocomplete="off">
+      <input type="text" placeholder="Speak unto the Guardian..." id="guardianInput" autocomplete="off" disabled>
     </form>
   </div>
 
   <script>
+    // ===== ELEMENTS =====
     const pupil = document.getElementById('pupil');
     const eyeSymbol = document.getElementById('eyeSymbol');
+    const eyeOutline = document.querySelector('.eye-outline');
+    const eyelidUpper = document.querySelector('.eyelid-upper');
+    const eyelidLower = document.querySelector('.eyelid-lower');
+    const irisRing = document.querySelector('.iris-ring');
     const particlesContainer = document.getElementById('particles');
     const chatArea = document.getElementById('chatArea');
     const chatForm = document.getElementById('chatForm');
     const input = document.getElementById('guardianInput');
-
     const sessionId = crypto.randomUUID();
 
-    // --- Eye follows cursor ---
-    const eyeCenter = { x: 60, y: 68 };
-    const maxMove = 4;
+    // ===== STATE =====
+    let guardianPhase = 'dormant';
+    let particleInterval = null;
+    let blinkTimeout = null;
+    let isAsleep = false;
+    let driftRAF = null;
+    let trackingEnabled = false;
 
-    document.addEventListener('mousemove', (e) => {
-      const rect = eyeSymbol.getBoundingClientRect();
-      const symCenterX = rect.left + rect.width / 2;
-      const symCenterY = rect.top + rect.height / 2;
+    // ===== PHASE MANAGER =====
+    function enterPhase(phase) {
+      document.body.classList.remove(
+        'phase-dormant', 'phase-awakening', 'phase-alive',
+        'phase-searching', 'phase-delivering', 'phase-sleeping'
+      );
+      document.body.classList.add('phase-' + phase);
+      guardianPhase = phase;
 
-      const dx = e.clientX - symCenterX;
-      const dy = e.clientY - symCenterY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const clamp = Math.min(dist / 300, 1);
+      switch (phase) {
+        case 'awakening': handleAwakening(); break;
+        case 'alive': handleAlive(); break;
+        case 'searching': handleSearching(); break;
+        case 'delivering': handleDelivering(); break;
+        case 'sleeping': handleSleeping(); break;
+      }
+    }
 
-      const moveX = (dx / (dist || 1)) * maxMove * clamp;
-      const moveY = (dy / (dist || 1)) * maxMove * clamp;
+    // ===== EASING =====
+    function easeInOutQuad(t) {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
 
-      pupil.setAttribute('cx', eyeCenter.x + moveX);
-      pupil.setAttribute('cy', eyeCenter.y + moveY);
-    });
+    // ===== ANIMATE EYE OPEN =====
+    function animateEyeOpen(duration = 1500) {
+      const start = performance.now();
+      function frame(now) {
+        const t = easeInOutQuad(Math.min((now - start) / duration, 1));
+        eyeOutline.setAttribute('ry', 0.5 + t * 13.5);
+        eyelidUpper.setAttribute('d', `M34 68 Q60 ${68 - t * 20} 86 68`);
+        eyelidLower.setAttribute('d', `M34 68 Q60 ${68 + t * 20} 86 68`);
+        if (t < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
 
-    // --- Blinking ---
+      // Fade in iris + pupil at 40% through
+      setTimeout(() => {
+        irisRing.style.opacity = '1';
+        pupil.style.opacity = '1';
+      }, duration * 0.4);
+    }
+
+    // ===== ANIMATE EYE CLOSE =====
+    function animateEyeClose(duration = 2000) {
+      const start = performance.now();
+      function frame(now) {
+        const t = easeInOutQuad(Math.min((now - start) / duration, 1));
+        eyeOutline.setAttribute('ry', 14 - t * 13.5);
+        eyelidUpper.setAttribute('d', `M34 68 Q60 ${48 + t * 20} 86 68`);
+        eyelidLower.setAttribute('d', `M34 68 Q60 ${88 - t * 20} 86 68`);
+        // Fade iris/pupil in first 40%
+        if (t < 0.4) {
+          const o = 1 - (t / 0.4);
+          irisRing.style.opacity = o;
+          pupil.style.opacity = o;
+        } else {
+          irisRing.style.opacity = '0';
+          pupil.style.opacity = '0';
+        }
+        if (t < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    // ===== BLINKING =====
     function blink() {
+      if (isAsleep) return;
       eyeSymbol.classList.add('blink');
       setTimeout(() => eyeSymbol.classList.remove('blink'), 160);
     }
 
     function scheduleBlink() {
-      const next = 2500 + Math.random() * 5000;
-      setTimeout(() => {
+      if (isAsleep) return;
+      blinkTimeout = setTimeout(() => {
         blink();
-        if (Math.random() < 0.25) {
-          setTimeout(blink, 300);
-        }
+        if (Math.random() < 0.25) setTimeout(blink, 300);
         scheduleBlink();
-      }, next);
+      }, 2500 + Math.random() * 5000);
     }
-    scheduleBlink();
 
-    // --- Floating particles ---
+    // ===== PARTICLES =====
     function spawnParticle() {
       const p = document.createElement('div');
       p.className = 'particle';
-
       const eyeRect = eyeSymbol.getBoundingClientRect();
       const cx = eyeRect.left + eyeRect.width / 2;
       const cy = eyeRect.top + eyeRect.height / 2;
-
       const angle = Math.random() * Math.PI * 2;
       const radius = 40 + Math.random() * 80;
       p.style.left = (cx + Math.cos(angle) * radius) + 'px';
@@ -396,22 +512,45 @@
       p.style.height = p.style.width;
       p.style.animationDuration = (4 + Math.random() * 6) + 's';
       p.style.opacity = 0.1 + Math.random() * 0.2;
-
       particlesContainer.appendChild(p);
       setTimeout(() => p.remove(), 10000);
     }
 
-    setInterval(spawnParticle, 600);
+    // ===== PUPIL TRACKING =====
+    function onMouseMove(e) {
+      if (!trackingEnabled) return;
+      const rect = eyeSymbol.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width / 2);
+      const dy = e.clientY - (rect.top + rect.height / 2);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const clamp = Math.min(dist / 300, 1);
+      pupil.setAttribute('cx', 60 + (dx / (dist || 1)) * 4 * clamp);
+      pupil.setAttribute('cy', 68 + (dy / (dist || 1)) * 4 * clamp);
+    }
+    document.addEventListener('mousemove', onMouseMove);
 
-    // --- Input glow ---
-    input.addEventListener('focus', () => {
-      eyeSymbol.querySelector('svg').style.filter = 'drop-shadow(0 0 24px rgba(200, 180, 110, 0.15))';
-    });
-    input.addEventListener('blur', () => {
-      eyeSymbol.querySelector('svg').style.filter = '';
-    });
+    // ===== PUPIL DRIFT (thinking/searching) =====
+    function startDrift(speed, range) {
+      trackingEnabled = false;
+      const startTime = performance.now();
+      function drift(now) {
+        const t = (now - startTime) / speed;
+        pupil.setAttribute('cx', 60 + Math.sin(t * 2.1) * range);
+        pupil.setAttribute('cy', 68 + Math.cos(t * 1.7) * (range * 0.5));
+        driftRAF = requestAnimationFrame(drift);
+      }
+      driftRAF = requestAnimationFrame(drift);
+    }
 
-    // --- Chat ---
+    function stopDrift() {
+      if (driftRAF) cancelAnimationFrame(driftRAF);
+      driftRAF = null;
+      pupil.setAttribute('cx', 60);
+      pupil.setAttribute('cy', 68);
+      trackingEnabled = true;
+    }
+
+    // ===== CHAT =====
     function addMessage(text, type) {
       const div = document.createElement('div');
       div.className = 'message ' + type;
@@ -421,22 +560,84 @@
       return div;
     }
 
-    // --- Guardian greeting on load ---
-    setTimeout(async () => {
-      const thinking = addMessage('The Guardian stirs...', 'thinking');
-      try {
-        const res = await fetch('/api/greet');
-        const data = await res.json();
-        thinking.remove();
-        addMessage(data.reply, 'guardian');
-      } catch {
-        thinking.remove();
-        addMessage('I am the Guardian of the Great Library — keeper of infinite knowledge, watcher of forgotten truths. Speak, Traveler, and I shall turn the pages of eternity for you.', 'guardian');
-      }
-    }, 800);
+    // ===== PHASE HANDLERS =====
 
+    function handleAwakening() {
+      animateEyeOpen(1500);
+
+      // Start greeting fetch while eye opens
+      setTimeout(async () => {
+        const thinking = addMessage('The Guardian stirs...', 'thinking');
+        try {
+          const res = await fetch('/api/greet');
+          const data = await res.json();
+          thinking.remove();
+          addMessage(data.reply, 'guardian');
+        } catch {
+          thinking.remove();
+          addMessage('I am the Guardian of the Great Library — keeper of infinite knowledge, watcher of forgotten truths. What knowledge do you seek, Traveler?', 'guardian');
+        }
+        enterPhase('alive');
+      }, 800);
+
+      // Start particles and blinking when eye is fully open
+      setTimeout(() => {
+        particleInterval = setInterval(spawnParticle, 600);
+        scheduleBlink();
+      }, 1500);
+    }
+
+    function handleAlive() {
+      trackingEnabled = true;
+      input.disabled = false;
+      input.placeholder = 'Speak unto the Guardian...';
+      input.focus();
+    }
+
+    function handleSearching() {
+      input.disabled = true;
+      input.placeholder = 'The Guardian searches the archives...';
+      // Intensify particles
+      clearInterval(particleInterval);
+      particleInterval = setInterval(spawnParticle, 200);
+      // Wider, faster drift
+      startDrift(2000, 4);
+    }
+
+    function handleDelivering() {
+      stopDrift();
+      // Calm particles back
+      clearInterval(particleInterval);
+      particleInterval = setInterval(spawnParticle, 600);
+    }
+
+    function handleSleeping() {
+      isAsleep = true;
+      trackingEnabled = false;
+      if (blinkTimeout) clearTimeout(blinkTimeout);
+      if (driftRAF) cancelAnimationFrame(driftRAF);
+      clearInterval(particleInterval);
+      particleInterval = null;
+
+      animateEyeClose(2000);
+
+      input.disabled = true;
+      input.placeholder = 'The Guardian rests...';
+
+      // Show return link after everything fades
+      setTimeout(() => {
+        const div = document.createElement('div');
+        div.className = 'message return-link';
+        div.innerHTML = '<a href="/">Return to the Library...</a>';
+        chatArea.appendChild(div);
+        chatArea.scrollTop = chatArea.scrollHeight;
+      }, 6000);
+    }
+
+    // ===== FORM SUBMIT =====
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (guardianPhase !== 'alive') return;
       const text = input.value.trim();
       if (!text) return;
 
@@ -444,7 +645,19 @@
       input.value = '';
       input.disabled = true;
 
+      // Eye reacts — brief widen
+      const origRy = 14;
+      eyeOutline.setAttribute('ry', 16);
+      eyelidUpper.setAttribute('d', 'M34 68 Q60 44 86 68');
+      eyelidLower.setAttribute('d', 'M34 68 Q60 92 86 68');
+      setTimeout(() => {
+        eyeOutline.setAttribute('ry', origRy);
+        eyelidUpper.setAttribute('d', 'M34 68 Q60 48 86 68');
+        eyelidLower.setAttribute('d', 'M34 68 Q60 88 86 68');
+      }, 400);
+
       const thinking = addMessage('The Guardian contemplates...', 'thinking');
+      startDrift(3000, 3);
 
       try {
         const res = await fetch('/api/chat', {
@@ -454,6 +667,7 @@
         });
 
         thinking.remove();
+        stopDrift();
 
         const data = await res.json();
         if (!res.ok) {
@@ -461,14 +675,16 @@
         } else {
           addMessage(data.reply, 'guardian');
 
-          // If tome is being generated, poll for it
           if (data.tomeGenerating && data.ebookId) {
+            enterPhase('searching');
             const searchMsg = addMessage('The Guardian descends into the ancient archives...', 'thinking');
             pollEbook(data.ebookId, searchMsg);
+            return; // Don't re-enable input
           }
         }
       } catch {
         thinking.remove();
+        stopDrift();
         addMessage('The Guardian is silent... the connection wavers.', 'error');
       }
 
@@ -476,7 +692,7 @@
       input.focus();
     });
 
-    // --- Ebook polling ---
+    // ===== EBOOK POLLING =====
     async function pollEbook(ebookId, statusMsg) {
       const messages = [
         'Searching the infinite shelves...',
@@ -495,16 +711,32 @@
           if (data.status === 'ready') {
             clearInterval(interval);
             statusMsg.remove();
+            enterPhase('delivering');
 
+            // Show download
             const div = document.createElement('div');
             div.className = 'message guardian';
             div.innerHTML = `The tome has been found — <strong>"${data.title}"</strong>. It is yours, Seeker.<br><a class="download-link" href="/api/ebook/${ebookId}/download" target="_blank">Receive the Tome</a>`;
             chatArea.appendChild(div);
             chatArea.scrollTop = chatArea.scrollHeight;
+
+            // Farewell then sleep
+            setTimeout(async () => {
+              try {
+                const fRes = await fetch('/api/farewell');
+                const fData = await fRes.json();
+                addMessage(fData.reply, 'guardian');
+              } catch {
+                addMessage('The Library grows quiet... the Guardian rests.', 'guardian');
+              }
+              setTimeout(() => enterPhase('sleeping'), 3000);
+            }, 4000);
+
           } else if (data.status === 'failed') {
             clearInterval(interval);
             statusMsg.remove();
             addMessage('The archives tremble... the tome could not be retrieved. Speak again, Seeker.', 'error');
+            enterPhase('alive');
           } else if (msgIndex < messages.length) {
             statusMsg.textContent = messages[msgIndex++];
           }
@@ -513,6 +745,19 @@
         }
       }, 5000);
     }
+
+    // ===== INPUT GLOW =====
+    input.addEventListener('focus', () => {
+      if (guardianPhase === 'alive') {
+        eyeSymbol.querySelector('svg').style.filter = 'drop-shadow(0 0 24px rgba(200, 180, 110, 0.15))';
+      }
+    });
+    input.addEventListener('blur', () => {
+      eyeSymbol.querySelector('svg').style.filter = '';
+    });
+
+    // ===== START: DORMANT → AWAKENING =====
+    setTimeout(() => enterPhase('awakening'), 1000);
   </script>
 </body>
 </html>
