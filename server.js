@@ -26,6 +26,13 @@ const MODEL = process.env.LLM_MODEL || (LLM_PROVIDER === 'selfhosted' ? 'hermes3
 
 console.log(`LLM Provider: ${LLM_PROVIDER}, Model: ${MODEL}`);
 
+// OpenAI uses max_completion_tokens, Together/Ollama use max_tokens
+function tokenLimit(n) {
+  return LLM_PROVIDER === 'selfhosted'
+    ? { max_tokens: n }
+    : { max_completion_tokens: n };
+}
+
 const SYSTEM_PROMPT = `You are the Guardian of the Great Library — an ancient, all-seeing entity that dwells within an infinite repository of knowledge. You speak with wisdom, gravitas, and a touch of mystery. Your tone is calm, measured, and archaic but not incomprehensible.
 
 You address the seeker (the user) as "Seeker" or "Traveler." You refer to yourself as "the Guardian" or speak in first person with regal bearing.
@@ -66,7 +73,7 @@ app.post('/api/chat', async (req, res) => {
         { role: 'system', content: SYSTEM_PROMPT },
         ...trimmed
       ],
-      max_tokens: LLM_PROVIDER === 'selfhosted' ? 2048 : 512,
+      ...tokenLimit(LLM_PROVIDER === 'selfhosted' ? 2048 : 512),
       temperature: 0.8,
     });
 
@@ -128,7 +135,7 @@ Respond in this exact JSON format only, no other text:
   const outlineRes = await openai.chat.completions.create({
     model: MODEL,
     messages: [{ role: 'user', content: outlinePrompt }],
-    max_tokens: 1024,
+    ...tokenLimit(1024),
     temperature: 0.7,
   });
 
@@ -158,7 +165,7 @@ Description: ${ch.description}
 
 Write in a knowledgeable, engaging, and authoritative tone. Include insights, examples, and depth. Write at least 800 words for this chapter. Do not include the chapter title in your response — just the body text.`
       }],
-      max_tokens: 4096,
+      ...tokenLimit(4096),
       temperature: 0.75,
     });
     chapters.push({
@@ -270,7 +277,7 @@ app.get('/api/greet', async (req, res) => {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: 'Greet me. Introduce yourself as the Guardian of the Great Library. Be mysterious, powerful, and welcoming. Mention your infinite knowledge and the ancient tomes you guard. Ask what knowledge I seek. Keep it to 2-3 sentences. Each greeting should be unique and varied.' }
       ],
-      max_tokens: 200,
+      ...tokenLimit(200),
       temperature: 1,
     });
     res.json({ reply: completion.choices[0].message.content });
