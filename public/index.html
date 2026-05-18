@@ -364,6 +364,21 @@
     .input-area input:focus { border-color: #4a4030; box-shadow: 0 0 20px rgba(180, 160, 100, 0.05); }
     .input-area input:disabled { opacity: 0.5; }
 
+    #sendBtn {
+      background: rgba(180, 160, 100, 0.08);
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      color: #5a5040;
+      padding: 0 14px;
+      cursor: pointer;
+      transition: color 0.3s, border-color 0.3s, background 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #sendBtn:hover { color: #c8b88a; border-color: #4a4030; background: rgba(180, 160, 100, 0.12); }
+    #sendBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+
     .download-link {
       display: inline-block;
       margin-top: 12px;
@@ -489,6 +504,12 @@
   <div class="input-area">
     <form id="chatForm">
       <input type="text" placeholder="Speak unto the Guardian..." id="guardianInput" autocomplete="off" disabled>
+      <button type="submit" id="sendBtn" aria-label="Send">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
     </form>
   </div>
 
@@ -504,6 +525,7 @@
     const chatArea = document.getElementById('chatArea');
     const chatForm = document.getElementById('chatForm');
     const input = document.getElementById('guardianInput');
+    const sendBtn = document.getElementById('sendBtn');
     const sessionId = crypto.randomUUID();
 
     // ===== STATE =====
@@ -734,13 +756,13 @@
 
     function handleAlive() {
       trackingEnabled = true;
-      input.disabled = false;
+      input.disabled = false; sendBtn.disabled = false;
       input.placeholder = 'Speak unto the Guardian...';
       input.focus();
     }
 
     function handleSearching() {
-      input.disabled = true;
+      input.disabled = true; sendBtn.disabled = true;
       input.placeholder = 'The Guardian searches the archives...';
       // Intensify particles
       clearInterval(particleInterval);
@@ -766,7 +788,7 @@
 
       animateEyeClose(2000);
 
-      input.disabled = true;
+      input.disabled = true; sendBtn.disabled = true;
       input.placeholder = 'The Guardian rests...';
 
       // Show return link after everything fades
@@ -788,7 +810,7 @@
 
       addMessage(text, 'user');
       input.value = '';
-      input.disabled = true;
+      input.disabled = true; sendBtn.disabled = true;
 
       // Eye reacts — brief widen
       const origRy = 14;
@@ -833,7 +855,7 @@
         addMessage('The Guardian is silent... the connection wavers.', 'error');
       }
 
-      input.disabled = false;
+      input.disabled = false; sendBtn.disabled = false;
       input.focus();
     });
 
