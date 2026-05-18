@@ -581,6 +581,41 @@
         particleInterval = setInterval(spawnParticle, 900);
       }, 2000);
 
+      // Random awakening phrases
+      const stirPhrases = [
+        'The Guardian stirs...',
+        'Something ancient awakens...',
+        'The darkness shifts...',
+        'A presence emerges...',
+        'The eye opens...',
+        'The halls tremble...',
+        'An old power wakes...',
+        'The silence breaks...',
+        'The Library breathes...',
+        'Dust falls from forgotten shelves...',
+        'The infinite stirs...',
+        'A light flickers in the void...',
+        'The ancient one returns...',
+        'The scrolls whisper...',
+        'The Guardian draws breath...',
+        'Pages turn in the dark...',
+        'The watcher awakens...',
+        'The great eye opens...',
+        'Eternity blinks...',
+        'The keeper rises...',
+        'The void hums...',
+        'A thousand tomes shudder...',
+        'The threshold opens...',
+        'The abyss gazes back...',
+        'The sentient dark awakens...',
+        'Something remembers you...',
+        'The archive pulses...',
+        'Time folds...',
+        'The all-seeing stirs...',
+        'A forgotten god wakes...',
+      ];
+      const stirText = stirPhrases[Math.floor(Math.random() * stirPhrases.length)];
+
       // Fetch greeting in parallel with animation
       const greetPromise = fetch('/api/greet').then(r => r.json()).catch(() => ({
         reply: 'The infinite halls echo with your arrival... what knowledge do you seek, Traveler?'
@@ -591,7 +626,7 @@
 
       Promise.all([greetPromise, minDelay]).then(([data]) => {
         // "The Guardian stirs..." appears briefly
-        const thinking = addMessage('The Guardian stirs...', 'thinking');
+        const thinking = addMessage(stirText, 'thinking');
 
         // Replace with greeting after a beat
         setTimeout(() => {
