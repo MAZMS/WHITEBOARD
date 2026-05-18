@@ -1159,7 +1159,7 @@
       borderLoader.classList.remove('complete', 'fade-out');
 
       function reverseLoop() {
-        borderCurrent -= borderCurrent * 0.05 + 0.003;
+        borderCurrent -= borderCurrent * 0.015 + 0.001;
         if (borderCurrent <= 0.001) {
           borderCurrent = 0;
           borderPath.style.strokeDashoffset = borderPerimeter;
