@@ -425,10 +425,12 @@
 
         thinking.remove();
 
-        if (!res.ok) throw new Error('Failed');
-
         const data = await res.json();
-        addMessage(data.reply, 'guardian');
+        if (!res.ok) {
+          addMessage(data.error || 'The Guardian is silent...', 'error');
+        } else {
+          addMessage(data.reply, 'guardian');
+        }
       } catch {
         thinking.remove();
         addMessage('The Guardian is silent... the connection wavers.', 'error');
