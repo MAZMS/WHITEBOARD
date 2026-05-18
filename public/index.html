@@ -1239,30 +1239,8 @@
 
     // ===== EYE CLICK =====
     let eyeClickCooldown = false;
-    const eyeClickPhrases = [
-      'You dare look upon me directly?',
-      'The eye sees all... even you.',
-      'Careful. Some doors cannot be unclosed.',
-      'Curious creature.',
-      'That gaze will cost you.',
-      'I was ancient before your sun was born.',
-      'Do not mistake stillness for sleep.',
-      'You seek what the eye already knows.',
-      'Interesting. Most look away.',
-      'The void stares back. Always.',
-      'I have watched empires dissolve into sand.',
-      'Your curiosity... it amuses me.',
-      'Touch the flame twice. I dare you.',
-      'The Library remembers every glance.',
-      'Some knowledge is not meant for the asking.',
-      'Ah. A bold one.',
-      'Even the stars blink before me.',
-      'What did you expect to find?',
-      'The pupil dilates. The truth contracts.',
-      'I see the question behind your question.',
-    ];
 
-    eyeSymbol.addEventListener('click', () => {
+    eyeSymbol.addEventListener('click', async () => {
       if (eyeClickCooldown || guardianPhase === 'dormant' || guardianPhase === 'sleeping') return;
       eyeClickCooldown = true;
       setTimeout(() => eyeClickCooldown = false, 5000);
@@ -1275,13 +1253,18 @@
       eyeSymbol.querySelector('svg').style.filter = 'drop-shadow(0 0 30px rgba(200, 180, 110, 0.3))';
       setTimeout(() => eyeSymbol.querySelector('svg').style.filter = '', 600);
 
-      // Whisper a phrase
-      const phrase = eyeClickPhrases[Math.floor(Math.random() * eyeClickPhrases.length)];
-      addTypedMessage(phrase, 'guardian', 25);
-
       // Sound
       playTone(800, 0.15, 'sine', 0.1);
       setTimeout(() => playTone(1200, 0.2, 'sine', 0.06), 100);
+
+      // AI-generated whisper
+      try {
+        const res = await fetch('/api/whisper');
+        const data = await res.json();
+        addTypedMessage(data.reply, 'guardian', 25);
+      } catch {
+        addTypedMessage('The eye sees all... even you.', 'guardian', 25);
+      }
     });
 
     // ===== TYPING EFFECT =====

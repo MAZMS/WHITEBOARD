@@ -301,6 +301,24 @@ app.get('/api/ebook/:id/status', (req, res) => {
   res.json({ status: job.status, title: job.title, progress: job.progress || 0, error: job.error });
 });
 
+// --- Eye click whisper ---
+app.get('/api/whisper', async (req, res) => {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [{
+        role: 'user',
+        content: 'You are an ancient all-seeing eye. Someone just poked you. Respond with ONE short cryptic sentence (under 10 words). Be mysterious, slightly annoyed, amused, or ominous — vary the tone each time. No quotes, no emojis.'
+      }],
+      ...tokenLimit(30),
+      temperature: 1.2,
+    });
+    res.json({ reply: completion.choices[0].message.content.trim() });
+  } catch {
+    res.json({ reply: 'The eye sees all... even you.' });
+  }
+});
+
 app.get('/api/ebook/:id/download', (req, res) => {
   const job = getJob(req.params.id);
   if (!job || job.status !== 'ready') {
