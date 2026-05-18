@@ -308,7 +308,7 @@ app.get('/api/whisper', async (req, res) => {
       model: MODEL,
       messages: [{
         role: 'user',
-        content: 'You are an ancient all-seeing eye. Someone just poked you. Respond with ONE short cryptic sentence (under 10 words). Be mysterious, slightly annoyed, amused, or ominous — vary the tone each time. No quotes, no emojis.'
+        content: 'You are an ancient all-knowing eye. Someone just gazed upon you. Respond with ONE short cryptic sentence (under 12 words) that contains a genuine piece of wisdom, life advice, or philosophical truth — but delivered in a mysterious, sphinx-like way. Make it actually useful to someone\'s life. No quotes, no emojis. Vary widely each time.'
       }],
       ...tokenLimit(30),
       temperature: 1.2,
