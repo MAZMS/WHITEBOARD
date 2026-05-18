@@ -445,6 +445,49 @@
       transition: opacity 2s ease-out;
     }
 
+    /* ===== SHAKE ===== */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-3px); }
+      40% { transform: translateX(3px); }
+      60% { transform: translateX(-2px); }
+      80% { transform: translateX(2px); }
+    }
+    body.shake { animation: shake 0.3s ease-in-out; }
+
+    /* ===== EYE CLICK ===== */
+    .eye-symbol { cursor: pointer; }
+
+    /* ===== TOMES COUNTER ===== */
+    .tomes-counter {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      color: #3a3528;
+      font-size: 12px;
+      font-style: italic;
+      z-index: 10;
+      transition: color 0.5s;
+      pointer-events: none;
+    }
+    body.phase-sleeping .tomes-counter { opacity: 0.3; transition: opacity 3s; }
+
+    /* ===== MUTE BUTTON ===== */
+    .mute-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: #3a3528;
+      cursor: pointer;
+      z-index: 101;
+      font-size: 18px;
+      opacity: 0.5;
+      transition: opacity 0.3s;
+    }
+    .mute-btn:hover { opacity: 1; }
+
     /* ===== MOBILE ===== */
     @media (max-width: 600px) {
       .main {
@@ -517,6 +560,8 @@
   </style>
 </head>
 <body class="phase-dormant">
+  <button class="mute-btn" id="muteBtn" title="Toggle sound">&#9835;</button>
+  <div class="tomes-counter" id="tomesCounter"></div>
   <svg class="border-loader" id="borderLoader" preserveAspectRatio="none">
     <path id="borderPath" fill="none" />
   </svg>
@@ -718,8 +763,9 @@
     // ===== PHASE HANDLERS =====
 
     function handleAwakening() {
-      // Slow, cinematic eye open
+      // Slow, cinematic eye open + rising tone
       animateEyeOpen(2500);
+      if (audioCtx) playTone(150, 2.5, 'sine', 0.05);
 
       // Particles start midway, slow at first
       setTimeout(() => {
@@ -776,7 +822,7 @@
         // Replace with greeting after a beat
         setTimeout(() => {
           thinking.remove();
-          const greetDiv = addMessage(data.reply, 'guardian');
+          const greetDiv = addTypedMessage(data.reply, 'guardian', 30);
           greetDiv.classList.add('first-greeting');
 
           // Speed up particles, start blinking
@@ -795,6 +841,7 @@
       input.disabled = false; sendBtn.disabled = false;
       input.placeholder = 'Speak unto the Guardian...';
       input.focus();
+      startDroneSound();
     }
 
     function handleSearching() {
@@ -804,6 +851,8 @@
       particleInterval = setInterval(spawnParticle, 200);
       startDrift(2000, 4);
       startBorderLoader();
+      shake();
+      intensifyDrone();
     }
 
     function handleDelivering() {
@@ -811,6 +860,11 @@
       clearInterval(particleInterval);
       particleInterval = setInterval(spawnParticle, 600);
       completeBorderLoader();
+      burstParticles(35);
+      shake();
+      playChord([200, 300, 400], 1.5, 0.06);
+      calmDrone();
+      incrementTomes();
     }
 
     function handleSleeping() {
@@ -822,6 +876,8 @@
       particleInterval = null;
 
       animateEyeClose(2000);
+      playTone(300, 2, 'sine', 0.05);
+      stopDroneSound();
 
       input.disabled = true; sendBtn.disabled = true;
       input.placeholder = 'The Guardian rests...';
@@ -856,6 +912,7 @@
       if (!text) return;
 
       addMessage(text, 'user');
+      playTone(600, 0.05, 'triangle', 0.08);
       input.value = '';
       input.style.height = 'auto';
       input.disabled = true; sendBtn.disabled = true;
@@ -888,7 +945,8 @@
         if (!res.ok) {
           addMessage(data.error || 'The Guardian is silent...', 'error');
         } else {
-          addMessage(data.reply, 'guardian');
+          addTypedMessage(data.reply, 'guardian', 25);
+          playTone(150, 0.2, 'sine', 0.04);
 
           if (data.tomeGenerating && data.ebookId) {
             enterPhase('searching');
@@ -1172,6 +1230,188 @@
       if (borderRAF) cancelAnimationFrame(borderRAF);
       requestAnimationFrame(reverseLoop);
     }
+
+    // ===== SCREEN SHAKE =====
+    function shake() {
+      document.body.classList.add('shake');
+      setTimeout(() => document.body.classList.remove('shake'), 300);
+    }
+
+    // ===== EYE CLICK =====
+    let eyeClickCooldown = false;
+    const eyeClickPhrases = [
+      'You dare look upon me directly?',
+      'The eye sees all... even you.',
+      'Careful. Some doors cannot be unclosed.',
+      'Curious creature.',
+      'That gaze will cost you.',
+      'I was ancient before your sun was born.',
+      'Do not mistake stillness for sleep.',
+      'You seek what the eye already knows.',
+      'Interesting. Most look away.',
+      'The void stares back. Always.',
+      'I have watched empires dissolve into sand.',
+      'Your curiosity... it amuses me.',
+      'Touch the flame twice. I dare you.',
+      'The Library remembers every glance.',
+      'Some knowledge is not meant for the asking.',
+      'Ah. A bold one.',
+      'Even the stars blink before me.',
+      'What did you expect to find?',
+      'The pupil dilates. The truth contracts.',
+      'I see the question behind your question.',
+    ];
+
+    eyeSymbol.addEventListener('click', () => {
+      if (eyeClickCooldown || guardianPhase === 'dormant' || guardianPhase === 'sleeping') return;
+      eyeClickCooldown = true;
+      setTimeout(() => eyeClickCooldown = false, 5000);
+
+      // Pupil dilates
+      pupil.setAttribute('r', 6);
+      setTimeout(() => pupil.setAttribute('r', 3.5), 500);
+
+      // Aura flash
+      eyeSymbol.querySelector('svg').style.filter = 'drop-shadow(0 0 30px rgba(200, 180, 110, 0.3))';
+      setTimeout(() => eyeSymbol.querySelector('svg').style.filter = '', 600);
+
+      // Whisper a phrase
+      const phrase = eyeClickPhrases[Math.floor(Math.random() * eyeClickPhrases.length)];
+      addTypedMessage(phrase, 'guardian', 25);
+
+      // Sound
+      playTone(800, 0.15, 'sine', 0.1);
+      setTimeout(() => playTone(1200, 0.2, 'sine', 0.06), 100);
+    });
+
+    // ===== TYPING EFFECT =====
+    function addTypedMessage(text, type, charDelay = 30) {
+      const div = document.createElement('div');
+      div.className = 'message ' + type;
+      chatArea.appendChild(div);
+      chatArea.scrollTop = chatArea.scrollHeight;
+
+      let i = 0;
+      // Adaptive speed: faster for long text
+      const delay = text.length > 100 ? Math.max(12, charDelay - 10) : charDelay;
+
+      function typeNext() {
+        if (i < text.length) {
+          div.textContent += text[i++];
+          chatArea.scrollTop = chatArea.scrollHeight;
+          setTimeout(typeNext, delay);
+        }
+      }
+      typeNext();
+      return div;
+    }
+
+    // ===== PARTICLE BURST =====
+    function burstParticles(count) {
+      const eyeRect = eyeSymbol.getBoundingClientRect();
+      const cx = eyeRect.left + eyeRect.width / 2;
+      const cy = eyeRect.top + eyeRect.height / 2;
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+        const radius = 20 + Math.random() * 40;
+        p.style.left = (cx + Math.cos(angle) * radius) + 'px';
+        p.style.top = (cy + Math.sin(angle) * radius) + 'px';
+        p.style.width = (2 + Math.random() * 3) + 'px';
+        p.style.height = p.style.width;
+        p.style.animationDuration = (2 + Math.random() * 3) + 's';
+        p.style.opacity = 0.3 + Math.random() * 0.4;
+        particlesContainer.appendChild(p);
+        setTimeout(() => p.remove(), 5000);
+      }
+    }
+
+    // ===== SOUND ENGINE (Web Audio API) =====
+    let audioCtx = null;
+    let isMuted = localStorage.getItem('gl-muted') === 'true';
+    let droneOsc = null;
+    let droneGain = null;
+
+    const muteBtn = document.getElementById('muteBtn');
+    muteBtn.textContent = isMuted ? '♪' : '♫';
+    muteBtn.addEventListener('click', () => {
+      isMuted = !isMuted;
+      localStorage.setItem('gl-muted', isMuted);
+      muteBtn.textContent = isMuted ? '♪' : '♫';
+      if (isMuted && droneGain) droneGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.3);
+      if (!isMuted && droneGain && guardianPhase === 'alive') droneGain.gain.setTargetAtTime(0.015, audioCtx.currentTime, 0.3);
+    });
+
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playTone(freq, duration, type = 'sine', vol = 0.1) {
+      if (!audioCtx || isMuted) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function playChord(freqs, duration, vol = 0.06) {
+      freqs.forEach(f => playTone(f, duration, 'sine', vol));
+    }
+
+    function startDroneSound() {
+      if (!audioCtx || droneOsc) return;
+      droneOsc = audioCtx.createOscillator();
+      droneGain = audioCtx.createGain();
+      droneOsc.type = 'sine';
+      droneOsc.frequency.value = 80;
+      droneGain.gain.value = isMuted ? 0 : 0.015;
+      droneOsc.connect(droneGain);
+      droneGain.connect(audioCtx.destination);
+      droneOsc.start();
+    }
+
+    function stopDroneSound() {
+      if (!droneGain) return;
+      droneGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.5);
+      setTimeout(() => {
+        if (droneOsc) { droneOsc.stop(); droneOsc = null; droneGain = null; }
+      }, 2000);
+    }
+
+    function intensifyDrone() {
+      if (!droneGain || isMuted) return;
+      droneGain.gain.setTargetAtTime(0.04, audioCtx.currentTime, 1);
+    }
+
+    function calmDrone() {
+      if (!droneGain || isMuted) return;
+      droneGain.gain.setTargetAtTime(0.015, audioCtx.currentTime, 1);
+    }
+
+    // Init audio on first interaction
+    document.addEventListener('click', () => initAudio(), { once: true });
+    document.addEventListener('keydown', () => initAudio(), { once: true });
+
+    // ===== TOMES COUNTER =====
+    const tomesCounter = document.getElementById('tomesCounter');
+    let tomesCount = parseInt(localStorage.getItem('gl-tomes') || '0');
+    function updateTomesDisplay() {
+      tomesCounter.textContent = tomesCount > 0 ? `Tomes: ${tomesCount}` : '';
+    }
+    function incrementTomes() {
+      tomesCount++;
+      localStorage.setItem('gl-tomes', tomesCount);
+      updateTomesDisplay();
+    }
+    updateTomesDisplay();
 
     // ===== START: BORDER UNLOADS → DORMANT → AWAKENING =====
     // Border starts full and retracts backwards on every page load
