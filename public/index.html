@@ -171,10 +171,12 @@
     /* ===== PHASE: AWAKENING ===== */
     body.phase-awakening .eye-container::before,
     body.phase-awakening .eye-container::after {
-      opacity: 1;
+      opacity: 0.6;
+      transition: opacity 3s ease-in;
     }
     body.phase-awakening .triangle-line {
-      stroke-opacity: 0.5;
+      stroke-opacity: 0.4;
+      transition: stroke-opacity 3s ease-in;
     }
 
     /* ===== PHASE: SEARCHING ===== */
@@ -360,6 +362,14 @@
       cursor: pointer;
     }
     .download-link:hover { background: rgba(180, 160, 100, 0.15); border-color: #5a5038; }
+
+    .message.first-greeting {
+      animation: fade-in-slow 1.5s ease-out;
+    }
+    @keyframes fade-in-slow {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     .return-link { text-align: center; margin-top: 24px; }
     .return-link a {
@@ -563,28 +573,41 @@
     // ===== PHASE HANDLERS =====
 
     function handleAwakening() {
-      animateEyeOpen(1500);
+      // Slow, cinematic eye open
+      animateEyeOpen(2500);
 
-      // Start greeting fetch while eye opens
-      setTimeout(async () => {
-        const thinking = addMessage('The Guardian stirs...', 'thinking');
-        try {
-          const res = await fetch('/api/greet');
-          const data = await res.json();
-          thinking.remove();
-          addMessage(data.reply, 'guardian');
-        } catch {
-          thinking.remove();
-          addMessage('I am the Guardian of the Great Library — keeper of infinite knowledge, watcher of forgotten truths. What knowledge do you seek, Traveler?', 'guardian');
-        }
-        enterPhase('alive');
-      }, 800);
-
-      // Start particles and blinking when eye is fully open
+      // Particles start midway, slow at first
       setTimeout(() => {
-        particleInterval = setInterval(spawnParticle, 600);
-        scheduleBlink();
-      }, 1500);
+        particleInterval = setInterval(spawnParticle, 900);
+      }, 2000);
+
+      // Fetch greeting in parallel with animation
+      const greetPromise = fetch('/api/greet').then(r => r.json()).catch(() => ({
+        reply: 'The infinite halls echo with your arrival... what knowledge do you seek, Traveler?'
+      }));
+
+      // Don't show anything until eye is mostly open
+      const minDelay = new Promise(resolve => setTimeout(resolve, 2500));
+
+      Promise.all([greetPromise, minDelay]).then(([data]) => {
+        // "The Guardian stirs..." appears briefly
+        const thinking = addMessage('The Guardian stirs...', 'thinking');
+
+        // Replace with greeting after a beat
+        setTimeout(() => {
+          thinking.remove();
+          const greetDiv = addMessage(data.reply, 'guardian');
+          greetDiv.classList.add('first-greeting');
+
+          // Speed up particles, start blinking
+          clearInterval(particleInterval);
+          particleInterval = setInterval(spawnParticle, 600);
+          scheduleBlink();
+
+          // Pause, then go alive
+          setTimeout(() => enterPhase('alive'), 1500);
+        }, 1200);
+      });
     }
 
     function handleAlive() {
