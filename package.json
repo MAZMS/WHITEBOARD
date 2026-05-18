@@ -1,0 +1,13 @@
+{
+  "name": "greatlibraryai",
+  "version": "1.0.0",
+  "description": "The Great Library AI - Speak unto the Guardian",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "openai": "^4.80.0"
+  }
+}
