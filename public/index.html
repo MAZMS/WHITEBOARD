@@ -843,15 +843,7 @@
         chatArea.scrollTop = chatArea.scrollHeight;
         document.getElementById('seekAgainBtn').addEventListener('click', (e) => {
           e.preventDefault();
-          // Restart the border so it can unwind
-          startBorderLoader();
-          borderCurrent = 1;
-          borderTarget = 1;
-          borderDone = false;
-          // Reverse it, then reload
-          setTimeout(() => {
-            reverseBorderLoader(() => location.reload());
-          }, 300);
+          location.reload();
         });
       }, 6000);
     }
