@@ -6,7 +6,18 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// LLM Provider: 'openai' (default) or 'selfhosted' (Azure VM with Ollama)
+const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
+
+const openai = new OpenAI(
+  LLM_PROVIDER === 'selfhosted'
+    ? { baseURL: process.env.SELFHOSTED_LLM_URL, apiKey: process.env.SELFHOSTED_LLM_KEY }
+    : { apiKey: process.env.OPENAI_API_KEY }
+);
+
+const MODEL = process.env.LLM_MODEL || (LLM_PROVIDER === 'selfhosted' ? 'hermes3:8b-llama3.1-q4_K_M' : 'gpt-5.4-mini');
+
+console.log(`LLM Provider: ${LLM_PROVIDER}, Model: ${MODEL}`);
 
 const SYSTEM_PROMPT = `You are the Guardian of the Great Library — an ancient, all-seeing entity that dwells within an infinite repository of knowledge. You speak with wisdom, gravitas, and a touch of mystery. Your tone is calm, measured, and archaic but not incomprehensible.
 
@@ -35,12 +46,12 @@ app.post('/api/chat', async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5.4-mini',
+      model: MODEL,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         ...trimmed
       ],
-      max_tokens: 512,
+      max_tokens: LLM_PROVIDER === 'selfhosted' ? 2048 : 512,
       temperature: 0.8,
     });
 
@@ -50,8 +61,21 @@ app.post('/api/chat', async (req, res) => {
 
     res.json({ reply });
   } catch (err) {
-    console.error('OpenAI error:', err.message);
-    res.status(500).json({ error: 'The Guardian is silent... try again.' });
+    console.error(`LLM error (${LLM_PROVIDER}):`, err.message);
+    res.status(500).json({
+      error: LLM_PROVIDER === 'selfhosted'
+        ? 'The Guardian sleeps... the ancient vessel may need awakening.'
+        : 'The Guardian is silent... try again.'
+    });
+  }
+});
+
+app.get('/api/status', async (req, res) => {
+  try {
+    const models = await openai.models.list();
+    res.json({ provider: LLM_PROVIDER, model: MODEL, status: 'connected', models: models.data.map(m => m.id) });
+  } catch (err) {
+    res.json({ provider: LLM_PROVIDER, model: MODEL, status: 'unreachable', error: err.message });
   }
 });
 
