@@ -433,22 +433,19 @@
       stroke-width: 2;
       stroke-dasharray: var(--perimeter);
       stroke-dashoffset: var(--perimeter);
-      transition: stroke-dashoffset 0.5s linear;
+      transition: stroke-dashoffset 3s ease-in-out, stroke 1s ease;
     }
     .border-loader.active rect {
-      animation: trace-border 60s linear forwards;
+      stroke: rgba(180, 160, 100, 0.4);
     }
     .border-loader.complete rect {
-      stroke-dashoffset: 0;
-      stroke: rgba(200, 180, 110, 0.6);
-      transition: stroke-dashoffset 1s ease-out, stroke 1s ease;
+      stroke-dashoffset: 0 !important;
+      stroke: rgba(200, 180, 110, 0.7);
+      transition: stroke-dashoffset 1.5s ease-out, stroke 1s ease;
     }
     .border-loader.fade-out rect {
       opacity: 0;
       transition: opacity 2s ease-out;
-    }
-    @keyframes trace-border {
-      to { stroke-dashoffset: 0; }
     }
 
     /* ===== MOBILE ===== */
@@ -1011,6 +1008,14 @@
           }
           const data = await res.json();
 
+          // Update border progress
+          if (data.progress) updateBorderProgress(data.progress);
+
+          // Cycle progress messages
+          if (data.status === 'generating' && msgIndex < messages.length) {
+            statusMsg.textContent = messages[msgIndex++];
+          }
+
           if (data.status === 'ready') {
             clearInterval(interval);
             statusMsg.remove();
@@ -1038,10 +1043,9 @@
           } else if (data.status === 'failed') {
             clearInterval(interval);
             statusMsg.remove();
+            resetBorderLoader();
             addMessage('The archives tremble... the tome could not be retrieved. Speak again, Seeker.', 'error');
             enterPhase('alive');
-          } else if (msgIndex < messages.length) {
-            statusMsg.textContent = messages[msgIndex++];
           }
         } catch {
           // keep polling
@@ -1079,17 +1083,17 @@
     const borderLoader = document.getElementById('borderLoader');
     const borderRect = borderLoader.querySelector('rect');
 
+    let borderPerimeter = 0;
+
     function sizeBorderLoader() {
       const w = window.innerWidth;
       const h = window.innerHeight;
       borderLoader.setAttribute('viewBox', `0 0 ${w} ${h}`);
       borderRect.setAttribute('width', w - 2);
       borderRect.setAttribute('height', h - 2);
-      const perimeter = 2 * (w - 2) + 2 * (h - 2);
-      borderLoader.style.setProperty('--perimeter', perimeter);
-      // Start from top center
-      borderRect.style.strokeDashoffset = perimeter;
-      borderRect.setAttribute('pathLength', perimeter);
+      borderPerimeter = 2 * (w - 2) + 2 * (h - 2);
+      borderLoader.style.setProperty('--perimeter', borderPerimeter);
+      borderRect.style.strokeDashoffset = borderPerimeter;
     }
     sizeBorderLoader();
     window.addEventListener('resize', sizeBorderLoader);
@@ -1098,6 +1102,11 @@
       sizeBorderLoader();
       borderLoader.classList.remove('complete', 'fade-out');
       borderLoader.classList.add('active');
+    }
+    function updateBorderProgress(progress) {
+      // progress: 0 to 1 — smoothly animate via CSS transition
+      const offset = borderPerimeter * (1 - Math.min(progress, 0.95)); // cap at 95% until complete
+      borderRect.style.strokeDashoffset = offset;
     }
     function completeBorderLoader() {
       borderLoader.classList.remove('active');

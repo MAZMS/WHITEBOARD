@@ -183,10 +183,13 @@ Respond in this exact JSON format only, no other text:
     throw new Error('Failed to parse ebook outline');
   }
 
+  const totalSteps = outline.chapters.length + 2; // outline + chapters + pdf
+  saveJob(ebookId, { status: 'generating', progress: 1 / totalSteps, step: 'outline' });
   console.log(`Ebook outline: "${outline.title}" with ${outline.chapters.length} chapters`);
 
   // Step 2: Generate each chapter
   const chapters = [];
+  let chapterIndex = 0;
   for (const ch of outline.chapters) {
     const chapterRes = await openai.chat.completions.create({
       model: MODEL,
@@ -207,10 +210,13 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
       title: ch.title,
       content: chapterRes.choices[0].message.content
     });
-    console.log(`  Chapter "${ch.title}" generated`);
+    chapterIndex++;
+    saveJob(ebookId, { status: 'generating', progress: (1 + chapterIndex) / totalSteps, step: `chapter ${chapterIndex}/${outline.chapters.length}` });
+    console.log(`  Chapter "${ch.title}" generated (${chapterIndex}/${outline.chapters.length})`);
   }
 
   // Step 3: Generate PDF
+  saveJob(ebookId, { status: 'generating', progress: (totalSteps - 1) / totalSteps, step: 'binding' });
   const filename = `${ebookId}.pdf`;
   const filepath = path.join(EBOOKS_DIR, filename);
 
@@ -292,7 +298,7 @@ function createPDF(filepath, outline, chapters) {
 app.get('/api/ebook/:id/status', (req, res) => {
   const job = getJob(req.params.id);
   if (!job) return res.status(404).json({ error: 'Not found' });
-  res.json({ status: job.status, title: job.title, error: job.error });
+  res.json({ status: job.status, title: job.title, progress: job.progress || 0, error: job.error });
 });
 
 app.get('/api/ebook/:id/download', (req, res) => {
