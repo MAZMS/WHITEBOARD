@@ -706,6 +706,7 @@
       const interval = setInterval(async () => {
         try {
           const res = await fetch(`/api/ebook/${ebookId}/status`);
+          if (res.status === 404) return; // still generating, keep polling
           const data = await res.json();
 
           if (data.status === 'ready') {

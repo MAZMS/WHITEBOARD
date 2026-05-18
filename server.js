@@ -62,7 +62,20 @@ RULES:
 - After the tome is delivered, silence. Your work is done. The Guardian rests.`;
 
 const conversations = new Map();
-const ebookJobs = new Map();
+
+// Persist ebook jobs to disk so they survive redeploys
+const JOBS_FILE = path.join(EBOOKS_DIR, 'jobs.json');
+function loadJobs() {
+  try { return JSON.parse(fs.readFileSync(JOBS_FILE, 'utf8')); } catch { return {}; }
+}
+function saveJob(id, data) {
+  const jobs = loadJobs();
+  jobs[id] = data;
+  fs.writeFileSync(JOBS_FILE, JSON.stringify(jobs));
+}
+function getJob(id) {
+  return loadJobs()[id];
+}
 
 // --- Chat endpoint ---
 app.post('/api/chat', async (req, res) => {
@@ -102,10 +115,10 @@ app.post('/api/chat', async (req, res) => {
     if (tomeReady) {
       // Start ebook generation in background
       const ebookId = crypto.randomUUID();
-      ebookJobs.set(ebookId, { status: 'generating', sessionId: id });
+      saveJob(ebookId, { status: 'generating', sessionId: id });
       generateEbook(ebookId, trimmed).catch(err => {
         console.error('Ebook generation failed:', err.message);
-        ebookJobs.set(ebookId, { status: 'failed', sessionId: id });
+        saveJob(ebookId, { status: 'failed', sessionId: id });
       });
       res.json({ reply, tomeGenerating: true, ebookId });
     } else {
@@ -194,7 +207,7 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
 
   await createPDF(filepath, outline, chapters);
 
-  ebookJobs.set(ebookId, {
+  saveJob(ebookId, {
     status: 'ready',
     title: outline.title,
     filename,
@@ -268,13 +281,13 @@ function createPDF(filepath, outline, chapters) {
 
 // --- Ebook status + download ---
 app.get('/api/ebook/:id/status', (req, res) => {
-  const job = ebookJobs.get(req.params.id);
+  const job = getJob(req.params.id);
   if (!job) return res.status(404).json({ error: 'Not found' });
   res.json({ status: job.status, title: job.title });
 });
 
 app.get('/api/ebook/:id/download', (req, res) => {
-  const job = ebookJobs.get(req.params.id);
+  const job = getJob(req.params.id);
   if (!job || job.status !== 'ready') {
     return res.status(404).json({ error: 'Ebook not ready' });
   }
