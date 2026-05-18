@@ -112,7 +112,7 @@
     .iris-ring {
       opacity: 0;
       transform-origin: 60px 68px;
-      transition: opacity 0.8s ease;
+      transition: opacity 1.5s ease-in;
     }
 
     @keyframes iris-pulse {
@@ -123,7 +123,7 @@
     .pupil {
       fill: #5a5038;
       opacity: 0;
-      transition: opacity 0.8s ease;
+      transition: opacity 1.5s ease-in;
     }
 
     @keyframes pupil-idle {
@@ -145,10 +145,12 @@
     /* ===== PHASE: ALIVE ===== */
     body.phase-alive .eye-container::before {
       opacity: 1;
+      transition: opacity 2s ease-in;
       animation: aura-pulse 4s ease-in-out infinite;
     }
     body.phase-alive .eye-container::after {
       opacity: 1;
+      transition: opacity 2s ease-in;
       animation: aura-pulse 6s ease-in-out infinite reverse;
     }
     body.phase-alive .eye-symbol svg {
@@ -169,6 +171,7 @@
     }
 
     /* ===== PHASE: AWAKENING ===== */
+    /* Start animations early but subtle — so the jump to alive is invisible */
     body.phase-awakening .eye-container::before,
     body.phase-awakening .eye-container::after {
       opacity: 0.6;
@@ -177,6 +180,18 @@
     body.phase-awakening .triangle-line {
       stroke-opacity: 0.4;
       transition: stroke-opacity 3s ease-in;
+    }
+    body.phase-awakening .eye-symbol svg {
+      animation: breathe 8s ease-in-out infinite;
+    }
+    body.phase-awakening .eye-outline {
+      animation: eye-glow 6s ease-in-out infinite;
+    }
+    body.phase-awakening .iris-ring {
+      animation: iris-pulse 5s ease-in-out infinite;
+    }
+    body.phase-awakening .pupil {
+      animation: pupil-idle 8s ease-in-out infinite;
     }
 
     /* ===== PHASE: SEARCHING ===== */
