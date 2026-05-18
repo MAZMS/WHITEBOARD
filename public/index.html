@@ -12,9 +12,11 @@
       color: #c8b88a;
       font-family: 'Georgia', 'Times New Roman', serif;
       height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      -webkit-text-size-adjust: 100%;
     }
 
     .main {
@@ -394,6 +396,76 @@
       transition: color 0.5s;
     }
     .return-link a:hover { color: #c8b88a; }
+
+    /* ===== MOBILE ===== */
+    @media (max-width: 600px) {
+      .main {
+        padding-top: 3vh;
+      }
+
+      .eye-symbol {
+        width: 90px;
+        height: 90px;
+      }
+
+      .eye-container::before {
+        width: 150px;
+        height: 150px;
+      }
+      .eye-container::after {
+        width: 220px;
+        height: 220px;
+      }
+
+      body.phase-searching .eye-container::before {
+        width: 200px;
+        height: 200px;
+      }
+      body.phase-searching .eye-container::after {
+        width: 300px;
+        height: 300px;
+      }
+
+      .chat-area {
+        padding: 14px 16px;
+        gap: 12px;
+      }
+
+      .message {
+        font-size: 14px;
+      }
+
+      .message.guardian {
+        line-height: 1.5;
+      }
+
+      .input-area {
+        padding: 14px 16px 20px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+      }
+
+      .input-area input {
+        font-size: 16px; /* prevents iOS zoom on focus */
+        padding: 12px 14px;
+      }
+
+      .download-link {
+        padding: 12px 18px;
+        font-size: 14px;
+        display: block;
+        text-align: center;
+      }
+    }
+
+    @media (max-height: 500px) {
+      .main {
+        padding-top: 1vh;
+      }
+      .eye-symbol {
+        width: 70px;
+        height: 70px;
+      }
+    }
   </style>
 </head>
 <body class="phase-dormant">
