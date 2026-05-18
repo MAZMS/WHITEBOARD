@@ -416,6 +416,38 @@
     }
     .return-link a:hover { color: #c8b88a; }
 
+    /* ===== BORDER LOADER ===== */
+    .border-loader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .border-loader rect {
+      fill: none;
+      stroke: rgba(180, 160, 100, 0.4);
+      stroke-width: 2;
+      stroke-dasharray: var(--perimeter);
+      stroke-dashoffset: var(--perimeter);
+      transition: stroke-dashoffset 0.5s linear;
+    }
+    .border-loader.active rect {
+      animation: trace-border 60s linear forwards;
+    }
+    .border-loader.complete rect {
+      stroke-dashoffset: 0;
+      stroke: rgba(200, 180, 110, 0.6);
+      transition: stroke-dashoffset 1s ease-out, stroke 1s ease;
+    }
+    .border-loader.fade-out rect {
+      opacity: 0;
+      transition: opacity 2s ease-out;
+    }
+    @keyframes trace-border {
+      to { stroke-dashoffset: 0; }
+    }
+
     /* ===== MOBILE ===== */
     @media (max-width: 600px) {
       .main {
@@ -488,6 +520,9 @@
   </style>
 </head>
 <body class="phase-dormant">
+  <svg class="border-loader" id="borderLoader" preserveAspectRatio="none">
+    <rect x="1" y="1" rx="0" ry="0" />
+  </svg>
   <div class="main">
     <div class="particles" id="particles"></div>
     <div class="eye-container">
@@ -768,18 +803,17 @@
     function handleSearching() {
       input.disabled = true; sendBtn.disabled = true;
       input.placeholder = 'The Guardian searches the archives...';
-      // Intensify particles
       clearInterval(particleInterval);
       particleInterval = setInterval(spawnParticle, 200);
-      // Wider, faster drift
       startDrift(2000, 4);
+      startBorderLoader();
     }
 
     function handleDelivering() {
       stopDrift();
-      // Calm particles back
       clearInterval(particleInterval);
       particleInterval = setInterval(spawnParticle, 600);
+      completeBorderLoader();
     }
 
     function handleSleeping() {
@@ -1025,6 +1059,40 @@
         chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
       }
     });
+
+    // ===== BORDER LOADER =====
+    const borderLoader = document.getElementById('borderLoader');
+    const borderRect = borderLoader.querySelector('rect');
+
+    function sizeBorderLoader() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      borderLoader.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      borderRect.setAttribute('width', w - 2);
+      borderRect.setAttribute('height', h - 2);
+      const perimeter = 2 * (w - 2) + 2 * (h - 2);
+      borderLoader.style.setProperty('--perimeter', perimeter);
+      // Start from top center
+      borderRect.style.strokeDashoffset = perimeter;
+      borderRect.setAttribute('pathLength', perimeter);
+    }
+    sizeBorderLoader();
+    window.addEventListener('resize', sizeBorderLoader);
+
+    function startBorderLoader() {
+      sizeBorderLoader();
+      borderLoader.classList.remove('complete', 'fade-out');
+      borderLoader.classList.add('active');
+    }
+    function completeBorderLoader() {
+      borderLoader.classList.remove('active');
+      borderLoader.classList.add('complete');
+      setTimeout(() => borderLoader.classList.add('fade-out'), 3000);
+    }
+    function resetBorderLoader() {
+      borderLoader.classList.remove('active', 'complete', 'fade-out');
+      sizeBorderLoader();
+    }
 
     // ===== START: DORMANT → AWAKENING =====
     setTimeout(() => enterPhase('awakening'), 1000);
