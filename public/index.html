@@ -1181,8 +1181,17 @@
       requestAnimationFrame(reverseLoop);
     }
 
-    // ===== START: DORMANT → AWAKENING =====
-    setTimeout(() => enterPhase('awakening'), 1000);
+    // ===== START: BORDER UNLOADS → DORMANT → AWAKENING =====
+    // Border starts full and retracts backwards on every page load
+    sizeBorderLoader();
+    borderCurrent = 1;
+    borderPath.style.strokeDashoffset = 0; // show full border instantly
+    setTimeout(() => {
+      reverseBorderLoader(() => {
+        // Border fully retracted — now awaken
+        setTimeout(() => enterPhase('awakening'), 500);
+      });
+    }, 300);
   </script>
 </body>
 </html>
