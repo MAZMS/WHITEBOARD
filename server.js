@@ -62,11 +62,11 @@ app.post('/api/chat', async (req, res) => {
     res.json({ reply });
   } catch (err) {
     console.error(`LLM error (${LLM_PROVIDER}):`, err.message, err.status, err.code);
-    const debugMsg = process.env.NODE_ENV !== 'production' ? ` [${err.status || ''} ${err.code || ''}: ${err.message}]` : '';
     res.status(500).json({
       error: LLM_PROVIDER === 'selfhosted'
-        ? 'The Guardian sleeps... the ancient vessel may need awakening.' + debugMsg
-        : 'The Guardian is silent... try again.' + debugMsg
+        ? 'The Guardian sleeps... the ancient vessel may need awakening.'
+        : 'The Guardian is silent... try again.',
+      debug: { status: err.status, code: err.code, message: err.message }
     });
   }
 });
