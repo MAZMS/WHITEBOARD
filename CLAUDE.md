@@ -56,9 +56,10 @@ All phases driven by CSS classes on `<body>` + JS `enterPhase()` function.
 ## API Endpoints
 - `POST /api/chat` — Main chat (message + sessionId)
 - `GET /api/greet` — Unique sphinx-like greeting
+- `GET /api/whisper` — AI-generated wisdom when user clicks the eye
 - `GET /api/farewell` — Unique cold farewell
 - `GET /api/outro` — Unique "seek again" text
-- `GET /api/ebook/:id/status` — Poll ebook generation
+- `GET /api/ebook/:id/status` — Poll ebook generation (includes progress 0-1)
 - `GET /api/ebook/:id/download` — Download PDF
 - `GET /api/status` — LLM connection check
 
@@ -69,11 +70,21 @@ Controlled by env vars on Railway:
 - `LLM_MODEL` overrides model name
 - `tokenLimit()` helper handles `max_completion_tokens` (OpenAI) vs `max_tokens` (others)
 
+## Juice & Interactivity
+- **Eye click** — Click the eye → pupil dilates, aura flashes, AI whispers real wisdom/life advice (via `/api/whisper`). Every click must be **valuable to the user** — genuine insight, not fluff. 5s cooldown.
+- **Typing effect** — Guardian messages type letter by letter (adaptive speed)
+- **Sound** — Web Audio API: ambient drone, tones on eye open/close, click sounds, chord on tome delivery. Mute button top-right, saved to localStorage.
+- **Screen shake** — Trembles on tome search start and delivery
+- **Particle burst** — 35 particles explode from eye on tome delivery
+- **Border loader** — Golden line traces page border during ebook generation, synced to real progress, never stops moving. Retracts on page load.
+- **Tomes counter** — localStorage tracks tomes collected, shown bottom-right
+
 ## UX Principles
 - **Keep it simple** — One page, one flow, no navigation
 - **Everything smooth** — Transitions between phases must be cinematic, never abrupt
 - **Mobile friendly** — Responsive eye, send button, 16px font (no iOS zoom), safe area insets
-- **Every text should vary** — Greetings, stir phrases, progress messages, farewells, outros are all randomized or AI-generated
+- **Every text should vary** — Greetings, stir phrases, progress messages, farewells, outros, eye whispers are all randomized or AI-generated
+- **Every interaction must be valuable** — Eye whispers give real wisdom, not generic mystery. The user should feel they gained something.
 - **No visible scrollbars** — Hidden everywhere (chat, textarea)
 - **The Guardian never breaks character**
 
