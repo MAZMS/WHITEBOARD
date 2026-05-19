@@ -236,7 +236,7 @@ function createPDF(filepath, outline, chapters) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 80, bottom: 80, left: 72, right: 72 },
+      margins: { top: 72, bottom: 72, left: 80, right: 80 },
       info: {
         Title: outline.title,
         Author: 'The Great Library',
@@ -248,149 +248,53 @@ function createPDF(filepath, outline, chapters) {
     const stream = fs.createWriteStream(filepath);
     doc.pipe(stream);
 
-    const pageW = doc.page.width;
-    const pageH = doc.page.height;
-    const contentW = pageW - 144;
-    const gold = '#8B7D45';
-    const darkGold = '#5C5430';
-    const textColor = '#2C2C2C';
-    const lightText = '#666666';
-    let pageNum = 0;
-
-    // Auto-add border + page number on every new page
-    function setupPage() {
-      // Gold border
-      doc.save()
-        .rect(36, 36, pageW - 72, pageH - 72)
-        .lineWidth(0.5).strokeColor(gold).stroke()
-        .restore();
-      // Page number (skip first page)
-      if (pageNum > 0) {
-        doc.save()
-          .fontSize(8).font('Helvetica').fillColor(lightText);
-        const numStr = `${pageNum}`;
-        const numW = doc.widthOfString(numStr);
-        doc.text(numStr, (pageW - numW) / 2, pageH - 55, { lineBreak: false })
-          .restore();
-      }
-      pageNum++;
-    }
-
-    // Run on every new page (including auto-created ones from text overflow)
-    doc.on('pageAdded', setupPage);
-    setupPage(); // first page
-
-    function drawDivider(y, width = 150) {
-      const cx = pageW / 2;
-      doc.save().moveTo(cx - width / 2, y).lineTo(cx + width / 2, y)
-        .lineWidth(0.5).strokeColor(gold).stroke().restore();
-      doc.save().moveTo(cx, y - 3).lineTo(cx + 3, y).lineTo(cx, y + 3).lineTo(cx - 3, y)
-        .closePath().fillColor(gold).fill().restore();
-    }
-
     // ===== TITLE PAGE =====
-    doc.moveDown(6);
-    drawDivider(doc.y - 20, 200);
-    doc.moveDown(2);
-    doc.fontSize(32).font('Helvetica-Bold').fillColor(textColor)
+    doc.moveDown(8);
+    doc.fontSize(28).font('Helvetica-Bold').fillColor('#1a1a1a')
       .text(outline.title, { align: 'center' });
-    doc.moveDown(0.8);
-    drawDivider(doc.y, 100);
-    doc.moveDown(1.2);
-    doc.fontSize(14).font('Helvetica-Oblique').fillColor(lightText)
+    doc.moveDown(1);
+    doc.fontSize(13).font('Helvetica-Oblique').fillColor('#666666')
       .text(outline.subtitle, { align: 'center' });
-    doc.moveDown(6);
-    drawDivider(doc.y, 60);
-    doc.moveDown(1.5);
-    doc.fontSize(10).font('Helvetica').fillColor(darkGold)
+    doc.moveDown(8);
+    doc.fontSize(9).font('Helvetica').fillColor('#999999')
       .text('Retrieved from the Great Library', { align: 'center' });
-    doc.moveDown(0.3);
-    doc.fontSize(9).font('Helvetica-Oblique').fillColor(gold)
+    doc.fontSize(9).font('Helvetica-Oblique').fillColor('#8B7D45')
       .text('greatlibrary.ai', { align: 'center' });
 
     // ===== TABLE OF CONTENTS =====
     doc.addPage();
-    doc.moveDown(2);
-    doc.fontSize(22).font('Helvetica-Bold').fillColor(textColor)
-      .text('Table of Contents', { align: 'center' });
-    doc.moveDown(0.5);
-    drawDivider(doc.y, 120);
+    doc.moveDown(3);
+    doc.fontSize(18).font('Helvetica-Bold').fillColor('#1a1a1a')
+      .text('Contents', { align: 'center' });
     doc.moveDown(2);
 
-    // TOC entries (page numbers are approximate: title=1, toc=2, chapters start at 3)
     chapters.forEach((ch, i) => {
-      const chPage = i === 0 ? 3 : ''; // we'll just show chapter numbers
-      doc.fontSize(11).font('Helvetica-Bold').fillColor(gold)
-        .text(`${String(i + 1).padStart(2, '0')}`, 90, doc.y, { continued: false, lineBreak: false });
-      doc.fontSize(11).font('Helvetica').fillColor(textColor)
-        .text(`    ${ch.title}`, { lineBreak: true });
-      doc.moveDown(0.8);
+      doc.fontSize(11).font('Helvetica').fillColor('#333333')
+        .text(`${i + 1}.   ${ch.title}`);
+      doc.moveDown(0.6);
     });
 
     // ===== CHAPTERS =====
     chapters.forEach((ch, i) => {
       doc.addPage();
+      doc.moveDown(3);
 
-      // Large chapter number
-      doc.moveDown(2);
-      doc.fontSize(48).font('Helvetica-Bold').fillColor('#E8E0D0')
-        .text(`${String(i + 1).padStart(2, '0')}`, { align: 'center' });
-      doc.moveDown(0.3);
-
-      // Chapter title
-      doc.fontSize(20).font('Helvetica-Bold').fillColor(textColor)
-        .text(ch.title, { align: 'center' });
+      doc.fontSize(12).font('Helvetica').fillColor('#8B7D45')
+        .text(`Chapter ${i + 1}`, { align: 'center' });
       doc.moveDown(0.5);
-      drawDivider(doc.y, 80);
-      doc.moveDown(1.5);
+      doc.fontSize(22).font('Helvetica-Bold').fillColor('#1a1a1a')
+        .text(ch.title, { align: 'center' });
+      doc.moveDown(2);
 
-      // Content
+      // Let PDFKit handle all text flow naturally
       const paragraphs = ch.content.split(/\n\n+/);
-      let isFirst = true;
       paragraphs.forEach(p => {
         const trimmed = p.trim();
         if (!trimmed) return;
-
-        if (isFirst && trimmed.length > 1) {
-          isFirst = false;
-          const firstChar = trimmed[0].toUpperCase();
-          const rest = trimmed.slice(1);
-
-          // Drop cap — draw large letter, then text beside it on same baseline
-          doc.save();
-          doc.fontSize(32).font('Helvetica-Bold').fillColor(gold);
-          const capW = doc.widthOfString(firstChar) + 3;
-          const capX = 72;
-          const capY = doc.y;
-
-          // Position drop cap so its top aligns with the text top
-          doc.text(firstChar, capX, capY, { lineBreak: false });
-          doc.restore();
-
-          // Body text beside the drop cap
-          doc.fontSize(11).font('Helvetica').fillColor(textColor)
-            .text(rest, capX + capW, capY + 2, {
-              width: contentW - capW,
-              align: 'justify',
-              lineGap: 5
-            });
-        } else {
-          doc.fontSize(11).font('Helvetica').fillColor(textColor)
-            .text(trimmed, {
-              width: contentW,
-              align: 'justify',
-              lineGap: 5,
-              indent: 20
-            });
-        }
-        doc.moveDown(0.6);
+        doc.fontSize(11).font('Helvetica').fillColor('#333333')
+          .text(trimmed, { align: 'justify', lineGap: 4, paragraphGap: 8 });
+        doc.moveDown(0.5);
       });
-
-      // End divider if space
-      if (doc.y < pageH - 130) {
-        doc.moveDown(1);
-        drawDivider(doc.y, 40);
-      }
     });
 
     doc.end();
