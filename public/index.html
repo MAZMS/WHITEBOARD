@@ -557,6 +557,27 @@
       font-family: Georgia, serif;
     }
 
+    /* Toggle switch */
+    .toggle {
+      width: 40px; height: 20px;
+      background: #2a2520;
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .toggle.on { background: #8B7D45; }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      background: #c8b88a;
+      border-radius: 50%;
+      transition: left 0.3s;
+    }
+    .toggle.on::after { left: 22px; }
+
     /* Volume slider */
     .vol-slider {
       width: 100%;
