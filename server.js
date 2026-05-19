@@ -191,7 +191,7 @@ app.post('/api/chat', async (req, res) => {
 
 // --- Ebook generation ---
 async function generateEbook(ebookId, conversationHistory) {
-  console.log(`Generating ebook ${ebookId}...`);
+  console.log(`Generating ebook ${ebookId} using provider=${activeProvider} model=${getModel()} uncensored=${activeProvider === 'openrouter'}`);
 
   // Step 1: Generate ebook outline (title + chapters)
   const isUncensored = activeProvider === 'openrouter';
