@@ -1397,7 +1397,7 @@
           const res = await fetch(`/api/ebook/${ebookId}/status`);
           if (res.status === 404) {
             notFoundCount++;
-            if (notFoundCount > 60) { // 5 min timeout
+            if (notFoundCount > 24) { // 2 min timeout
               clearInterval(interval);
               statusMsg.remove();
               addMessage('The archives have grown silent... the tome was lost. Try again, Seeker.', 'error');
