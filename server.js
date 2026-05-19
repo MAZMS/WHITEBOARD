@@ -236,7 +236,9 @@ function createPDF(filepath, outline, chapters) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 72, bottom: 72, left: 80, right: 80 },
+      margins: { top: 80, bottom: 80, left: 80, right: 80 },
+      bufferPages: true,
+      autoFirstPage: true,
       info: {
         Title: outline.title,
         Author: 'The Great Library',
@@ -248,53 +250,147 @@ function createPDF(filepath, outline, chapters) {
     const stream = fs.createWriteStream(filepath);
     doc.pipe(stream);
 
-    // ===== TITLE PAGE =====
-    doc.moveDown(8);
-    doc.fontSize(28).font('Helvetica-Bold').fillColor('#1a1a1a')
+    const W = doc.page.width;
+    const H = doc.page.height;
+    const gold = '#8B7D45';
+
+    // Drawing helpers (no text = no ghost pages)
+    function divider(y, w = 140) {
+      const cx = W / 2;
+      doc.save().moveTo(cx - w/2, y).lineTo(cx + w/2, y)
+        .lineWidth(0.5).strokeColor(gold).stroke().restore();
+      doc.save().moveTo(cx, y-2.5).lineTo(cx+2.5, y).lineTo(cx, y+2.5).lineTo(cx-2.5, y)
+        .closePath().fillColor(gold).fill().restore();
+    }
+
+    function border() {
+      doc.save().rect(40, 40, W-80, H-80).lineWidth(0.4).strokeColor(gold).stroke().restore();
+    }
+
+    // ===== PAGE 0: TITLE =====
+    border();
+    doc.moveDown(7);
+    divider(doc.y, 180);
+    doc.moveDown(2);
+    doc.fontSize(30).font('Helvetica-Bold').fillColor('#1a1a1a')
       .text(outline.title, { align: 'center' });
+    doc.moveDown(0.8);
+    divider(doc.y, 80);
     doc.moveDown(1);
-    doc.fontSize(13).font('Helvetica-Oblique').fillColor('#666666')
+    doc.fontSize(13).font('Helvetica-Oblique').fillColor('#666')
       .text(outline.subtitle, { align: 'center' });
-    doc.moveDown(8);
-    doc.fontSize(9).font('Helvetica').fillColor('#999999')
+    doc.moveDown(7);
+    divider(doc.y, 50);
+    doc.moveDown(1);
+    doc.fontSize(9).font('Helvetica').fillColor('#888')
       .text('Retrieved from the Great Library', { align: 'center' });
-    doc.fontSize(9).font('Helvetica-Oblique').fillColor('#8B7D45')
+    doc.fontSize(9).font('Helvetica-Oblique').fillColor(gold)
       .text('greatlibrary.ai', { align: 'center' });
 
-    // ===== TABLE OF CONTENTS =====
+    // ===== PAGE 1: TABLE OF CONTENTS =====
     doc.addPage();
+    border();
     doc.moveDown(3);
-    doc.fontSize(18).font('Helvetica-Bold').fillColor('#1a1a1a')
+    doc.fontSize(20).font('Helvetica-Bold').fillColor('#1a1a1a')
       .text('Contents', { align: 'center' });
+    doc.moveDown(0.5);
+    divider(doc.y, 100);
     doc.moveDown(2);
 
+    const tocY = [];
     chapters.forEach((ch, i) => {
-      doc.fontSize(11).font('Helvetica').fillColor('#333333')
-        .text(`${i + 1}.   ${ch.title}`);
-      doc.moveDown(0.6);
+      tocY.push(doc.y);
+      doc.fontSize(11).font('Helvetica-Bold').fillColor(gold)
+        .text(`${String(i+1).padStart(2,'0')}   `, { continued: true });
+      doc.font('Helvetica').fillColor('#333')
+        .text(ch.title);
+      doc.moveDown(0.7);
     });
 
     // ===== CHAPTERS =====
+    const chapterPageIndex = [];
+
     chapters.forEach((ch, i) => {
       doc.addPage();
+      border();
+      chapterPageIndex.push(doc.bufferedPageRange().count - 1);
+
+      // Chapter header
       doc.moveDown(3);
-
-      doc.fontSize(12).font('Helvetica').fillColor('#8B7D45')
-        .text(`Chapter ${i + 1}`, { align: 'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(22).font('Helvetica-Bold').fillColor('#1a1a1a')
+      doc.fontSize(42).font('Helvetica-Bold').fillColor('#E8E0D0')
+        .text(`${String(i+1).padStart(2,'0')}`, { align: 'center' });
+      doc.moveDown(0.2);
+      doc.fontSize(20).font('Helvetica-Bold').fillColor('#1a1a1a')
         .text(ch.title, { align: 'center' });
-      doc.moveDown(2);
+      doc.moveDown(0.5);
+      divider(doc.y, 70);
+      doc.moveDown(1.5);
 
-      // Let PDFKit handle all text flow naturally
+      // First paragraph with drop cap
       const paragraphs = ch.content.split(/\n\n+/);
+      let didDropCap = false;
+
       paragraphs.forEach(p => {
-        const trimmed = p.trim();
-        if (!trimmed) return;
-        doc.fontSize(11).font('Helvetica').fillColor('#333333')
-          .text(trimmed, { align: 'justify', lineGap: 4, paragraphGap: 8 });
+        const t = p.trim();
+        if (!t) return;
+
+        if (!didDropCap && t.length > 10) {
+          didDropCap = true;
+          const letter = t[0].toUpperCase();
+          const rest = t.slice(1);
+
+          // Drop cap: just make first letter big inline with continued
+          doc.fontSize(28).font('Helvetica-Bold').fillColor(gold)
+            .text(letter, { continued: true, baseline: -4 });
+          doc.fontSize(11).font('Helvetica').fillColor('#333')
+            .text(rest, { align: 'justify', lineGap: 4 });
+        } else {
+          doc.fontSize(11).font('Helvetica').fillColor('#333')
+            .text(t, { align: 'justify', lineGap: 4, indent: 15 });
+        }
         doc.moveDown(0.5);
       });
+
+      // Chapter end divider
+      if (doc.y < H - 140) {
+        doc.moveDown(1);
+        divider(doc.y, 35);
+      }
+    });
+
+    // ===== POST-PROCESSING: page numbers + TOC page refs + borders on overflow pages =====
+    const totalPages = doc.bufferedPageRange().count;
+
+    for (let i = 0; i < totalPages; i++) {
+      doc.switchToPage(i);
+
+      // Add border to any overflow pages (chapters that spill)
+      // Title(0) and TOC(1) and chapter starts already have borders
+      // But overflow pages from long chapters don't — add them
+      if (i > 1 && !chapterPageIndex.includes(i)) {
+        border();
+      }
+
+      // Page number (skip title page)
+      if (i > 0) {
+        doc.fontSize(8).font('Helvetica').fillColor('#999');
+        doc.text(`${i}`, 0, H - 58, {
+          width: W,
+          align: 'center',
+          lineBreak: false
+        });
+      }
+    }
+
+    // TOC: add page numbers on the right + clickable links
+    doc.switchToPage(1);
+    tocY.forEach((y, i) => {
+      if (chapterPageIndex[i] !== undefined) {
+        doc.fontSize(11).font('Helvetica').fillColor('#999')
+          .text(`${chapterPageIndex[i]}`, W - 120, y, {
+            width: 40, align: 'right', lineBreak: false
+          });
+      }
     });
 
     doc.end();
