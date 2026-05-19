@@ -30,7 +30,7 @@ let activeProvider = process.env.LLM_PROVIDER || 'openai';
 function getClient() { return clients[activeProvider] || clients.openai || Object.values(clients)[0]; }
 function getModel() {
   if (process.env.LLM_MODEL) return process.env.LLM_MODEL;
-  if (activeProvider === 'openrouter') return 'nousresearch/hermes-3-llama-3.1-8b';
+  if (activeProvider === 'openrouter') return 'nousresearch/hermes-3-llama-3.1-405b:free';
   if (activeProvider === 'selfhosted') return 'hermes3:8b-llama3.1-q4_K_M';
   return 'gpt-5.4-mini';
 }
