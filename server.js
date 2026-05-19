@@ -358,40 +358,17 @@ function createPDF(filepath, outline, chapters) {
       }
     });
 
-    // ===== POST-PROCESSING: page numbers + TOC page refs + borders on overflow pages =====
+    // ===== POST-PROCESSING: borders on overflow pages only (drawing, no text) =====
     const totalPages = doc.bufferedPageRange().count;
 
     for (let i = 0; i < totalPages; i++) {
       doc.switchToPage(i);
 
-      // Add border to any overflow pages (chapters that spill)
-      // Title(0) and TOC(1) and chapter starts already have borders
-      // But overflow pages from long chapters don't — add them
+      // Add border to overflow pages that don't have one yet
       if (i > 1 && !chapterPageIndex.includes(i)) {
         border();
       }
-
-      // Page number (skip title page)
-      if (i > 0) {
-        doc.fontSize(8).font('Helvetica').fillColor('#999');
-        doc.text(`${i}`, 0, H - 58, {
-          width: W,
-          align: 'center',
-          lineBreak: false
-        });
-      }
     }
-
-    // TOC: add page numbers on the right + clickable links
-    doc.switchToPage(1);
-    tocY.forEach((y, i) => {
-      if (chapterPageIndex[i] !== undefined) {
-        doc.fontSize(11).font('Helvetica').fillColor('#999')
-          .text(`${chapterPageIndex[i]}`, W - 120, y, {
-            width: 40, align: 'right', lineBreak: false
-          });
-      }
-    });
 
     doc.end();
     stream.on('finish', resolve);
