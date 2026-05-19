@@ -381,54 +381,76 @@ function createPDF(filepath, outline, chapters) {
 
       // Content paragraphs
       const paragraphs = ch.content.split(/\n\n+/);
-      paragraphs.forEach((p, pi) => {
+      let isFirst = true;
+      paragraphs.forEach(p => {
         const trimmed = p.trim();
         if (!trimmed) return;
 
-        // Drop cap for first paragraph
-        if (pi === 0 && trimmed.length > 1) {
-          const firstLetter = trimmed[0];
+        if (isFirst && trimmed.length > 1) {
+          isFirst = false;
+          // Drop cap: render large letter separately, then body text beside it
+          const firstLetter = trimmed[0].toUpperCase();
           const rest = trimmed.slice(1);
-          doc.fontSize(36).font('Helvetica-Bold').fillColor(gold)
-            .text(firstLetter, doc.x, doc.y, { continued: true });
+          const dropX = 72;
+          const dropY = doc.y;
+          const dropSize = 38;
+
+          // Draw the drop cap letter
+          doc.fontSize(dropSize).font('Helvetica-Bold').fillColor(gold)
+            .text(firstLetter, dropX, dropY);
+
+          // Measure drop cap width
+          const letterW = doc.widthOfString(firstLetter, { fontSize: dropSize, font: 'Helvetica-Bold' }) + 6;
+
+          // Body text flows next to and below the drop cap
           doc.fontSize(11).font('Helvetica').fillColor(textColor)
-            .text(rest, { align: 'justify', lineGap: 5 });
+            .text(rest, dropX + letterW, dropY + 8, {
+              width: pageW - 72 - 72 - letterW,
+              align: 'justify',
+              lineGap: 5
+            });
+
+          // Reset x position for subsequent paragraphs
+          doc.x = 72;
         } else {
           doc.fontSize(11).font('Helvetica').fillColor(textColor)
-            .text(trimmed, { align: 'justify', lineGap: 5, indent: 20 });
+            .text(trimmed, 72, doc.y, {
+              width: pageW - 144,
+              align: 'justify',
+              lineGap: 5,
+              indent: 20
+            });
         }
         doc.moveDown(0.7);
       });
 
       // End-of-chapter divider
       doc.moveDown(1);
-      drawDivider(doc.y, 40);
+      if (doc.y < pageH - 120) drawDivider(doc.y, 40);
     });
 
-    // ===== Add page numbers + clickable TOC links =====
+    // ===== Page numbers (skip title page, start from 1) =====
     const pages = doc.bufferedPageRange();
-    for (let i = 0; i < pages.count; i++) {
+    for (let i = 1; i < pages.count; i++) {
       doc.switchToPage(i);
-      // Page numbers (skip title page)
-      if (i > 0) {
-        drawFooter(i);
-      }
+      drawFooter(i);
     }
 
-    // Add TOC page links (go to TOC page, add link annotations)
-    doc.switchToPage(1); // TOC is page 1
+    // ===== TOC: fill in page numbers + add internal links =====
+    doc.switchToPage(1);
     tocEntries.forEach((entry, i) => {
       if (chapterPages[i] !== undefined) {
-        // Page number on the right side of TOC
+        const displayPage = chapterPages[i];
+        // Page number on the right
         doc.fontSize(11).font('Helvetica').fillColor(lightText)
-          .text(`${chapterPages[i]}`, pageW - 100, entry.y, { width: 30, align: 'right' });
+          .text(`${displayPage}`, pageW - 105, entry.y, { width: 35, align: 'right' });
 
-        // Clickable link area
-        doc.link(90, entry.y - 2, pageW - 180, 20, { GoTo: `chapter_${i}` });
+        // Internal link to chapter page
+        doc.goTo(90, entry.y - 2, pageW - 180, 22, `chapter_${i}`);
       }
     });
 
-    // Add named destinations for each chapter
+    // Named destinations for each chapter
     chapters.forEach((ch, i) => {
       if (chapterPages[i] !== undefined) {
         doc.switchToPage(chapterPages[i]);
