@@ -26,7 +26,7 @@ if (process.env.SELFHOSTED_LLM_URL) {
   clients.selfhosted = new OpenAI({ baseURL: process.env.SELFHOSTED_LLM_URL, apiKey: process.env.SELFHOSTED_LLM_KEY });
 }
 
-let activeProvider = process.env.activeProvider || 'openai';
+let activeProvider = process.env.LLM_PROVIDER || 'openai';
 function getClient() { return clients[activeProvider] || clients.openai || Object.values(clients)[0]; }
 function getModel() {
   if (process.env.LLM_MODEL) return process.env.LLM_MODEL;
