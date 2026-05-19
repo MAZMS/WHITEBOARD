@@ -253,6 +253,21 @@ function createPDF(filepath, outline, chapters) {
     const W = doc.page.width;
     const H = doc.page.height;
     const gold = '#8B7D45';
+    let pageCount = 0;
+
+    // Add page number on every new page (except title) using low-level content stream
+    function writePageNumber() {
+      if (pageCount > 1) { // skip title(0) and toc(1)
+        const num = `${pageCount - 1}`;
+        doc.save();
+        doc.page.content.addContent(`BT /Helvetica 8 Tf 0.6 0.6 0.6 rg ${(W/2) - 4} 45 Td (${num}) Tj ET`);
+        doc.restore();
+      }
+      pageCount++;
+    }
+
+    doc.on('pageAdded', writePageNumber);
+    writePageNumber(); // first page
 
     // Drawing helpers (no text = no ghost pages)
     function divider(y, w = 140) {
