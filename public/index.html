@@ -472,21 +472,158 @@
     }
     body.phase-sleeping .tomes-counter { opacity: 0.3; transition: opacity 3s; }
 
-    /* ===== MUTE BUTTON ===== */
-    .mute-btn {
+    /* ===== SETTINGS ===== */
+    .settings-btn {
       position: fixed;
       top: 16px;
-      right: 16px;
+      left: 16px;
       background: none;
       border: none;
       color: #3a3528;
       cursor: pointer;
-      z-index: 101;
+      z-index: 200;
       font-size: 18px;
-      opacity: 0.5;
+      opacity: 0.4;
       transition: opacity 0.3s;
     }
-    .mute-btn:hover { opacity: 1; }
+    .settings-btn:hover { opacity: 1; }
+
+    .settings-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 300;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .settings-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .settings-panel {
+      position: fixed;
+      top: 0; left: -320px;
+      width: 300px;
+      height: 100%;
+      background: #0e0d0b;
+      border-right: 1px solid #2a2520;
+      z-index: 301;
+      padding: 60px 24px 24px;
+      transition: left 0.4s ease;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .settings-panel::-webkit-scrollbar { display: none; }
+    .settings-overlay.open .settings-panel { left: 0; }
+
+    .settings-panel h2 {
+      color: #c8b88a;
+      font-size: 16px;
+      font-family: Georgia, serif;
+      margin-bottom: 24px;
+      font-weight: normal;
+      font-style: italic;
+    }
+
+    .settings-section {
+      margin-bottom: 24px;
+      border-bottom: 1px solid #1a1815;
+      padding-bottom: 20px;
+    }
+    .settings-section:last-child { border-bottom: none; }
+
+    .settings-label {
+      color: #8a8070;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      font-family: Georgia, serif;
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .settings-row span {
+      color: #c8b88a;
+      font-size: 13px;
+      font-family: Georgia, serif;
+    }
+
+    /* Toggle switch */
+    .toggle {
+      width: 40px; height: 20px;
+      background: #2a2520;
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .toggle.on { background: #8B7D45; }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      background: #c8b88a;
+      border-radius: 50%;
+      transition: left 0.3s;
+    }
+    .toggle.on::after { left: 22px; }
+
+    /* Volume slider */
+    .vol-slider {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      background: #2a2520;
+      border-radius: 2px;
+      outline: none;
+      margin-top: 8px;
+    }
+    .vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      background: #c8b88a;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .vol-slider::-moz-range-thumb {
+      width: 14px; height: 14px;
+      background: #c8b88a;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Settings button */
+    .settings-action {
+      background: rgba(180, 160, 100, 0.08);
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      color: #8a8070;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-family: Georgia, serif;
+      cursor: pointer;
+      transition: color 0.3s, border-color 0.3s;
+    }
+    .settings-action:hover { color: #c8b88a; border-color: #3a3528; }
+
+    .coming-soon {
+      color: #3a3528;
+      font-size: 11px;
+      font-style: italic;
+      font-family: Georgia, serif;
+    }
 
     /* ===== MOBILE ===== */
     @media (max-width: 600px) {
@@ -560,7 +697,55 @@
   </style>
 </head>
 <body class="phase-dormant">
-  <button class="mute-btn" id="muteBtn" title="Toggle sound">&#9835;</button>
+  <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>The Library Archives</h2>
+
+      <div class="settings-section">
+        <div class="settings-label">Sound</div>
+        <div class="settings-row">
+          <span>Ambient Sound</span>
+          <div class="toggle" id="soundToggle"></div>
+        </div>
+        <div class="settings-row">
+          <span>Volume</span>
+        </div>
+        <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="70">
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Progress</div>
+        <div class="settings-row">
+          <span>Tomes Collected</span>
+          <span id="settingsTomes">0</span>
+        </div>
+        <div class="settings-row">
+          <button class="settings-action" id="resetTomesBtn">Reset Count</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Appearance</div>
+        <span class="coming-soon">Dark & Light mode — coming soon</span>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Account</div>
+        <span class="coming-soon">Google & Microsoft sign-in — coming soon</span>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Tome Library</div>
+        <span class="coming-soon">Browse all tomes — coming soon</span>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Support the Library</div>
+        <span class="coming-soon">Membership & donations — coming soon</span>
+      </div>
+    </div>
+  </div>
   <div class="tomes-counter" id="tomesCounter"></div>
   <svg class="border-loader" id="borderLoader" preserveAspectRatio="none">
     <path id="borderPath" fill="none" />
@@ -1391,20 +1576,51 @@
     // A minor pentatonic chime notes
     const chimeNotes = [440, 523, 587, 659, 784, 880, 1047, 1175];
 
-    const muteBtn = document.getElementById('muteBtn');
-    muteBtn.textContent = isMuted ? '♪' : '♫';
-    muteBtn.addEventListener('click', () => {
+    // Settings panel
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsOverlay = document.getElementById('settingsOverlay');
+    const soundToggle = document.getElementById('soundToggle');
+    const volSlider = document.getElementById('volSlider');
+    let savedVol = parseFloat(localStorage.getItem('gl-volume') || '0.7');
+
+    settingsBtn.addEventListener('click', () => {
+      settingsOverlay.classList.toggle('open');
+      document.getElementById('settingsTomes').textContent = tomesCount;
+    });
+    settingsOverlay.addEventListener('click', (e) => {
+      if (e.target === settingsOverlay) settingsOverlay.classList.remove('open');
+    });
+
+    // Sound toggle
+    if (!isMuted) soundToggle.classList.add('on');
+    soundToggle.addEventListener('click', () => {
       isMuted = !isMuted;
       localStorage.setItem('gl-muted', isMuted);
-      muteBtn.textContent = isMuted ? '♪' : '♫';
-      if (masterGain) masterGain.gain.setTargetAtTime(isMuted ? 0 : 1, audioCtx.currentTime, 0.5);
+      soundToggle.classList.toggle('on', !isMuted);
+      if (masterGain) masterGain.gain.setTargetAtTime(isMuted ? 0 : savedVol, audioCtx.currentTime, 0.3);
+    });
+
+    // Volume slider
+    volSlider.value = savedVol * 100;
+    volSlider.addEventListener('input', () => {
+      savedVol = volSlider.value / 100;
+      localStorage.setItem('gl-volume', savedVol);
+      if (masterGain && !isMuted) masterGain.gain.setTargetAtTime(savedVol, audioCtx.currentTime, 0.1);
+    });
+
+    // Reset tomes
+    document.getElementById('resetTomesBtn').addEventListener('click', () => {
+      tomesCount = 0;
+      localStorage.setItem('gl-tomes', '0');
+      updateTomesDisplay();
+      document.getElementById('settingsTomes').textContent = '0';
     });
 
     function initAudio() {
       if (audioCtx) return;
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       masterGain = audioCtx.createGain();
-      masterGain.gain.value = isMuted ? 0 : 1;
+      masterGain.gain.value = isMuted ? 0 : savedVol;
       masterGain.connect(audioCtx.destination);
       // Reverb
       const len = audioCtx.sampleRate * 3;
