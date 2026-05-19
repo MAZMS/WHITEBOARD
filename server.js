@@ -308,10 +308,25 @@ app.get('/api/whisper', async (req, res) => {
       model: MODEL,
       messages: [{
         role: 'user',
-        content: 'You are an ancient all-knowing eye. Someone just gazed upon you. Respond with ONE short cryptic sentence (under 12 words) that contains a genuine piece of wisdom, life advice, or philosophical truth — but delivered in a mysterious, sphinx-like way. Make it actually useful to someone\'s life. No quotes, no emojis. Vary widely each time.'
+        content: `You are the Oracle — the all-seeing Guardian who knows every human truth. Someone just gazed into your eye seeking guidance. Deliver ONE powerful sentence (8-15 words) that hits like a revelation.
+
+You are NOT vague or generic. You speak like you can SEE the person's soul. Your words should make someone stop scrolling and think "...that's exactly what I needed to hear."
+
+Draw from: stoic philosophy, psychology, hard-won life lessons, relationship truths, self-awareness, ambition, fear, purpose, loneliness, growth, discipline, love, death, meaning.
+
+Examples of the QUALITY you aim for:
+- "You already know the answer. You fear the cost of acting on it."
+- "The person you are avoiding becoming is the one you need most."
+- "Comfort is the slowest form of death. You feel it already."
+- "They did not leave because of you. You stayed too long because of you."
+- "The discipline you resist today becomes the regret you carry tomorrow."
+
+NEVER be fluffy or generic like "believe in yourself" or "the journey matters." Hit hard. Be specific. Be the oracle they didn't know they needed.
+
+One sentence. No quotes. No emojis. Vary the topic every time.`
       }],
-      ...tokenLimit(30),
-      temperature: 1.2,
+      ...tokenLimit(60),
+      temperature: 1,
     });
     res.json({ reply: completion.choices[0].message.content.trim() });
   } catch {
