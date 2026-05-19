@@ -287,7 +287,7 @@ function createPDF(filepath, outline, chapters) {
     function drawFooter(pageNum) {
       doc.save()
         .fontSize(8).font('Helvetica').fillColor(lightText)
-        .text(`${pageNum}`, 0, pageH - 55, { align: 'center', width: pageW })
+        .text(`${pageNum}`, 72, pageH - 55, { width: pageW - 144, align: 'center', lineBreak: false })
         .restore();
     }
 
@@ -388,30 +388,34 @@ function createPDF(filepath, outline, chapters) {
 
         if (isFirst && trimmed.length > 1) {
           isFirst = false;
-          // Drop cap: render large letter separately, then body text beside it
           const firstLetter = trimmed[0].toUpperCase();
           const rest = trimmed.slice(1);
           const dropX = 72;
           const dropY = doc.y;
-          const dropSize = 38;
+          const dropSize = 36;
 
-          // Draw the drop cap letter
-          doc.fontSize(dropSize).font('Helvetica-Bold').fillColor(gold)
-            .text(firstLetter, dropX, dropY);
+          // Measure drop cap
+          doc.fontSize(dropSize).font('Helvetica-Bold');
+          const letterW = doc.widthOfString(firstLetter) + 4;
+          const letterH = doc.currentLineHeight();
 
-          // Measure drop cap width
-          const letterW = doc.widthOfString(firstLetter, { fontSize: dropSize, font: 'Helvetica-Bold' }) + 6;
+          // Draw drop cap (lineBreak false to not move cursor)
+          doc.fillColor(gold)
+            .text(firstLetter, dropX, dropY, { lineBreak: false });
 
-          // Body text flows next to and below the drop cap
+          // First few lines of body text beside the drop cap
+          const bodyX = dropX + letterW;
+          const bodyW = pageW - 72 - 72 - letterW;
           doc.fontSize(11).font('Helvetica').fillColor(textColor)
-            .text(rest, dropX + letterW, dropY + 8, {
-              width: pageW - 72 - 72 - letterW,
+            .text(rest, bodyX, dropY + 4, {
+              width: bodyW,
               align: 'justify',
-              lineGap: 5
+              lineGap: 5,
+              height: letterH
             });
 
-          // Reset x position for subsequent paragraphs
-          doc.x = 72;
+          // Continue remaining text full-width below the drop cap
+          doc.text('', 72, doc.y);  // reset position
         } else {
           doc.fontSize(11).font('Helvetica').fillColor(textColor)
             .text(trimmed, 72, doc.y, {
@@ -429,9 +433,11 @@ function createPDF(filepath, outline, chapters) {
       if (doc.y < pageH - 120) drawDivider(doc.y, 40);
     });
 
-    // ===== Page numbers (skip title page, start from 1) =====
-    const pages = doc.bufferedPageRange();
-    for (let i = 1; i < pages.count; i++) {
+    // ===== Record actual content page count BEFORE adding footers =====
+    const totalContentPages = doc.bufferedPageRange().count;
+
+    // Page numbers (skip title page)
+    for (let i = 1; i < totalContentPages; i++) {
       doc.switchToPage(i);
       drawFooter(i);
     }
@@ -441,9 +447,8 @@ function createPDF(filepath, outline, chapters) {
     tocEntries.forEach((entry, i) => {
       if (chapterPages[i] !== undefined) {
         const displayPage = chapterPages[i];
-        // Page number on the right
         doc.fontSize(11).font('Helvetica').fillColor(lightText)
-          .text(`${displayPage}`, pageW - 105, entry.y, { width: 35, align: 'right' });
+          .text(`${displayPage}`, pageW - 105, entry.y, { width: 35, align: 'right', lineBreak: false });
 
         // Internal link to chapter page
         doc.goTo(90, entry.y - 2, pageW - 180, 22, `chapter_${i}`);
