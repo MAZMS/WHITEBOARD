@@ -559,24 +559,26 @@
 
     /* Toggle switch */
     .toggle {
-      width: 40px; height: 20px;
-      background: #2a2520;
-      border-radius: 10px;
+      width: 44px; height: 24px;
+      background: #1a1815;
+      border: 1px solid #3a3528;
+      border-radius: 12px;
       position: relative;
       cursor: pointer;
-      transition: background 0.3s;
+      transition: background 0.3s, border-color 0.3s;
+      flex-shrink: 0;
     }
-    .toggle.on { background: #8B7D45; }
+    .toggle.on { background: #8B7D45; border-color: #8B7D45; }
     .toggle::after {
       content: '';
       position: absolute;
-      top: 2px; left: 2px;
+      top: 3px; left: 3px;
       width: 16px; height: 16px;
-      background: #c8b88a;
+      background: #5a5040;
       border-radius: 50%;
-      transition: left 0.3s;
+      transition: left 0.3s, background 0.3s;
     }
-    .toggle.on::after { left: 22px; }
+    .toggle.on::after { left: 23px; background: #fff; }
 
     /* Volume slider */
     .vol-slider {
@@ -705,9 +707,10 @@
       <div class="settings-section">
         <div class="settings-label">Sound</div>
         <div class="settings-row">
-          <button class="settings-action" id="muteBtn" style="width:100%">Unmute</button>
+          <span id="soundLabel">Sound Off</span>
+          <div class="toggle" id="soundToggle"></div>
         </div>
-        <div class="settings-row">
+        <div class="settings-row" style="margin-top:8px;">
           <span>Volume</span>
         </div>
         <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="70">
@@ -1589,14 +1592,18 @@
     // Settings panel
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsOverlay = document.getElementById('settingsOverlay');
-    const muteBtn = document.getElementById('muteBtn');
+    const soundToggle = document.getElementById('soundToggle');
+    const soundLabel = document.getElementById('soundLabel');
     const volSlider = document.getElementById('volSlider');
     const MAX_GAIN = 4;
     let savedVol = parseFloat(localStorage.getItem('gl-volume') || '0.7');
 
     function getGain() { return savedVol * MAX_GAIN; }
-    function updateMuteBtn() { muteBtn.textContent = isMuted ? 'Unmute' : 'Mute'; }
-    updateMuteBtn();
+    function updateSoundToggle() {
+      soundToggle.classList.toggle('on', !isMuted);
+      soundLabel.textContent = isMuted ? 'Sound Off' : 'Sound On';
+    }
+    updateSoundToggle();
 
     settingsBtn.addEventListener('click', () => {
       settingsOverlay.classList.toggle('open');
@@ -1606,11 +1613,11 @@
       if (e.target === settingsOverlay) settingsOverlay.classList.remove('open');
     });
 
-    // Mute button
-    muteBtn.addEventListener('click', () => {
+    // Sound toggle
+    soundToggle.addEventListener('click', () => {
       isMuted = !isMuted;
       localStorage.setItem('gl-muted', isMuted);
-      updateMuteBtn();
+      updateSoundToggle();
       if (masterGain) masterGain.gain.setTargetAtTime(isMuted ? 0 : getGain(), audioCtx.currentTime, 0.3);
     });
 
