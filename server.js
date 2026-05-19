@@ -14,22 +14,27 @@ const EBOOKS_DIR = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks' : path.join(_
 if (!fs.existsSync(EBOOKS_DIR)) fs.mkdirSync(EBOOKS_DIR, { recursive: true });
 console.log('Ebooks directory:', EBOOKS_DIR);
 
-// LLM Provider: 'openai' (default) or 'selfhosted' (Azure VM with Ollama)
+// LLM Provider: 'openrouter', 'selfhosted', or 'openai' (default)
 const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
 
 const openai = new OpenAI(
-  LLM_PROVIDER === 'selfhosted'
+  LLM_PROVIDER === 'openrouter'
+    ? { baseURL: 'https://openrouter.ai/api/v1', apiKey: process.env.OPENROUTER_API_KEY }
+    : LLM_PROVIDER === 'selfhosted'
     ? { baseURL: process.env.SELFHOSTED_LLM_URL, apiKey: process.env.SELFHOSTED_LLM_KEY }
     : { apiKey: process.env.OPENAI_API_KEY }
 );
 
-const MODEL = process.env.LLM_MODEL || (LLM_PROVIDER === 'selfhosted' ? 'hermes3:8b-llama3.1-q4_K_M' : 'gpt-5.4-mini');
+const MODEL = process.env.LLM_MODEL || (
+  LLM_PROVIDER === 'openrouter' ? 'nousresearch/hermes-3-llama-3.1-8b' :
+  LLM_PROVIDER === 'selfhosted' ? 'hermes3:8b-llama3.1-q4_K_M' : 'gpt-5.4-mini'
+);
 
 console.log(`LLM Provider: ${LLM_PROVIDER}, Model: ${MODEL}`);
 
-// OpenAI uses max_completion_tokens, Together/Ollama use max_tokens
+// OpenAI uses max_completion_tokens, OpenRouter/Together/Ollama use max_tokens
 function tokenLimit(n) {
-  return LLM_PROVIDER === 'selfhosted'
+  return (LLM_PROVIDER === 'selfhosted' || LLM_PROVIDER === 'openrouter')
     ? { max_tokens: n }
     : { max_completion_tokens: n };
 }
