@@ -358,7 +358,7 @@ function createPDF(filepath, outline, chapters) {
       }
     });
 
-    // ===== POST-PROCESSING: borders on overflow pages only (drawing, no text) =====
+    // ===== POST-PROCESSING: borders, TOC links, named destinations =====
     const totalPages = doc.bufferedPageRange().count;
 
     for (let i = 0; i < totalPages; i++) {
@@ -369,6 +369,20 @@ function createPDF(filepath, outline, chapters) {
         border();
       }
     }
+
+    // Add named destination on each chapter's first page
+    chapters.forEach((ch, i) => {
+      if (chapterPageIndex[i] !== undefined) {
+        doc.switchToPage(chapterPageIndex[i]);
+        doc.addNamedDestination(`ch${i}`);
+      }
+    });
+
+    // Add clickable links on the TOC page
+    doc.switchToPage(1);
+    tocY.forEach((y, i) => {
+      doc.goTo(80, y - 2, W - 160, 18, `ch${i}`);
+    });
 
     doc.end();
     stream.on('finish', resolve);
