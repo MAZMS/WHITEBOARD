@@ -1310,11 +1310,13 @@
       }
     }
 
-    // ===== SOUND ENGINE (Web Audio API) =====
+    // ===== SOUND ENGINE — Ambient Soundscape =====
     let audioCtx = null;
     let isMuted = localStorage.getItem('gl-muted') === 'true';
-    let droneOsc = null;
-    let droneGain = null;
+    let masterGain = null;
+    let ambientNodes = [];
+    let chimesInterval = null;
+    let ambientStarted = false;
 
     const muteBtn = document.getElementById('muteBtn');
     muteBtn.textContent = isMuted ? '♪' : '♫';
@@ -1322,15 +1324,144 @@
       isMuted = !isMuted;
       localStorage.setItem('gl-muted', isMuted);
       muteBtn.textContent = isMuted ? '♪' : '♫';
-      if (isMuted && droneGain) droneGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.3);
-      if (!isMuted && droneGain && guardianPhase === 'alive') droneGain.gain.setTargetAtTime(0.015, audioCtx.currentTime, 0.3);
+      if (masterGain) masterGain.gain.setTargetAtTime(isMuted ? 0 : 1, audioCtx.currentTime, 0.5);
     });
 
     function initAudio() {
       if (audioCtx) return;
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = isMuted ? 0 : 1;
+      masterGain.connect(audioCtx.destination);
     }
 
+    // --- Reverb (convolver with generated impulse) ---
+    let reverbNode = null;
+    function createReverb() {
+      const len = audioCtx.sampleRate * 3;
+      const buf = audioCtx.createBuffer(2, len, audioCtx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const data = buf.getChannelData(ch);
+        for (let i = 0; i < len; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+        }
+      }
+      reverbNode = audioCtx.createConvolver();
+      reverbNode.buffer = buf;
+      const reverbGain = audioCtx.createGain();
+      reverbGain.gain.value = 0.3;
+      reverbNode.connect(reverbGain);
+      reverbGain.connect(masterGain);
+      return reverbNode;
+    }
+
+    // --- Deep drone: two detuned oscillators + filtered ---
+    function createDrone(freq, detune, vol) {
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      osc1.type = 'sine';
+      osc2.type = 'sine';
+      osc1.frequency.value = freq;
+      osc2.frequency.value = freq + detune;
+      filter.type = 'lowpass';
+      filter.frequency.value = 200;
+      filter.Q.value = 1;
+      gain.gain.value = vol;
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      if (reverbNode) { gain.connect(reverbNode); }
+      osc1.start();
+      osc2.start();
+      return { osc1, osc2, gain, filter };
+    }
+
+    // --- Filtered noise (wind through ancient halls) ---
+    function createWindNoise(vol) {
+      const bufSize = audioCtx.sampleRate * 2;
+      const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buf;
+      noise.loop = true;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 300;
+      filter.Q.value = 0.5;
+      const gain = audioCtx.createGain();
+      gain.gain.value = vol;
+      // Slowly modulate the filter frequency
+      const lfo = audioCtx.createOscillator();
+      const lfoGain = audioCtx.createGain();
+      lfo.frequency.value = 0.05;
+      lfoGain.gain.value = 150;
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+      lfo.start();
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      if (reverbNode) { gain.connect(reverbNode); }
+      noise.start();
+      return { noise, filter, gain, lfo };
+    }
+
+    // --- Ethereal pad: slow filtered triangle wave ---
+    function createPad(freq, vol) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      filter.type = 'lowpass';
+      filter.frequency.value = 400;
+      filter.Q.value = 2;
+      // Slow frequency sweep
+      const lfo = audioCtx.createOscillator();
+      const lfoGain = audioCtx.createGain();
+      lfo.frequency.value = 0.02;
+      lfoGain.gain.value = 80;
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+      lfo.start();
+      gain.gain.value = vol;
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      if (reverbNode) { gain.connect(reverbNode); }
+      osc.start();
+      return { osc, gain, filter, lfo };
+    }
+
+    // --- Random chimes (occasional bell-like tones) ---
+    function playChime() {
+      if (!audioCtx || isMuted) return;
+      const notes = [523, 659, 784, 880, 1047, 1175, 1319]; // C5-E6 range
+      const freq = notes[Math.floor(Math.random() * notes.length)];
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 3);
+      osc.connect(gain);
+      gain.connect(masterGain);
+      if (reverbNode) gain.connect(reverbNode);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 3);
+    }
+
+    function scheduleChimes() {
+      chimesInterval = setInterval(() => {
+        if (Math.random() < 0.4) playChime();
+      }, 4000 + Math.random() * 6000);
+    }
+
+    // --- Public API ---
     function playTone(freq, duration, type = 'sine', vol = 0.1) {
       if (!audioCtx || isMuted) return;
       const osc = audioCtx.createOscillator();
@@ -1340,7 +1471,8 @@
       gain.gain.setValueAtTime(vol, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
       osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      gain.connect(masterGain);
+      if (reverbNode) gain.connect(reverbNode);
       osc.start();
       osc.stop(audioCtx.currentTime + duration);
     }
@@ -1350,33 +1482,61 @@
     }
 
     function startDroneSound() {
-      if (!audioCtx || droneOsc) return;
-      droneOsc = audioCtx.createOscillator();
-      droneGain = audioCtx.createGain();
-      droneOsc.type = 'sine';
-      droneOsc.frequency.value = 80;
-      droneGain.gain.value = isMuted ? 0 : 0.015;
-      droneOsc.connect(droneGain);
-      droneGain.connect(audioCtx.destination);
-      droneOsc.start();
+      if (!audioCtx || ambientStarted) return;
+      ambientStarted = true;
+      createReverb();
+      // Layer 1: Deep drone (two detuned sines)
+      ambientNodes.push(createDrone(55, 0.5, 0.025));
+      // Layer 2: Sub-bass presence
+      ambientNodes.push(createDrone(82.5, 0.3, 0.015));
+      // Layer 3: Wind texture
+      ambientNodes.push(createWindNoise(0.008));
+      // Layer 4: Ethereal pad
+      ambientNodes.push(createPad(110, 0.01));
+      // Layer 5: Random chimes
+      scheduleChimes();
     }
 
     function stopDroneSound() {
-      if (!droneGain) return;
-      droneGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.5);
+      if (!ambientStarted) return;
+      ambientNodes.forEach(n => {
+        if (n.gain) n.gain.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
+      });
+      if (chimesInterval) clearInterval(chimesInterval);
       setTimeout(() => {
-        if (droneOsc) { droneOsc.stop(); droneOsc = null; droneGain = null; }
-      }, 2000);
+        ambientNodes.forEach(n => {
+          try { if (n.osc1) n.osc1.stop(); } catch {}
+          try { if (n.osc2) n.osc2.stop(); } catch {}
+          try { if (n.osc) n.osc.stop(); } catch {}
+          try { if (n.noise) n.noise.stop(); } catch {}
+          try { if (n.lfo) n.lfo.stop(); } catch {}
+        });
+        ambientNodes = [];
+        ambientStarted = false;
+      }, 4000);
     }
 
     function intensifyDrone() {
-      if (!droneGain || isMuted) return;
-      droneGain.gain.setTargetAtTime(0.04, audioCtx.currentTime, 1);
+      if (!ambientStarted || isMuted) return;
+      ambientNodes.forEach(n => {
+        if (n.gain) n.gain.gain.setTargetAtTime(n.gain.gain.value * 2.5, audioCtx.currentTime, 2);
+        if (n.filter) n.filter.frequency.setTargetAtTime(n.filter.frequency.value * 1.5, audioCtx.currentTime, 2);
+      });
+      // Faster chimes during search
+      if (chimesInterval) clearInterval(chimesInterval);
+      chimesInterval = setInterval(() => {
+        if (Math.random() < 0.6) playChime();
+      }, 2000 + Math.random() * 3000);
     }
 
     function calmDrone() {
-      if (!droneGain || isMuted) return;
-      droneGain.gain.setTargetAtTime(0.015, audioCtx.currentTime, 1);
+      if (!ambientStarted || isMuted) return;
+      ambientNodes.forEach(n => {
+        if (n.gain) n.gain.gain.setTargetAtTime(n.gain.gain.value / 2.5, audioCtx.currentTime, 2);
+        if (n.filter) n.filter.frequency.setTargetAtTime(n.filter.frequency.value / 1.5, audioCtx.currentTime, 2);
+      });
+      if (chimesInterval) clearInterval(chimesInterval);
+      scheduleChimes();
     }
 
     // Init audio on first interaction
