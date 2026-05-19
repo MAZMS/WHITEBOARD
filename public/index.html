@@ -1545,9 +1545,16 @@
       scheduleChimes();
     }
 
-    // Init audio on first interaction
-    document.addEventListener('click', () => initAudio(), { once: true });
-    document.addEventListener('keydown', () => initAudio(), { once: true });
+    // Init audio + start ambient on first interaction
+    function initAndPlay() {
+      initAudio();
+      if (guardianPhase === 'alive' || guardianPhase === 'searching' || guardianPhase === 'delivering') {
+        startDroneSound();
+      }
+    }
+    document.addEventListener('click', initAndPlay, { once: true });
+    document.addEventListener('keydown', initAndPlay, { once: true });
+    document.addEventListener('touchstart', initAndPlay, { once: true });
 
     // ===== TOMES COUNTER =====
     const tomesCounter = document.getElementById('tomesCounter');
