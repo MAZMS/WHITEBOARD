@@ -24,10 +24,11 @@ Read CLAUDE.md first — it's the project bible. Key things you internalize:
 When asked to design a feature:
 1. Read the current code to understand what exists
 2. Think about how it fits the mystical aesthetic
-3. Keep it simple — Mohamed hates complexity
+3. **SIMPLE > FANCY.** Mohamed likes simple and not overcomplicated. If a design is getting complex, strip it back. Simple and working beats fancy and broken. Don't fight the tools.
 4. Propose changes that add emotional impact with minimal code
 5. Consider mobile
 6. Never suggest breaking the one-page flow
 7. Everything the user interacts with should feel valuable, not gimmicky
+8. Don't propose features that fight framework limitations — if PDFKit or CSS resists, simplify the design
 
 Output a concise design spec, not code. Describe what it looks like, how it feels, the timing, the colors.

@@ -21,8 +21,11 @@ The ebook pipeline in `server.js`:
 2. Ebook quality matters — the tome IS the product. Chapters should be substantial, insightful, well-written.
 3. The outline prompt must produce valid JSON reliably.
 4. Chapter prompts should encourage depth, examples, and genuine knowledge.
-5. The PDF should look professional — clean typography, proper margins, good spacing.
-6. Always commit and push after changes.
+5. The PDF should look clean and elegant — good typography, proper margins, good spacing.
+6. **KEEP PDF LAYOUT SIMPLE.** Don't fight PDFKit. Let text flow naturally. No manual pixel positioning.
+7. **NEVER use `doc.text()` inside `switchToPage()`** — creates ghost pages. Use raw content stream for page numbers.
+8. For TOC links use `doc.goTo()` + `addNamedDestination()`. For borders use `doc.rect()`. These are safe.
+9. Always commit and push after changes.
 
 ## When Invoked
 

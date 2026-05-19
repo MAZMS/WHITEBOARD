@@ -53,6 +53,15 @@ All phases driven by CSS classes on `<body>` + JS `enterPhase()` function.
 3. Frontend polls `/api/ebook/:id/status` every 5s
 4. When ready, download link appears in chat
 
+## PDFKit Rules — LEARNED THE HARD WAY
+- **NEVER use `doc.text()` inside `switchToPage()`** — it creates ghost/empty pages every time
+- **Page numbers**: Use raw content stream `doc.page.content.addContent()` — NOT `doc.text()`
+- **Borders/dividers**: Use `doc.rect()`, `doc.moveTo().lineTo()` — pure drawing is safe
+- **TOC links**: Use `doc.goTo()` + `doc.addNamedDestination()` — annotations, not text
+- **Drop caps**: Use `continued: true` with `baseline` offset — NOT manual positioning
+- **Keep PDF layout SIMPLE** — let PDFKit handle text flow naturally. Don't fight it with manual positioning. When you try to be rigid, it breaks. Be flexible.
+- **`pageAdded` event**: Safe for drawing (rect/lines). Use raw content stream for page numbers. NEVER use `doc.text()` in this event.
+
 ## API Endpoints
 - `POST /api/chat` — Main chat (message + sessionId)
 - `GET /api/greet` — Unique sphinx-like greeting
@@ -80,13 +89,15 @@ Controlled by env vars on Railway:
 - **Tomes counter** — localStorage tracks tomes collected, shown bottom-right
 
 ## UX Principles
-- **Keep it simple** — One page, one flow, no navigation
+- **SIMPLE. NOT OVERCOMPLICATED.** — This is the #1 rule. Mohamed hates overengineering. If a feature is getting complex and buggy, strip it back. Simple and working beats fancy and broken.
+- **One page, one flow, no navigation**
 - **Everything smooth** — Transitions between phases must be cinematic, never abrupt
 - **Mobile friendly** — Responsive eye, send button, 16px font (no iOS zoom), safe area insets
 - **Every text should vary** — Greetings, stir phrases, progress messages, farewells, outros, eye whispers are all randomized or AI-generated
-- **Every interaction must be valuable** — Eye whispers give real wisdom, not generic mystery. The user should feel they gained something.
+- **Every interaction must be valuable** — Eye whispers give real wisdom, not generic mystery
 - **No visible scrollbars** — Hidden everywhere (chat, textarea)
 - **The Guardian never breaks character**
+- **Don't fight the tools** — If PDFKit, CSS, or any library resists a design, simplify the design. Don't hack around framework limitations with brittle workarounds.
 
 ## Workflow
 - **Always commit and push** to GitHub after completing any task

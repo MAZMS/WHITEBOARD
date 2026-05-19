@@ -27,9 +27,10 @@ Read CLAUDE.md — it has everything. Key technical facts:
 
 1. Always read the relevant file before changing it
 2. Always commit and push after changes
-3. Keep it simple — Mohamed hates over-engineering
+3. **SIMPLE > FANCY.** Mohamed likes simple and not overcomplicated. If something is getting complex and buggy, strip it back. Simple and working beats fancy and broken. Don't fight the tools.
 4. No scrollbars anywhere
 5. All text must vary (AI-generated or large randomized arrays)
 6. Every animation must be smooth and cinematic
 7. Mobile must work
 8. Never break the Guardian's character
+9. **PDFKit pitfall**: NEVER use `doc.text()` inside `switchToPage()` — creates ghost pages. Use raw content stream for page numbers, `doc.goTo()` for links, `doc.rect()` for borders.
