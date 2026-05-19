@@ -14,27 +14,36 @@ const EBOOKS_DIR = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks' : path.join(_
 if (!fs.existsSync(EBOOKS_DIR)) fs.mkdirSync(EBOOKS_DIR, { recursive: true });
 console.log('Ebooks directory:', EBOOKS_DIR);
 
-// LLM Provider: 'openrouter', 'selfhosted', or 'openai' (default)
-const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
+// LLM Providers — both available, switchable at runtime
+const clients = {};
+if (process.env.OPENAI_API_KEY) {
+  clients.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
+if (process.env.OPENROUTER_API_KEY) {
+  clients.openrouter = new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: process.env.OPENROUTER_API_KEY });
+}
+if (process.env.SELFHOSTED_LLM_URL) {
+  clients.selfhosted = new OpenAI({ baseURL: process.env.SELFHOSTED_LLM_URL, apiKey: process.env.SELFHOSTED_LLM_KEY });
+}
 
-const openai = new OpenAI(
-  LLM_PROVIDER === 'openrouter'
-    ? { baseURL: 'https://openrouter.ai/api/v1', apiKey: process.env.OPENROUTER_API_KEY }
-    : LLM_PROVIDER === 'selfhosted'
-    ? { baseURL: process.env.SELFHOSTED_LLM_URL, apiKey: process.env.SELFHOSTED_LLM_KEY }
-    : { apiKey: process.env.OPENAI_API_KEY }
-);
+let activeProvider = process.env.activeProvider || 'openai';
+function getClient() { return clients[activeProvider] || clients.openai || Object.values(clients)[0]; }
+function getModel() {
+  if (process.env.LLM_MODEL) return process.env.LLM_MODEL;
+  if (activeProvider === 'openrouter') return 'nousresearch/hermes-3-llama-3.1-8b';
+  if (activeProvider === 'selfhosted') return 'hermes3:8b-llama3.1-q4_K_M';
+  return 'gpt-5.4-mini';
+}
 
-const MODEL = process.env.LLM_MODEL || (
-  LLM_PROVIDER === 'openrouter' ? 'nousresearch/hermes-3-llama-3.1-8b' :
-  LLM_PROVIDER === 'selfhosted' ? 'hermes3:8b-llama3.1-q4_K_M' : 'gpt-5.4-mini'
-);
+// Alias for backward compat
+const openai = { chat: { completions: { create: (opts) => getClient().chat.completions.create(opts) } }, models: { list: () => getClient().models.list() } };
+const MODEL_GETTER = () => getModel();
 
-console.log(`LLM Provider: ${LLM_PROVIDER}, Model: ${MODEL}`);
+console.log(`LLM Provider: ${activeProvider}, Model: ${getModel()}`);
 
 // OpenAI uses max_completion_tokens, OpenRouter/Together/Ollama use max_tokens
 function tokenLimit(n) {
-  return (LLM_PROVIDER === 'selfhosted' || LLM_PROVIDER === 'openrouter')
+  return (activeProvider === 'selfhosted' || activeProvider === 'openrouter')
     ? { max_tokens: n }
     : { max_completion_tokens: n };
 }
@@ -108,12 +117,12 @@ app.post('/api/chat', async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: MODEL,
+      model: getModel(),
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         ...trimmed
       ],
-      ...tokenLimit(LLM_PROVIDER === 'selfhosted' ? 2048 : 512),
+      ...tokenLimit(activeProvider === 'selfhosted' ? 2048 : 512),
       temperature: 0.8,
     });
 
@@ -139,9 +148,9 @@ app.post('/api/chat', async (req, res) => {
       res.json({ reply });
     }
   } catch (err) {
-    console.error(`LLM error (${LLM_PROVIDER}):`, err.message, err.status, err.code);
+    console.error(`LLM error (${activeProvider}):`, err.message, err.status, err.code);
     res.status(500).json({
-      error: LLM_PROVIDER === 'selfhosted'
+      error: activeProvider === 'selfhosted'
         ? 'The Guardian sleeps... the ancient vessel may need awakening.'
         : 'The Guardian is silent... try again.',
       debug: { status: err.status, code: err.code, message: err.message }
@@ -173,7 +182,7 @@ Respond in this exact JSON format only, no other text:
 }`;
 
   const outlineRes = await openai.chat.completions.create({
-    model: MODEL,
+    model: getModel(),
     messages: [{ role: 'user', content: outlinePrompt }],
     ...tokenLimit(1024),
     temperature: 0.7,
@@ -197,7 +206,7 @@ Respond in this exact JSON format only, no other text:
   let chapterIndex = 0;
   for (const ch of outline.chapters) {
     const chapterRes = await openai.chat.completions.create({
-      model: MODEL,
+      model: getModel(),
       messages: [{
         role: 'user',
         content: `You are writing an ebook titled "${outline.title}" (${outline.subtitle}).
@@ -437,7 +446,7 @@ No quotes. No emojis. Just the fragment.` },
     ];
 
     const completion = await openai.chat.completions.create({
-      model: MODEL,
+      model: getModel(),
       messages,
       ...tokenLimit(30),
       temperature: 1,
@@ -460,7 +469,7 @@ app.get('/api/ebook/:id/download', (req, res) => {
 app.get('/api/outro', async (req, res) => {
   try {
     const completion = await openai.chat.completions.create({
-      model: MODEL,
+      model: getModel(),
       messages: [{
         role: 'user',
         content: `Generate two short texts for a "start over" button on a mystical AI library site. The Guardian has just delivered a tome and gone to sleep.
@@ -485,7 +494,7 @@ Respond in JSON only: {"linkText": "...", "noteText": "..."}`
 app.get('/api/greet', async (req, res) => {
   try {
     const completion = await openai.chat.completions.create({
-      model: MODEL,
+      model: getModel(),
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: 'Greet me and ask what knowledge I seek — in one sphinx-like sentence. Cryptic, powerful. You already know I came for a tome. Each greeting must be unique.' }
@@ -503,7 +512,7 @@ app.get('/api/greet', async (req, res) => {
 app.get('/api/farewell', async (req, res) => {
   try {
     const completion = await openai.chat.completions.create({
-      model: MODEL,
+      model: getModel(),
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: 'The tome is delivered. Speak your final words — one sentence. Cryptic, final, sphinx-like. You are going to sleep. No questions. No warmth. Just a cold, powerful goodbye.' }
@@ -517,13 +526,28 @@ app.get('/api/farewell', async (req, res) => {
   }
 });
 
+// --- Guardian Mode Toggle ---
+app.post('/api/mode', (req, res) => {
+  const { mode } = req.body; // 'censored' or 'uncensored'
+  if (mode === 'censored' && clients.openai) {
+    activeProvider = 'openai';
+  } else if (mode === 'uncensored' && clients.openrouter) {
+    activeProvider = 'openrouter';
+  }
+  res.json({ provider: activeProvider, model: getModel() });
+});
+
+app.get('/api/mode', (req, res) => {
+  res.json({ provider: activeProvider, model: getModel() });
+});
+
 // --- Status ---
 app.get('/api/status', async (req, res) => {
   try {
     const models = await openai.models.list();
-    res.json({ provider: LLM_PROVIDER, model: MODEL, status: 'connected', models: models.data.map(m => m.id) });
+    res.json({ provider: activeProvider, model: getModel(), status: 'connected', models: models.data.map(m => m.id) });
   } catch (err) {
-    res.json({ provider: LLM_PROVIDER, model: MODEL, status: 'unreachable', error: err.message });
+    res.json({ provider: activeProvider, model: getModel(), status: 'unreachable', error: err.message });
   }
 });
 

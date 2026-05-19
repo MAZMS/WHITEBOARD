@@ -557,27 +557,6 @@
       font-family: Georgia, serif;
     }
 
-    /* Toggle switch */
-    .toggle {
-      width: 40px; height: 20px;
-      background: #2a2520;
-      border-radius: 10px;
-      position: relative;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    .toggle.on { background: #8B7D45; }
-    .toggle::after {
-      content: '';
-      position: absolute;
-      top: 2px; left: 2px;
-      width: 16px; height: 16px;
-      background: #c8b88a;
-      border-radius: 50%;
-      transition: left 0.3s;
-    }
-    .toggle.on::after { left: 22px; }
-
     /* Volume slider */
     .vol-slider {
       width: 100%;
@@ -705,13 +684,23 @@
       <div class="settings-section">
         <div class="settings-label">Sound</div>
         <div class="settings-row">
-          <span>Ambient Sound</span>
-          <div class="toggle" id="soundToggle"></div>
+          <button class="settings-action" id="muteBtn" style="width:100%">Unmute</button>
         </div>
         <div class="settings-row">
           <span>Volume</span>
         </div>
         <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="70">
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Guardian Mode</div>
+        <div class="settings-row">
+          <span id="modeLabel">Uncensored</span>
+          <div class="toggle" id="censorToggle"></div>
+        </div>
+        <div style="margin-top:6px;">
+          <span class="coming-soon" id="modeDesc">Hermes 3 via OpenRouter — unfiltered</span>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -1579,9 +1568,14 @@
     // Settings panel
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsOverlay = document.getElementById('settingsOverlay');
-    const soundToggle = document.getElementById('soundToggle');
+    const muteBtn = document.getElementById('muteBtn');
     const volSlider = document.getElementById('volSlider');
+    const MAX_GAIN = 4;
     let savedVol = parseFloat(localStorage.getItem('gl-volume') || '0.7');
+
+    function getGain() { return savedVol * MAX_GAIN; }
+    function updateMuteBtn() { muteBtn.textContent = isMuted ? 'Unmute' : 'Mute'; }
+    updateMuteBtn();
 
     settingsBtn.addEventListener('click', () => {
       settingsOverlay.classList.toggle('open');
@@ -1591,13 +1585,12 @@
       if (e.target === settingsOverlay) settingsOverlay.classList.remove('open');
     });
 
-    // Sound toggle
-    if (!isMuted) soundToggle.classList.add('on');
-    soundToggle.addEventListener('click', () => {
+    // Mute button
+    muteBtn.addEventListener('click', () => {
       isMuted = !isMuted;
       localStorage.setItem('gl-muted', isMuted);
-      soundToggle.classList.toggle('on', !isMuted);
-      if (masterGain) masterGain.gain.setTargetAtTime(isMuted ? 0 : savedVol, audioCtx.currentTime, 0.3);
+      updateMuteBtn();
+      if (masterGain) masterGain.gain.setTargetAtTime(isMuted ? 0 : getGain(), audioCtx.currentTime, 0.3);
     });
 
     // Volume slider
@@ -1605,7 +1598,7 @@
     volSlider.addEventListener('input', () => {
       savedVol = volSlider.value / 100;
       localStorage.setItem('gl-volume', savedVol);
-      if (masterGain && !isMuted) masterGain.gain.setTargetAtTime(savedVol, audioCtx.currentTime, 0.1);
+      if (masterGain && !isMuted) masterGain.gain.setTargetAtTime(getGain(), audioCtx.currentTime, 0.1);
     });
 
     // Reset tomes
@@ -1616,11 +1609,36 @@
       document.getElementById('settingsTomes').textContent = '0';
     });
 
+    // Guardian mode toggle (censored/uncensored)
+    const censorToggle = document.getElementById('censorToggle');
+    const modeLabel = document.getElementById('modeLabel');
+    const modeDesc = document.getElementById('modeDesc');
+
+    // Load current mode from server
+    fetch('/api/mode').then(r => r.json()).then(d => {
+      const uncensored = d.provider === 'openrouter';
+      censorToggle.classList.toggle('on', uncensored);
+      modeLabel.textContent = uncensored ? 'Uncensored' : 'Censored';
+      modeDesc.textContent = uncensored ? 'Hermes 3 via OpenRouter — unfiltered' : 'GPT via OpenAI — filtered';
+    }).catch(() => {});
+
+    censorToggle.addEventListener('click', async () => {
+      const goUncensored = !censorToggle.classList.contains('on');
+      censorToggle.classList.toggle('on', goUncensored);
+      modeLabel.textContent = goUncensored ? 'Uncensored' : 'Censored';
+      modeDesc.textContent = goUncensored ? 'Hermes 3 via OpenRouter — unfiltered' : 'GPT via OpenAI — filtered';
+      await fetch('/api/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: goUncensored ? 'uncensored' : 'censored' })
+      });
+    });
+
     function initAudio() {
       if (audioCtx) return;
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       masterGain = audioCtx.createGain();
-      masterGain.gain.value = isMuted ? 0 : savedVol;
+      masterGain.gain.value = isMuted ? 0 : getGain();
       masterGain.connect(audioCtx.destination);
       // Reverb
       const len = audioCtx.sampleRate * 3;
