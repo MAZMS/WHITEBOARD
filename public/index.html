@@ -857,6 +857,7 @@
 
     function handleDelivering() {
       stopDrift();
+      resetSearchIntensity();
       clearInterval(particleInterval);
       particleInterval = setInterval(spawnParticle, 600);
       completeBorderLoader();
@@ -902,6 +903,54 @@
           location.reload();
         });
       }, 6000);
+    }
+
+    // ===== SEARCH INTENSITY (escalates with progress) =====
+    let searchParticleRate = 200;
+
+    function updateSearchIntensity(progress) {
+      if (guardianPhase !== 'searching') return;
+      const p = Math.min(progress, 1);
+
+      // Pupil dilates: 3.5 → 6
+      pupil.setAttribute('r', 3.5 + p * 2.5);
+
+      // Eye glow intensifies
+      const glowSize = 12 + p * 30;
+      const glowOpacity = 0.1 + p * 0.25;
+      eyeSymbol.querySelector('svg').style.filter = `drop-shadow(0 0 ${glowSize}px rgba(200, 180, 110, ${glowOpacity}))`;
+
+      // Particle rate: 200ms → 80ms
+      const newRate = Math.max(80, 200 - p * 120);
+      if (Math.abs(newRate - searchParticleRate) > 15) {
+        searchParticleRate = newRate;
+        clearInterval(particleInterval);
+        particleInterval = setInterval(spawnParticle, searchParticleRate);
+      }
+
+      // Drift speed: wider and faster
+      stopDrift();
+      startDrift(2000 - p * 1000, 4 + p * 4);
+
+      // Triangle gets brighter
+      document.querySelector('.triangle-line').style.stroke = `rgba(${140 + p * 80}, ${130 + p * 60}, ${60 + p * 40}, ${0.6 + p * 0.4})`;
+
+      // Drone frequency shifts up
+      if (ambientNodes.length > 0 && ambientNodes[0].osc1) {
+        ambientNodes[0].osc1.frequency.setTargetAtTime(55 + p * 30, audioCtx.currentTime, 1);
+        ambientNodes[0].osc2.frequency.setTargetAtTime(55.5 + p * 30, audioCtx.currentTime, 1);
+      }
+    }
+
+    function resetSearchIntensity() {
+      pupil.setAttribute('r', 3.5);
+      eyeSymbol.querySelector('svg').style.filter = '';
+      document.querySelector('.triangle-line').style.stroke = '';
+      searchParticleRate = 200;
+      if (ambientNodes.length > 0 && ambientNodes[0].osc1) {
+        ambientNodes[0].osc1.frequency.setTargetAtTime(55, audioCtx.currentTime, 1);
+        ambientNodes[0].osc2.frequency.setTargetAtTime(55.5, audioCtx.currentTime, 1);
+      }
     }
 
     // ===== FORM SUBMIT =====
@@ -1064,7 +1113,10 @@
           const data = await res.json();
 
           // Update border progress
-          if (data.progress) updateBorderProgress(data.progress);
+          if (data.progress) {
+            updateBorderProgress(data.progress);
+            updateSearchIntensity(data.progress);
+          }
 
           // Cycle progress messages
           if (data.status === 'generating' && msgIndex < messages.length) {
