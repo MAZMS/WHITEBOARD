@@ -301,30 +301,30 @@ app.get('/api/ebook/:id/status', (req, res) => {
   res.json({ status: job.status, title: job.title, progress: job.progress || 0, error: job.error });
 });
 
-// --- Eye click whisper ---
-app.get('/api/whisper', async (req, res) => {
+// --- Eye click whisper (Oracle) ---
+app.post('/api/whisper', async (req, res) => {
+  const prev = req.body.previous || [];
   try {
+    const messages = [
+      { role: 'system', content: `You are the Oracle — the all-seeing Guardian. Each time the seeker gazes upon you, you reveal a deeper layer of truth.
+
+Your whispers are INTERCONNECTED. Each one builds on what you said before — going deeper, contradicting, expanding, or challenging your previous words. Like peeling layers of an onion. If you said something about fear, the next might be about what lies beneath that fear. If you spoke of discipline, the next might reveal what discipline is hiding from.
+
+Rules:
+- ONE sentence only (8-15 words)
+- Hit hard — never fluffy or generic
+- Draw from: stoic philosophy, psychology, relationships, purpose, fear, growth, discipline, love, death, meaning
+- If this is the FIRST gaze, deliver a standalone revelation
+- If there are previous whispers, BUILD upon them — deepen, twist, or challenge what came before
+- Never repeat yourself. Each whisper must feel like a new door opening from the last one.
+- No quotes, no emojis.` },
+      ...prev.map(w => ({ role: 'assistant', content: w })),
+      { role: 'user', content: prev.length === 0 ? 'I gaze upon the Oracle for the first time.' : `I gaze again. You have spoken ${prev.length} time${prev.length > 1 ? 's' : ''} before. Go deeper.` }
+    ];
+
     const completion = await openai.chat.completions.create({
       model: MODEL,
-      messages: [{
-        role: 'user',
-        content: `You are the Oracle — the all-seeing Guardian who knows every human truth. Someone just gazed into your eye seeking guidance. Deliver ONE powerful sentence (8-15 words) that hits like a revelation.
-
-You are NOT vague or generic. You speak like you can SEE the person's soul. Your words should make someone stop scrolling and think "...that's exactly what I needed to hear."
-
-Draw from: stoic philosophy, psychology, hard-won life lessons, relationship truths, self-awareness, ambition, fear, purpose, loneliness, growth, discipline, love, death, meaning.
-
-Examples of the QUALITY you aim for:
-- "You already know the answer. You fear the cost of acting on it."
-- "The person you are avoiding becoming is the one you need most."
-- "Comfort is the slowest form of death. You feel it already."
-- "They did not leave because of you. You stayed too long because of you."
-- "The discipline you resist today becomes the regret you carry tomorrow."
-
-NEVER be fluffy or generic like "believe in yourself" or "the journey matters." Hit hard. Be specific. Be the oracle they didn't know they needed.
-
-One sentence. No quotes. No emojis. Vary the topic every time.`
-      }],
+      messages,
       ...tokenLimit(60),
       temperature: 1,
     });

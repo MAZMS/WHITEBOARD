@@ -1237,8 +1237,9 @@
       setTimeout(() => document.body.classList.remove('shake'), 300);
     }
 
-    // ===== EYE CLICK =====
+    // ===== EYE CLICK (Oracle) =====
     let eyeClickCooldown = false;
+    const whisperHistory = [];
 
     eyeSymbol.addEventListener('click', async () => {
       if (eyeClickCooldown || guardianPhase === 'dormant' || guardianPhase === 'sleeping') return;
@@ -1257,10 +1258,15 @@
       playTone(800, 0.15, 'sine', 0.1);
       setTimeout(() => playTone(1200, 0.2, 'sine', 0.06), 100);
 
-      // AI-generated whisper
+      // Oracle whisper — builds on previous whispers
       try {
-        const res = await fetch('/api/whisper');
+        const res = await fetch('/api/whisper', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ previous: whisperHistory.slice(-10) })
+        });
         const data = await res.json();
+        whisperHistory.push(data.reply);
         addTypedMessage(data.reply, 'guardian', 25);
       } catch {
         addTypedMessage('The eye sees all... even you.', 'guardian', 25);
