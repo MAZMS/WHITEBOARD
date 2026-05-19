@@ -627,6 +627,95 @@
       font-family: Georgia, serif;
     }
 
+    /* ===== UNCENSORED MODE — The Forbidden Wing ===== */
+    body.uncensored {
+      transition: background 1.5s ease;
+      background: #080606;
+    }
+    body.uncensored .message.guardian {
+      color: #c4a088;
+      transition: color 1.5s;
+    }
+    body.uncensored .message.user {
+      color: #8a7070;
+      transition: color 1.5s;
+    }
+    body.uncensored .thinking {
+      color: #5a4040;
+    }
+    body.uncensored .eye-container::before {
+      background: radial-gradient(circle, rgba(180, 80, 60, 0.08) 0%, transparent 70%);
+      transition: background 1.5s;
+    }
+    body.uncensored .eye-container::after {
+      background: radial-gradient(circle, rgba(180, 80, 60, 0.04) 0%, transparent 60%);
+      transition: background 1.5s;
+    }
+    body.uncensored .triangle-line {
+      stroke: #5a2828;
+      transition: stroke 1.5s;
+    }
+    body.uncensored .eye-outline,
+    body.uncensored .eyelid-upper,
+    body.uncensored .eyelid-lower {
+      stroke: #5a2828;
+      transition: stroke 1.5s;
+    }
+    body.uncensored .iris-ring {
+      stroke: #5a2828;
+      transition: stroke 1.5s;
+    }
+    body.uncensored .pupil {
+      fill: #8a4040;
+      transition: fill 1.5s;
+    }
+    body.uncensored .particle {
+      background: rgba(180, 80, 60, 0.18);
+    }
+    body.uncensored .border-loader path {
+      stroke: #8B4545;
+      filter: drop-shadow(0 0 6px rgba(180, 80, 60, 0.4));
+      transition: stroke 1.5s;
+    }
+    body.uncensored .input-area {
+      border-top-color: #2a2020;
+      transition: border-color 1.5s;
+    }
+    body.uncensored .input-area textarea {
+      border-color: #2a2020;
+      color: #c4a088;
+      transition: border-color 1.5s, color 1.5s;
+    }
+    body.uncensored .input-area textarea::placeholder {
+      color: #5a4040;
+    }
+    body.uncensored #sendBtn {
+      color: #5a4040;
+      border-color: #2a2020;
+    }
+    body.uncensored .settings-btn {
+      color: #5a2828;
+    }
+    body.uncensored .download-link {
+      border-color: #5a2828;
+      color: #c4a088;
+    }
+    body.uncensored .tomes-counter {
+      color: #5a2828;
+    }
+
+    /* Searching phase in uncensored — crimson intensity */
+    body.uncensored.phase-searching .eye-container::before {
+      background: radial-gradient(circle, rgba(200, 60, 40, 0.15) 0%, transparent 70%);
+    }
+    body.uncensored.phase-searching .eye-container::after {
+      background: radial-gradient(circle, rgba(200, 60, 40, 0.08) 0%, transparent 60%);
+    }
+    body.uncensored.phase-searching .eye-symbol svg {
+      animation: breathe-intense 2.5s ease-in-out infinite;
+      filter: drop-shadow(0 0 20px rgba(200, 60, 40, 0.2));
+    }
+
     /* ===== MOBILE ===== */
     @media (max-width: 600px) {
       .main {
@@ -1647,14 +1736,45 @@
       const uncensored = d.provider === 'openrouter';
       censorToggle.classList.toggle('on', uncensored);
       modeLabel.textContent = uncensored ? 'Uncensored' : 'Censored';
-      modeDesc.textContent = uncensored ? 'Hermes 3 via OpenRouter — unfiltered' : 'GPT via OpenAI — filtered';
+      modeDesc.textContent = uncensored ? 'The Forbidden Wing — no limits' : 'The Main Hall — filtered';
+      document.body.classList.toggle('uncensored', uncensored);
     }).catch(() => {});
 
     censorToggle.addEventListener('click', async () => {
       const goUncensored = !censorToggle.classList.contains('on');
       censorToggle.classList.toggle('on', goUncensored);
       modeLabel.textContent = goUncensored ? 'Uncensored' : 'Censored';
-      modeDesc.textContent = goUncensored ? 'Hermes 3 via OpenRouter — unfiltered' : 'GPT via OpenAI — filtered';
+      modeDesc.textContent = goUncensored ? 'The Forbidden Wing — no limits' : 'The Main Hall — filtered';
+
+      // Atmosphere shift
+      document.body.classList.toggle('uncensored', goUncensored);
+      shake();
+
+      // Rumble / release sound
+      if (audioCtx && !isMuted) {
+        if (goUncensored) {
+          playTone(35, 2, 'sine', 0.06);
+          setTimeout(() => playTone(45, 1.5, 'sine', 0.04), 200);
+        } else {
+          playTone(220, 0.8, 'sine', 0.04);
+          setTimeout(() => playTone(330, 0.6, 'sine', 0.03), 200);
+        }
+      }
+
+      // Shift drone pitch if ambient is running
+      if (ambientStarted && ambientNodes.drone) {
+        const t = audioCtx.currentTime;
+        const basePitch = goUncensored ? 40 : 55;
+        ambientNodes.drone.osc.frequency.setTargetAtTime(basePitch, t, 2);
+        if (ambientNodes.sub) ambientNodes.sub.osc.frequency.setTargetAtTime(goUncensored ? 65 : 82.5, t, 2);
+      }
+
+      // Eye flash
+      eyeSymbol.querySelector('svg').style.filter = goUncensored
+        ? 'drop-shadow(0 0 30px rgba(200, 60, 40, 0.3))'
+        : 'drop-shadow(0 0 30px rgba(200, 180, 110, 0.3))';
+      setTimeout(() => { eyeSymbol.querySelector('svg').style.filter = ''; }, 800);
+
       await fetch('/api/mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
