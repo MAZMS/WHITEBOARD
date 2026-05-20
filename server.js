@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const OpenAI = require('openai');
 const PDFDocument = require('pdfkit');
@@ -14,26 +15,62 @@ const EBOOKS_DIR = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks' : path.join(_
 if (!fs.existsSync(EBOOKS_DIR)) fs.mkdirSync(EBOOKS_DIR, { recursive: true });
 console.log('Ebooks directory:', EBOOKS_DIR);
 
-// LLM Providers — all available, switchable at runtime
+// --- Vertex AI ---
+const USE_VERTEX_AI = process.env.USE_VERTEX_AI === 'true';
+const VERTEX_LOCATION = process.env.VERTEX_LOCATION || 'global';
+const vertexProjectId = process.env.VERTEX_PROJECT_ID;
+const vertexApiKey = process.env.VERTEX_API_KEY;
+const vertexBaseURL = process.env.VERTEX_OPENAI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
+let vertexAuth = null;
+
+// Service account auth (if provided)
+if (USE_VERTEX_AI && process.env.VERTEX_SERVICE_ACCOUNT_JSON_B64) {
+  const { GoogleAuth } = require('google-auth-library');
+  const saJson = JSON.parse(Buffer.from(process.env.VERTEX_SERVICE_ACCOUNT_JSON_B64, 'base64').toString());
+  vertexAuth = new GoogleAuth({
+    credentials: saJson,
+    scopes: ['https://www.googleapis.com/auth/cloud-platform', 'https://www.googleapis.com/auth/generative-language']
+  });
+}
+
+let cachedAccessToken = null;
+let tokenExpiry = 0;
+async function getAccessToken() {
+  if (cachedAccessToken && Date.now() < tokenExpiry - 60000) return cachedAccessToken;
+  const client = await vertexAuth.getClient();
+  const res = await client.getAccessToken();
+  cachedAccessToken = res.token;
+  tokenExpiry = Date.now() + 3500000;
+  return cachedAccessToken;
+}
+
+if (USE_VERTEX_AI) {
+  console.log(`Vertex AI enabled — project: ${vertexProjectId}, auth: ${vertexAuth ? 'service-account' : 'api-key'}`);
+}
+
+// --- LLM Providers — all available, switchable at runtime ---
 const clients = {};
 if (process.env.OPENAI_API_KEY) {
   clients.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
-if (process.env.GEMINI_API_KEY) {
-  clients.gemini = new OpenAI({ baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/', apiKey: process.env.GEMINI_API_KEY });
+// Text gen: GEMINI_API_KEY for generativelanguage.googleapis.com, VERTEX_API_KEY as fallback
+const geminiKey = process.env.GEMINI_API_KEY || vertexApiKey;
+if (geminiKey) {
+  clients.gemini = new OpenAI({ baseURL: vertexBaseURL || 'https://generativelanguage.googleapis.com/v1beta/openai/', apiKey: process.env.GEMINI_API_KEY || vertexApiKey });
 }
 if (process.env.OPENROUTER_API_KEY) {
   clients.openrouter = new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: process.env.OPENROUTER_API_KEY });
 }
-if (process.env.SELFHOSTED_LLM_URL) {
-  clients.selfhosted = new OpenAI({ baseURL: process.env.SELFHOSTED_LLM_URL, apiKey: process.env.SELFHOSTED_LLM_KEY });
+if (process.env.SELFHOSTED_LLM_URL || process.env.VLLM_BASE_URL) {
+  const selfhostedURL = process.env.VLLM_BASE_URL || process.env.SELFHOSTED_LLM_URL;
+  clients.selfhosted = new OpenAI({ baseURL: selfhostedURL, apiKey: process.env.SELFHOSTED_LLM_KEY || 'none' });
 }
 
 let activeProvider = process.env.LLM_PROVIDER || 'gemini';
 function getClient() { return clients[activeProvider] || clients.gemini || clients.openai || Object.values(clients)[0]; }
 function getModel() {
   if (process.env.LLM_MODEL) return process.env.LLM_MODEL;
-  if (activeProvider === 'gemini') return 'gemini-2.5-flash';
+  if (activeProvider === 'gemini') return process.env.VERTEX_TEXT_MODEL || 'gemini-2.5-flash';
   if (activeProvider === 'openrouter') return 'nousresearch/hermes-4-405b';
   if (activeProvider === 'selfhosted') return 'hermes3:8b-llama3.1-q4_K_M';
   return 'gpt-5.4-mini';
@@ -52,27 +89,43 @@ function tokenLimitFor(provider, n) {
 }
 
 async function llmCreate(opts) {
-  try {
-    return await getClient().chat.completions.create(opts);
-  } catch (err) {
-    // Fallback: if Gemini fails and OpenAI is available, retry with OpenAI
-    if (activeProvider === 'gemini' && clients.openai) {
-      console.warn(`Gemini failed (${err.message}), falling back to OpenAI`);
-      const fallbackOpts = { ...opts, model: getModelFor('openai') };
-      // Swap max_tokens → max_completion_tokens for OpenAI
-      if (fallbackOpts.max_tokens) {
-        fallbackOpts.max_completion_tokens = fallbackOpts.max_tokens;
-        delete fallbackOpts.max_tokens;
+  const maxRetries = 3;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Use service account token for text gen — bills to GCP, no free tier limits
+      if (USE_VERTEX_AI && vertexAuth && activeProvider === 'gemini') {
+        const token = await getAccessToken();
+        const saClient = new OpenAI({
+          baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+          apiKey: token
+        });
+        return await saClient.chat.completions.create(opts);
       }
-      return await clients.openai.chat.completions.create(fallbackOpts);
+      return await getClient().chat.completions.create(opts);
+    } catch (err) {
+      if (err.status === 429 && attempt < maxRetries - 1) {
+        const delay = (attempt + 1) * 10000;
+        console.warn(`Rate limited (429), retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      if (activeProvider === 'gemini' && clients.openai) {
+        console.warn(`Gemini failed (${err.message}), falling back to OpenAI`);
+        const fallbackOpts = { ...opts, model: getModelFor('openai') };
+        if (fallbackOpts.max_tokens) {
+          fallbackOpts.max_completion_tokens = fallbackOpts.max_tokens;
+          delete fallbackOpts.max_tokens;
+        }
+        return await clients.openai.chat.completions.create(fallbackOpts);
+      }
+      throw err;
     }
-    throw err;
   }
 }
 
 const openai = { chat: { completions: { create: llmCreate } }, models: { list: () => getClient().models.list() } };
 
-console.log(`LLM Provider: ${activeProvider}, Model: ${getModel()}`);
+console.log(`LLM Provider: ${activeProvider}, Model: ${getModel()}${USE_VERTEX_AI && vertexAuth ? ' (Vertex AI)' : ''}`);
 
 function tokenLimit(n) {
   return (activeProvider === 'openai') ? { max_completion_tokens: n } : { max_tokens: n };
@@ -219,22 +272,41 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// --- Cover image generation (Gemini) ---
+// --- Cover image generation (Gemini / Vertex AI) ---
 async function generateCover(title, subtitle) {
-  if (!process.env.GEMINI_API_KEY) return null;
+  const imageModel = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
+  const prompt = `Generate a book cover image. Dark, atmospheric, mystical ancient library aesthetic. Deep black background with subtle gold and warm brown tones. Minimalist and elegant. The mood should feel ancient, vast, and powerful — like forbidden knowledge. Do NOT include any text or letters on the image. Abstract, symbolic imagery only. The book is about: "${title}" — ${subtitle}`;
+
   try {
-    const prompt = `Generate a book cover image. Dark, atmospheric, mystical ancient library aesthetic. Deep black background with subtle gold and warm brown tones. Minimalist and elegant. The mood should feel ancient, vast, and powerful — like forbidden knowledge. Do NOT include any text or letters on the image. Abstract, symbolic imagery only. The book is about: "${title}" — ${subtitle}`;
+    let data;
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-      })
-    });
+    if (USE_VERTEX_AI && vertexAuth) {
+      // Vertex AI — service account auth
+      const token = await getAccessToken();
+      const res = await fetch(`https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1beta1/projects/${vertexProjectId}/locations/${VERTEX_LOCATION}/publishers/google/models/${imageModel}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+        })
+      });
+      data = await res.json();
+    } else if (geminiKey) {
+      // API key auth (works for both GEMINI_API_KEY and VERTEX_API_KEY)
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+        })
+      });
+      data = await res.json();
+    } else {
+      return null;
+    }
 
-    const data = await res.json();
     const parts = data?.candidates?.[0]?.content?.parts || [];
     const imagePart = parts.find(p => p.inlineData);
     if (!imagePart) return null;

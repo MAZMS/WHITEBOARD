@@ -33,7 +33,8 @@
 
     /* ===== CENTERED START STATE ===== */
     body.centered .main {
-      padding-top: 28vh;
+      justify-content: center;
+      padding-top: 0;
     }
     body.centered .chat-area {
       flex: 0 0 auto;
@@ -351,10 +352,11 @@
       padding: 20px 24px 28px;
       display: flex;
       justify-content: center;
-      transition: border-top-color 0.8s ease, opacity 3s ease-out;
       position: relative;
       z-index: 2;
-      transition: opacity 3s ease-out;
+      flex-shrink: 0;
+      width: 100%;
+      transition: border-top-color 0.8s ease, opacity 3s ease-out;
     }
 
     .input-area form {
@@ -1046,8 +1048,7 @@
       </div>
     </div>
     <div class="chat-area" id="chatArea"></div>
-  </div>
-  <div class="input-area">
+    <div class="input-area">
     <form id="chatForm">
       <textarea id="guardianInput" placeholder="Speak unto the Guardian..." rows="1" autocomplete="off" disabled></textarea>
       <button type="submit" id="sendBtn" aria-label="Send">
@@ -1057,6 +1058,7 @@
         </svg>
       </button>
     </form>
+    </div>
   </div>
 
   <script>
