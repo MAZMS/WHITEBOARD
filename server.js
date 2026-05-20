@@ -469,7 +469,8 @@ function createPDF(filepath, outline, chapters, coverPath) {
     const gold = '#8B7D45';
 
     // ===== PAGE 0: COVER IMAGE (fully AI-generated) =====
-    if (coverPath && fs.existsSync(coverPath)) {
+    const hasCover = coverPath && fs.existsSync(coverPath);
+    if (hasCover) {
       doc.rect(0, 0, W, H).fill('#0a0a0a');
       try {
         doc.image(coverPath, 0, 0, { width: W, height: H, align: 'center', valign: 'center' });
@@ -478,6 +479,7 @@ function createPDF(filepath, outline, chapters, coverPath) {
       }
       doc.addPage();
     }
+    const tocPage = hasCover ? 2 : 1; // TOC page index shifts when cover exists
     // Drawing helpers (no text = no ghost pages)
     function divider(y, w = 140) {
       const cx = W / 2;
@@ -603,7 +605,7 @@ function createPDF(filepath, outline, chapters, coverPath) {
     });
 
     // Add clickable links on the TOC page
-    doc.switchToPage(1);
+    doc.switchToPage(tocPage);
     tocY.forEach((y, i) => {
       doc.goTo(80, y - 2, W - 160, 18, `ch${i}`);
     });
