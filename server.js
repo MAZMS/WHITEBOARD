@@ -283,7 +283,7 @@ app.post('/api/chat', async (req, res) => {
 
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle) {
-  const prompt = `Dark, atmospheric book cover. Mystical ancient library aesthetic. Deep black background with subtle gold and warm brown tones. Minimalist and elegant. Ancient, vast, powerful — forbidden knowledge. No text, no letters, no words. Abstract symbolic imagery only. Topic: "${title}" — ${subtitle}`;
+  const prompt = `An abstract painting for a book cover. Dark atmospheric mystical ancient library aesthetic. Deep black background with subtle gold and warm brown tones. Minimalist and elegant. The mood is ancient, vast, powerful, like forbidden knowledge. CRITICAL: Absolutely NO text, NO letters, NO words, NO titles, NO author names, NO numbers anywhere in the image. Pure abstract visual art only — shapes, light, shadow, symbolism. The book topic is: "${title}"`;
 
   try {
     if (USE_VERTEX_AI && vertexAuth) {
@@ -297,7 +297,7 @@ async function generateCover(title, subtitle) {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           instances: [{ prompt }],
-          parameters: { sampleCount: 1, aspectRatio: '3:4' }
+          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'text, letters, words, titles, author names, numbers, writing, typography, font, watermark' }
         })
       });
       const data = await res.json();
