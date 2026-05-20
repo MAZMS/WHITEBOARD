@@ -284,8 +284,8 @@ app.post('/api/chat', async (req, res) => {
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle) {
   const coverPrompt = `A flat front-facing book cover. Title: "${title}". Subtitle: "${subtitle}". Show ONLY the title and subtitle as text — no author name, no other text. Beautiful artwork matching the topic.`;
-  // Imagen prompt — keep text minimal since it can't spell well
-  const imagenPrompt = `Minimalist book cover. Large bold title "${title}" centered. Clean design, artistic illustration matching the theme. No small text, no author name. Only the large title and art.`;
+  // Imagen prompt — flat design, title only since it can't spell well
+  const imagenPrompt = `Flat 2D digital book cover design, front view only. Large bold title "${title}" centered. Artistic illustration matching the theme. No small text, no author name. NOT a 3D rendering, NOT a photo of a physical book, NOT a mockup. Just a flat rectangular image.`;
 
   try {
     // 1. Try Nano Banana models first (Gemini — better at text rendering)
