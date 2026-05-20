@@ -288,17 +288,18 @@ async function generateCover(title, subtitle) {
   const imagenPrompt = `Digital art poster for "${title}". Cinematic, atmospheric illustration matching the theme. The words "${title}" displayed as large stylized text. No other text. Clean composition.`;
 
   try {
-    // 1. Try Nano Banana models first (Gemini — better at text rendering)
-    if (geminiKey) {
-      const imageModels = ['gemini-3-pro-image-preview', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image'];
-      for (const imageModel of imageModels) {
+    // 1. Try Nano Banana models via Vertex AI (bills to GCP $300 credits)
+    if (USE_VERTEX_AI && vertexAuth) {
+      const token = await getAccessToken();
+      const geminiImageModels = ['gemini-2.5-flash-image'];
+      for (const imageModel of geminiImageModels) {
         try {
-          console.log(`  Cover attempt: ${imageModel}`);
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
+          console.log(`  Cover attempt: ${imageModel} (Vertex AI)`);
+          const res = await fetch(`https://us-central1-aiplatform.googleapis.com/v1beta1/projects/${vertexProjectId}/locations/us-central1/publishers/google/models/${imageModel}:generateContent`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: coverPrompt }] }],
+              contents: [{ role: 'user', parts: [{ text: coverPrompt }] }],
               generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
             })
           });
@@ -309,36 +310,33 @@ async function generateCover(title, subtitle) {
             const imgBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
             const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
             fs.writeFileSync(coverPath, imgBuffer);
-            console.log(`  Cover generated via ${imageModel}`);
+            console.log(`  Cover generated via ${imageModel} (Vertex AI)`);
             return coverPath;
           }
-          console.warn(`  ${imageModel}: no image returned`);
+          console.warn(`  ${imageModel}: no image`, JSON.stringify(data).slice(0, 200));
         } catch (e) { console.warn(`  ${imageModel} error: ${e.message}`); }
       }
-    }
 
-    // 2. Fallback: Imagen 3 via Vertex AI (great art, text-only title)
-    if (USE_VERTEX_AI && vertexAuth) {
-      const token = await getAccessToken();
+      // 2. Fallback: Imagen 3 via Vertex AI
       const model = 'imagen-3.0-generate-002';
       console.log(`  Cover fallback: ${model}`);
-      const res = await fetch(`https://us-central1-aiplatform.googleapis.com/v1beta1/projects/${vertexProjectId}/locations/us-central1/publishers/google/models/${model}:predict`, {
+      const imgRes = await fetch(`https://us-central1-aiplatform.googleapis.com/v1beta1/projects/${vertexProjectId}/locations/us-central1/publishers/google/models/${model}:predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           instances: [{ prompt: imagenPrompt }],
-          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: '3D, mockup, physical book, book spine, shadow, perspective, photo of book, small text, fine print, author name, extra text, gibberish, nonsense, watermark' }
+          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: '3D, mockup, physical book, book spine, shadow, perspective, small text, author name, gibberish, watermark' }
         })
       });
-      const data = await res.json();
-      if (data.predictions?.[0]?.bytesBase64Encoded) {
-        const imgBuffer = Buffer.from(data.predictions[0].bytesBase64Encoded, 'base64');
+      const imgData = await imgRes.json();
+      if (imgData.predictions?.[0]?.bytesBase64Encoded) {
+        const imgBuffer = Buffer.from(imgData.predictions[0].bytesBase64Encoded, 'base64');
         const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
         fs.writeFileSync(coverPath, imgBuffer);
         console.log(`  Cover generated via Imagen 3`);
         return coverPath;
       }
-      console.warn('Imagen 3 failed:', JSON.stringify(data).slice(0, 300));
+      console.warn('Imagen 3 failed:', JSON.stringify(imgData).slice(0, 300));
     }
 
     return null;
