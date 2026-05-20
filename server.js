@@ -283,7 +283,7 @@ app.post('/api/chat', async (req, res) => {
 
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle) {
-  const prompt = `An abstract painting for a book cover. Dark atmospheric mystical ancient library aesthetic. Deep black background with subtle gold and warm brown tones. Minimalist and elegant. The mood is ancient, vast, powerful, like forbidden knowledge. CRITICAL: Absolutely NO text, NO letters, NO words, NO titles, NO author names, NO numbers anywhere in the image. Pure abstract visual art only — shapes, light, shadow, symbolism. The book topic is: "${title}"`;
+  const prompt = `Abstract dark artwork for a book cover background. Mystical ancient library aesthetic. Deep black background with subtle gold and warm brown tones. Minimalist and elegant. Ancient, vast, powerful, forbidden knowledge mood. NO text, NO letters, NO words, NO titles anywhere. Pure visual art only — shapes, light, shadow, abstract symbolism. Topic inspiration: "${title}"`;
 
   try {
     if (USE_VERTEX_AI && vertexAuth) {
@@ -461,7 +461,7 @@ function createPDF(filepath, outline, chapters, coverPath) {
     const H = doc.page.height;
     const gold = '#8B7D45';
 
-    // ===== PAGE 0: COVER IMAGE (if available) =====
+    // ===== PAGE 0: COVER (image + title overlay) =====
     if (coverPath && fs.existsSync(coverPath)) {
       doc.rect(0, 0, W, H).fill('#0a0a0a');
       try {
@@ -469,6 +469,20 @@ function createPDF(filepath, outline, chapters, coverPath) {
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
+      // Dark overlay for text readability
+      doc.rect(0, H * 0.35, W, H * 0.35).fillOpacity(0.55).fill('#0a0a0a');
+      doc.fillOpacity(1);
+      // Title
+      doc.fontSize(36).font('Helvetica-Bold').fillColor('#E8D5A0')
+        .text(outline.title, 50, H * 0.4, { align: 'center', width: W - 100 });
+      // Subtitle
+      doc.fontSize(14).font('Helvetica-Oblique').fillColor('#b8a878')
+        .text(outline.subtitle, 50, doc.y + 12, { align: 'center', width: W - 100 });
+      // Bottom branding
+      doc.fontSize(9).font('Helvetica').fillColor('#8B7D45')
+        .text('The Great Library', 50, H - 80, { align: 'center', width: W - 100 });
+      doc.fontSize(8).font('Helvetica-Oblique').fillColor('#6B6545')
+        .text('greatlibrary.ai', 50, H - 65, { align: 'center', width: W - 100 });
       doc.addPage();
     }
     // Drawing helpers (no text = no ghost pages)
