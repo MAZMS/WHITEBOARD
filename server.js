@@ -466,12 +466,15 @@ function createPDF(filepath, outline, chapters, coverPath) {
     const H = doc.page.height;
     const gold = '#8B7D45';
 
-    // ===== PAGE 0: COVER IMAGE (fully AI-generated) =====
+    // ===== PAGE 0: COVER IMAGE (fully AI-generated, edge-to-edge) =====
     const hasCover = coverPath && fs.existsSync(coverPath);
     if (hasCover) {
+      // Fill entire page black first, then stretch image edge-to-edge
+      doc.save();
       doc.rect(0, 0, W, H).fill('#0a0a0a');
+      doc.restore();
       try {
-        doc.image(coverPath, 0, 0, { cover: [W, H], align: 'center', valign: 'center' });
+        doc.image(coverPath, -1, -1, { width: W + 2, height: H + 2 });
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
