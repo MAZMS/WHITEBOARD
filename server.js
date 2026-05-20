@@ -290,7 +290,7 @@ async function generateCover(title, subtitle) {
   try {
     // 1. Try Nano Banana models first (Gemini — better at text rendering)
     if (geminiKey) {
-      const imageModels = ['gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-3-pro-image-preview'];
+      const imageModels = ['gemini-3-pro-image-preview', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image'];
       for (const imageModel of imageModels) {
         try {
           console.log(`  Cover attempt: ${imageModel}`);
