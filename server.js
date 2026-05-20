@@ -281,46 +281,39 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// --- Cover image generation (Gemini / Vertex AI) ---
+// --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle) {
-  const imageModel = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
-  const prompt = `Generate a book cover image. Dark, atmospheric, mystical ancient library aesthetic. Deep black background with subtle gold and warm brown tones. Minimalist and elegant. The mood should feel ancient, vast, and powerful — like forbidden knowledge. Do NOT include any text or letters on the image. Abstract, symbolic imagery only. The book is about: "${title}" — ${subtitle}`;
+  const prompt = `Dark, atmospheric book cover. Mystical ancient library aesthetic. Deep black background with subtle gold and warm brown tones. Minimalist and elegant. Ancient, vast, powerful — forbidden knowledge. No text, no letters, no words. Abstract symbolic imagery only. Topic: "${title}" — ${subtitle}`;
 
   try {
-    let data;
-
     if (USE_VERTEX_AI && vertexAuth) {
-      // Vertex AI — service account auth, bills to GCP project
+      // Imagen 3 via Vertex AI — bills to GCP project
       const token = await getAccessToken();
-      const imgLocation = process.env.VERTEX_IMAGE_LOCATION || 'us-central1';
-      const url = `https://${imgLocation}-aiplatform.googleapis.com/v1beta1/projects/${vertexProjectId}/locations/${imgLocation}/publishers/google/models/${imageModel}:generateContent`;
-      console.log(`  Cover request: ${imageModel} @ ${imgLocation}`);
-      const res = await fetch(url, {
+      const imgLocation = 'us-central1';
+      const model = 'imagen-3.0-generate-002';
+      console.log(`  Cover request: ${model} @ ${imgLocation}`);
+      const res = await fetch(`https://${imgLocation}-aiplatform.googleapis.com/v1beta1/projects/${vertexProjectId}/locations/${imgLocation}/publishers/google/models/${model}:predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+          instances: [{ prompt }],
+          parameters: { sampleCount: 1, aspectRatio: '3:4' }
         })
       });
-      const text = await res.text();
-      try { data = JSON.parse(text); } catch { console.warn('Cover non-JSON response:', text.slice(0, 300)); }
-      // If Vertex AI fails (403 billing, etc), fall back to API key
-      if (!data?.candidates && geminiKey) {
-        console.warn('Vertex AI image failed, falling back to API key');
-        const fallbackRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-          })
-        });
-        data = await fallbackRes.json();
-        if (!data?.candidates) console.warn('Cover API key fallback error:', JSON.stringify(data).slice(0, 300));
+      const data = await res.json();
+      if (data.predictions?.[0]?.bytesBase64Encoded) {
+        const imgBuffer = Buffer.from(data.predictions[0].bytesBase64Encoded, 'base64');
+        const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
+        fs.writeFileSync(coverPath, imgBuffer);
+        console.log(`  Cover generated: ${coverPath} (${imgBuffer.length} bytes)`);
+        return coverPath;
       }
-    } else if (geminiKey) {
-      // API key auth (works for both GEMINI_API_KEY and VERTEX_API_KEY)
+      console.warn('Imagen 3 failed:', JSON.stringify(data).slice(0, 300));
+    }
+
+    // Fallback: Gemini image gen via API key
+    if (geminiKey) {
+      const imageModel = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -329,20 +322,19 @@ async function generateCover(title, subtitle) {
           generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
         })
       });
-      data = await res.json();
-    } else {
-      return null;
+      const data = await res.json();
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find(p => p.inlineData);
+      if (imagePart) {
+        const imgBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
+        const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
+        fs.writeFileSync(coverPath, imgBuffer);
+        console.log(`  Cover generated (API key fallback): ${coverPath}`);
+        return coverPath;
+      }
     }
 
-    const parts = data?.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find(p => p.inlineData);
-    if (!imagePart) return null;
-
-    const imgBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
-    const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
-    fs.writeFileSync(coverPath, imgBuffer);
-    console.log(`  Cover generated: ${coverPath}`);
-    return coverPath;
+    return null;
   } catch (err) {
     console.warn('Cover generation failed:', err.message);
     return null;
