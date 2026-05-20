@@ -304,8 +304,21 @@ async function generateCover(title, subtitle) {
         })
       });
       const text = await res.text();
-      try { data = JSON.parse(text); } catch { console.warn('Cover non-JSON response:', text.slice(0, 300)); return null; }
-      if (!data?.candidates) console.warn('Cover API error:', JSON.stringify(data).slice(0, 500));
+      try { data = JSON.parse(text); } catch { console.warn('Cover non-JSON response:', text.slice(0, 300)); }
+      // If Vertex AI fails (403 billing, etc), fall back to API key
+      if (!data?.candidates && geminiKey) {
+        console.warn('Vertex AI image failed, falling back to API key');
+        const fallbackRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+          })
+        });
+        data = await fallbackRes.json();
+        if (!data?.candidates) console.warn('Cover API key fallback error:', JSON.stringify(data).slice(0, 300));
+      }
     } else if (geminiKey) {
       // API key auth (works for both GEMINI_API_KEY and VERTEX_API_KEY)
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
