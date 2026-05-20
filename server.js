@@ -219,6 +219,37 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// --- Cover image generation (Gemini) ---
+async function generateCover(title, subtitle) {
+  if (!process.env.GEMINI_API_KEY) return null;
+  try {
+    const prompt = `Generate a book cover image. Dark, atmospheric, mystical ancient library aesthetic. Deep black background with subtle gold and warm brown tones. Minimalist and elegant. The mood should feel ancient, vast, and powerful — like forbidden knowledge. Do NOT include any text or letters on the image. Abstract, symbolic imagery only. The book is about: "${title}" — ${subtitle}`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+      })
+    });
+
+    const data = await res.json();
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find(p => p.inlineData);
+    if (!imagePart) return null;
+
+    const imgBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
+    const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
+    fs.writeFileSync(coverPath, imgBuffer);
+    console.log(`  Cover generated: ${coverPath}`);
+    return coverPath;
+  } catch (err) {
+    console.warn('Cover generation failed:', err.message);
+    return null;
+  }
+}
+
 // --- Ebook generation ---
 async function generateEbook(ebookId, conversationHistory) {
   console.log(`Generating ebook ${ebookId} using provider=${activeProvider} model=${getModel()} uncensored=${activeProvider === 'openrouter'}`);
@@ -261,9 +292,13 @@ Respond in this exact JSON format only, no other text:
     throw new Error('Failed to parse ebook outline');
   }
 
-  const totalSteps = outline.chapters.length + 2; // outline + chapters + pdf
+  const totalSteps = outline.chapters.length + 3; // outline + cover + chapters + pdf
   saveJob(ebookId, { status: 'generating', progress: 1 / totalSteps, step: 'outline' });
   console.log(`Ebook outline: "${outline.title}" with ${outline.chapters.length} chapters`);
+
+  // Step 1.5: Generate cover image
+  saveJob(ebookId, { status: 'generating', progress: 1.5 / totalSteps, step: 'cover' });
+  const coverPath = await generateCover(outline.title, outline.subtitle);
 
   // Step 2: Generate each chapter
   const chapters = [];
@@ -298,7 +333,10 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
   const filename = `${ebookId}.pdf`;
   const filepath = path.join(EBOOKS_DIR, filename);
 
-  await createPDF(filepath, outline, chapters);
+  await createPDF(filepath, outline, chapters, coverPath);
+
+  // Clean up cover image
+  if (coverPath) try { fs.unlinkSync(coverPath); } catch {}
 
   saveJob(ebookId, {
     status: 'ready',
@@ -310,7 +348,7 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
   console.log(`Ebook "${outline.title}" ready: ${filename}`);
 }
 
-function createPDF(filepath, outline, chapters) {
+function createPDF(filepath, outline, chapters, coverPath) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
@@ -331,6 +369,17 @@ function createPDF(filepath, outline, chapters) {
     const W = doc.page.width;
     const H = doc.page.height;
     const gold = '#8B7D45';
+
+    // ===== PAGE 0: COVER IMAGE (if available) =====
+    if (coverPath && fs.existsSync(coverPath)) {
+      doc.rect(0, 0, W, H).fill('#0a0a0a');
+      try {
+        doc.image(coverPath, 0, 0, { width: W, height: H, align: 'center', valign: 'center' });
+      } catch (err) {
+        console.warn('Failed to embed cover image:', err.message);
+      }
+      doc.addPage();
+    }
     // Drawing helpers (no text = no ghost pages)
     function divider(y, w = 140) {
       const cx = W / 2;
