@@ -67,10 +67,7 @@ if (geminiKey) {
 if (process.env.OPENROUTER_API_KEY) {
   clients.openrouter = new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: process.env.OPENROUTER_API_KEY });
 }
-if (process.env.SELFHOSTED_LLM_URL || process.env.VLLM_BASE_URL) {
-  const selfhostedURL = process.env.VLLM_BASE_URL || process.env.SELFHOSTED_LLM_URL;
-  clients.selfhosted = new OpenAI({ baseURL: selfhostedURL, apiKey: process.env.SELFHOSTED_LLM_KEY || 'none' });
-}
+// vLLM/selfhosted disabled — no RunPod credits remaining
 
 let activeProvider = process.env.LLM_PROVIDER || 'gemini';
 function getClient() { return clients[activeProvider] || clients.gemini || clients.openai || Object.values(clients)[0]; }
@@ -728,11 +725,8 @@ app.post('/api/mode', (req, res) => {
   const { mode } = req.body; // 'censored' or 'uncensored'
   if (mode === 'censored') {
     activeProvider = clients.gemini ? 'gemini' : clients.openai ? 'openai' : activeProvider;
-  } else if (mode === 'uncensored') {
-    // Prefer selfhosted (vLLM) → openrouter → gemini as last resort
-    if (clients.selfhosted) activeProvider = 'selfhosted';
-    else if (clients.openrouter) activeProvider = 'openrouter';
-    else activeProvider = clients.gemini ? 'gemini' : activeProvider;
+  } else if (mode === 'uncensored' && clients.openrouter) {
+    activeProvider = 'openrouter';
   }
   res.json({ provider: activeProvider, model: getModel() });
 });
