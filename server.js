@@ -327,7 +327,7 @@ async function generateCover(title, subtitle) {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           instances: [{ prompt: imagenPrompt }],
-          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'small text, fine print, author name, extra text, gibberish, nonsense, watermark' }
+          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: '3D, mockup, physical book, book spine, shadow, perspective, photo of book, small text, fine print, author name, extra text, gibberish, nonsense, watermark' }
         })
       });
       const data = await res.json();
