@@ -283,7 +283,7 @@ app.post('/api/chat', async (req, res) => {
 
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle) {
-  const coverPrompt = `A flat 2D digital book cover illustration in portrait A4 proportion (2:3 aspect ratio, tall and narrow). Title: "${title}". Subtitle: "${subtitle}". Show ONLY the title and subtitle as text — no author name, no other text. Beautiful artwork matching the topic. Flat graphic design, not a 3D render, not a photograph of a physical book object.`;
+  const coverPrompt = `A flat 2D digital book cover illustration in portrait 2:3 aspect ratio. Title: "${title}". Subtitle: "${subtitle}". Show ONLY the title and subtitle as text — no author name, no other text. Beautiful artwork matching the topic. The artwork must go edge-to-edge filling the entire image — no borders, no frames, no decorative edges, no margins. Flat graphic design, not a 3D render, not a photograph of a physical book.`;
   // Imagen prompt — use "poster" to avoid 3D book mockups
   const imagenPrompt = `Digital art poster for "${title}". Cinematic, atmospheric illustration matching the theme. The words "${title}" displayed as large stylized text. No other text. Clean composition.`;
 
@@ -469,12 +469,9 @@ function createPDF(filepath, outline, chapters, coverPath) {
     // ===== PAGE 0: COVER IMAGE (fully AI-generated, edge-to-edge) =====
     const hasCover = coverPath && fs.existsSync(coverPath);
     if (hasCover) {
-      // Fill entire page black first, then stretch image edge-to-edge
-      doc.save();
       doc.rect(0, 0, W, H).fill('#0a0a0a');
-      doc.restore();
       try {
-        doc.image(coverPath, -1, -1, { width: W + 2, height: H + 2 });
+        doc.image(coverPath, 0, 0, { fit: [W, H], align: 'center', valign: 'center' });
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
