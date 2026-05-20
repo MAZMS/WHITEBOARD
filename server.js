@@ -290,11 +290,9 @@ async function generateCover(title, subtitle) {
     let data;
 
     if (USE_VERTEX_AI && vertexAuth) {
-      // Vertex AI — service account auth (use 'global' for image gen)
+      // Service account auth via generativelanguage.googleapis.com (same as text gen)
       const token = await getAccessToken();
-      const imgLocation = 'global';
-      const url = `https://${imgLocation}-aiplatform.googleapis.com/v1beta1/projects/${vertexProjectId}/locations/${imgLocation}/publishers/google/models/${imageModel}:generateContent`;
-      const res = await fetch(url, {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
