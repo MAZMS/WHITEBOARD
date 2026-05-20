@@ -26,7 +26,10 @@ let vertexAuth = null;
 // Service account auth (if provided)
 if (USE_VERTEX_AI && process.env.VERTEX_SERVICE_ACCOUNT_JSON_B64) {
   const { GoogleAuth } = require('google-auth-library');
-  const saJson = JSON.parse(Buffer.from(process.env.VERTEX_SERVICE_ACCOUNT_JSON_B64, 'base64').toString());
+  const raw = process.env.VERTEX_SERVICE_ACCOUNT_JSON_B64;
+  // Support both raw JSON and base64-encoded JSON
+  let saJson;
+  try { saJson = JSON.parse(raw); } catch { saJson = JSON.parse(Buffer.from(raw, 'base64').toString()); }
   vertexAuth = new GoogleAuth({
     credentials: saJson,
     scopes: ['https://www.googleapis.com/auth/cloud-platform', 'https://www.googleapis.com/auth/generative-language']

@@ -42,6 +42,24 @@
     body.centered .message.guardian {
       text-align: center;
     }
+    body.centered .message.first-greeting {
+      font-size: 1.7em;
+      font-weight: 300;
+      letter-spacing: 0.01em;
+      line-height: 1.4;
+      opacity: 1;
+      max-height: 200px;
+      transition: opacity 0.5s ease, max-height 0.5s ease, margin 0.5s ease, font-size 0.4s ease;
+      overflow: hidden;
+    }
+    body:not(.centered) .message.first-greeting {
+      font-size: 0;
+      opacity: 0;
+      max-height: 0;
+      margin: 0;
+      padding: 0;
+      pointer-events: none;
+    }
     body.centered .input-area {
       border-top-color: transparent;
     }
@@ -922,6 +940,10 @@
 
       .message.guardian {
         line-height: 1.5;
+      }
+
+      body.centered .message.first-greeting {
+        font-size: 1.3em;
       }
 
       .input-area {
