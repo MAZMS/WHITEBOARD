@@ -283,7 +283,7 @@ app.post('/api/chat', async (req, res) => {
 
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle) {
-  const prompt = `A flat front-facing book cover design. Title: "${title}". Subtitle: "${subtitle}". Beautiful cover art matching the topic, professional typography. Flat 2D design, NOT a 3D mockup, NOT a photo of a physical book. Just the front cover image as a flat rectangle.`;
+  const prompt = `A flat front-facing book cover design with beautiful cover art matching the topic. The ONLY text on the entire cover should be the title "${title}" — nothing else. No subtitle, no author name, no description, no blurb, no other words. Just the title "${title}" and artwork. Flat 2D design.`;
 
   try {
     if (USE_VERTEX_AI && vertexAuth) {
@@ -297,7 +297,7 @@ async function generateCover(title, subtitle) {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           instances: [{ prompt }],
-          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'gibberish, nonsense text, random letters, misspelled words, watermark, blurry' }
+          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'author name, subtitle, description, blurb, gibberish, nonsense text, random letters, misspelled words, extra text, watermark' }
         })
       });
       const data = await res.json();
