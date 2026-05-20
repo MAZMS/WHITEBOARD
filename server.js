@@ -283,21 +283,51 @@ app.post('/api/chat', async (req, res) => {
 
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle) {
-  const prompt = `Minimalist book cover art about "${title}". Large bold title "${title}" centered. Clean design with lots of negative space. Artistic illustration matching the theme. Absolutely no small text anywhere — no author, no subtitle, no tagline, no description. Only the large title and art.`;
+  const coverPrompt = `A flat front-facing book cover. Title: "${title}". Subtitle: "${subtitle}". Show ONLY the title and subtitle as text — no author name, no other text. Beautiful artwork matching the topic.`;
+  // Imagen prompt — keep text minimal since it can't spell well
+  const imagenPrompt = `Minimalist book cover. Large bold title "${title}" centered. Clean design, artistic illustration matching the theme. No small text, no author name. Only the large title and art.`;
 
   try {
+    // 1. Try Nano Banana models first (Gemini — better at text rendering)
+    if (geminiKey) {
+      const imageModels = ['gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-3-pro-image-preview'];
+      for (const imageModel of imageModels) {
+        try {
+          console.log(`  Cover attempt: ${imageModel}`);
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: coverPrompt }] }],
+              generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+            })
+          });
+          const data = await res.json();
+          const parts = data?.candidates?.[0]?.content?.parts || [];
+          const imagePart = parts.find(p => p.inlineData);
+          if (imagePart) {
+            const imgBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
+            const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
+            fs.writeFileSync(coverPath, imgBuffer);
+            console.log(`  Cover generated via ${imageModel}`);
+            return coverPath;
+          }
+          console.warn(`  ${imageModel}: no image returned`);
+        } catch (e) { console.warn(`  ${imageModel} error: ${e.message}`); }
+      }
+    }
+
+    // 2. Fallback: Imagen 3 via Vertex AI (great art, text-only title)
     if (USE_VERTEX_AI && vertexAuth) {
-      // Imagen 3 via Vertex AI — bills to GCP project
       const token = await getAccessToken();
-      const imgLocation = 'us-central1';
       const model = 'imagen-3.0-generate-002';
-      console.log(`  Cover request: ${model} @ ${imgLocation}`);
-      const res = await fetch(`https://${imgLocation}-aiplatform.googleapis.com/v1beta1/projects/${vertexProjectId}/locations/${imgLocation}/publishers/google/models/${model}:predict`, {
+      console.log(`  Cover fallback: ${model}`);
+      const res = await fetch(`https://us-central1-aiplatform.googleapis.com/v1beta1/projects/${vertexProjectId}/locations/us-central1/publishers/google/models/${model}:predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
-          instances: [{ prompt }],
-          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'small text, fine print, author name, subtitle, tagline, description, blurb, paragraph, sentence, watermark, multiple lines of text' }
+          instances: [{ prompt: imagenPrompt }],
+          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'small text, fine print, author name, extra text, gibberish, nonsense, watermark' }
         })
       });
       const data = await res.json();
@@ -305,36 +335,10 @@ async function generateCover(title, subtitle) {
         const imgBuffer = Buffer.from(data.predictions[0].bytesBase64Encoded, 'base64');
         const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
         fs.writeFileSync(coverPath, imgBuffer);
-        console.log(`  Cover generated: ${coverPath} (${imgBuffer.length} bytes)`);
+        console.log(`  Cover generated via Imagen 3`);
         return coverPath;
       }
       console.warn('Imagen 3 failed:', JSON.stringify(data).slice(0, 300));
-    }
-
-    // Fallback: Nano Banana models via API key (try each until one works)
-    if (geminiKey) {
-      const imageModels = ['gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-3-pro-image-preview'];
-      for (const imageModel of imageModels) {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-          })
-      });
-        const data = await res.json();
-        const parts = data?.candidates?.[0]?.content?.parts || [];
-        const imagePart = parts.find(p => p.inlineData);
-        if (imagePart) {
-          const imgBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
-          const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
-          fs.writeFileSync(coverPath, imgBuffer);
-          console.log(`  Cover generated via ${imageModel}: ${coverPath}`);
-          return coverPath;
-        }
-        console.warn(`  ${imageModel} failed, trying next...`);
-      }
     }
 
     return null;
