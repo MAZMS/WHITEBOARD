@@ -475,7 +475,7 @@ function createPDF(filepath, outline, chapters, coverPath) {
         const img = doc.openImage(coverPath);
         const scaleW = W / img.width;
         const scaleH = H / img.height;
-        const scale = Math.max(scaleW, scaleH);
+        const scale = Math.max(scaleW, scaleH) * 1.02; // 2% overscale to eliminate edge gaps
         const drawW = img.width * scale;
         const drawH = img.height * scale;
         const x = (W - drawW) / 2;
