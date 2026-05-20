@@ -28,6 +28,21 @@
       padding-top: 4vh;
       position: relative;
       overflow: hidden;
+      transition: padding-top 0.8s ease;
+    }
+
+    /* ===== CENTERED START STATE ===== */
+    body.centered .main {
+      padding-top: 28vh;
+    }
+    body.centered .chat-area {
+      flex: 0 0 auto;
+    }
+    body.centered .message.guardian {
+      text-align: center;
+    }
+    body.centered .input-area {
+      border-top-color: transparent;
     }
 
     /* ===== EYE CONTAINER & AURA ===== */
@@ -336,6 +351,7 @@
       padding: 20px 24px 28px;
       display: flex;
       justify-content: center;
+      transition: border-top-color 0.8s ease, opacity 3s ease-out;
       position: relative;
       z-index: 2;
       transition: opacity 3s ease-out;
@@ -936,7 +952,7 @@
   </style>
   <script src="https://app.lemonsqueezy.com/js/lemon.js" defer></script>
 </head>
-<body class="phase-dormant">
+<body class="phase-dormant centered">
   <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
   <div class="settings-overlay" id="settingsOverlay">
     <div class="settings-panel">
@@ -1422,6 +1438,9 @@
       if (guardianPhase !== 'alive') return;
       const text = input.value.trim();
       if (!text) return;
+
+      // Exit centered state on first message
+      document.body.classList.remove('centered');
 
       addMessage(text, 'user');
       playTone(330, 0.08, 'sine', 0.05);
