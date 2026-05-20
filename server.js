@@ -471,7 +471,16 @@ function createPDF(filepath, outline, chapters, coverPath) {
     if (hasCover) {
       doc.rect(0, 0, W, H).fill('#0a0a0a');
       try {
-        doc.image(coverPath, 0, 0, { cover: [W, H], align: 'center', valign: 'center' });
+        // Manual cover: scale image to fill entire page, center and crop
+        const img = doc.openImage(coverPath);
+        const scaleW = W / img.width;
+        const scaleH = H / img.height;
+        const scale = Math.max(scaleW, scaleH);
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+        const x = (W - drawW) / 2;
+        const y = (H - drawH) / 2;
+        doc.image(coverPath, x, y, { width: drawW });
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
