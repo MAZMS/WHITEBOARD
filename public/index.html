@@ -627,6 +627,153 @@
       font-family: Georgia, serif;
     }
 
+    .support-btn {
+      width: 100%;
+      padding: 10px 14px;
+      text-align: center;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .donate-input {
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      outline: none;
+      width: 80px;
+      -moz-appearance: textfield;
+      transition: border-color 0.3s;
+    }
+    .donate-input::-webkit-inner-spin-button,
+    .donate-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+    }
+    .donate-input:focus {
+      border-color: #4a4030;
+    }
+    body.uncensored .donate-input {
+      border-color: #2a2020;
+      color: #c4a088;
+    }
+
+    /* ===== LIGHT MODE — The Sunlit Hall ===== */
+    body.light-mode {
+      background: #F0EBE0;
+      transition: background 0.8s ease, color 0.8s ease;
+    }
+    body.light-mode .message.guardian { color: #3a3020; }
+    body.light-mode .message.user { color: #8a7860; font-style: italic; }
+    body.light-mode .thinking { color: #a09080; }
+    body.light-mode .message.error { color: #8a4040; }
+
+    body.light-mode .eye-container::before {
+      background: radial-gradient(circle, rgba(140, 120, 60, 0.08) 0%, transparent 70%);
+    }
+    body.light-mode .eye-container::after {
+      background: radial-gradient(circle, rgba(140, 120, 60, 0.04) 0%, transparent 60%);
+    }
+    body.light-mode .triangle-line { stroke: #b0a070; }
+    body.light-mode .eye-outline,
+    body.light-mode .eyelid-upper,
+    body.light-mode .eyelid-lower { stroke: #b0a070; }
+    body.light-mode .iris-ring { stroke: #b0a070; }
+    body.light-mode .pupil { fill: #8a7a40; }
+    body.light-mode .particle { background: rgba(120, 100, 50, 0.12); }
+
+    body.light-mode .input-area {
+      border-top-color: #d8d0c0;
+      transition: border-color 0.8s;
+    }
+    body.light-mode .input-area textarea {
+      background: #FAF6EE;
+      border-color: #d0c8b0;
+      color: #3a3020;
+    }
+    body.light-mode .input-area textarea::placeholder { color: #b0a890; }
+    body.light-mode .input-area textarea:focus {
+      border-color: #a09060;
+      box-shadow: 0 0 15px rgba(140, 120, 60, 0.08);
+    }
+    body.light-mode #sendBtn {
+      color: #b0a070;
+      border-color: #d0c8b0;
+      background: #FAF6EE;
+    }
+    body.light-mode #sendBtn:hover { color: #8a7a40; border-color: #a09060; }
+
+    body.light-mode .border-loader path {
+      stroke: #b0a070;
+      filter: drop-shadow(0 0 4px rgba(140, 120, 60, 0.2));
+    }
+    body.light-mode .download-link {
+      background: rgba(140, 120, 60, 0.08);
+      border-color: #d0c8b0;
+      color: #5a4a20;
+    }
+    body.light-mode .download-link:hover {
+      background: rgba(140, 120, 60, 0.15);
+      border-color: #a09060;
+    }
+    body.light-mode .tomes-counter { color: #b0a070; }
+    body.light-mode .settings-btn { color: #b0a070; }
+    body.light-mode .return-link a { color: #b0a070; }
+    body.light-mode .return-link a:hover { color: #5a4a20; }
+
+    /* Settings panel in light mode */
+    body.light-mode .settings-panel {
+      background: #EAE4D8;
+      border-right-color: #d0c8b0;
+    }
+    body.light-mode .settings-panel h2 { color: #5a4a20; }
+    body.light-mode .settings-label { color: #8a7860; }
+    body.light-mode .settings-row span { color: #3a3020; }
+    body.light-mode .settings-section { border-bottom-color: #d8d0c0; }
+    body.light-mode .settings-action {
+      background: rgba(140, 120, 60, 0.08);
+      border-color: #d0c8b0;
+      color: #5a4a20;
+    }
+    body.light-mode .settings-action:hover { border-color: #a09060; }
+    body.light-mode .toggle { background: #d0c8b0; border-color: #b0a890; }
+    body.light-mode .toggle::after { background: #8a7a40; }
+    body.light-mode .toggle.on { background: #8B7D45; border-color: #8B7D45; }
+    body.light-mode .toggle.on::after { background: #fff; }
+    body.light-mode .vol-slider { background: #d0c8b0; }
+    body.light-mode .coming-soon { color: #b0a890; }
+    body.light-mode .donate-input {
+      background: #FAF6EE;
+      border-color: #d0c8b0;
+      color: #3a3020;
+    }
+
+    /* Sleeping in light mode */
+    body.light-mode.phase-sleeping .chat-area { opacity: 0.5; }
+    body.light-mode.phase-sleeping .input-area { opacity: 0.3; }
+    body.light-mode.phase-sleeping .triangle-line { stroke: #d0c8b0; }
+    body.light-mode.phase-sleeping .eye-outline,
+    body.light-mode.phase-sleeping .eyelid-upper,
+    body.light-mode.phase-sleeping .eyelid-lower { stroke: #d0c8b0; }
+
+    /* Light + Uncensored = warm rose parchment */
+    body.light-mode.uncensored { background: #F0E8E4; }
+    body.light-mode.uncensored .message.guardian { color: #4a2820; }
+    body.light-mode.uncensored .triangle-line { stroke: #b06050; }
+    body.light-mode.uncensored .eye-outline,
+    body.light-mode.uncensored .eyelid-upper,
+    body.light-mode.uncensored .eyelid-lower { stroke: #b06050; }
+    body.light-mode.uncensored .iris-ring { stroke: #b06050; }
+    body.light-mode.uncensored .pupil { fill: #8a4040; }
+    body.light-mode.uncensored .particle { background: rgba(180, 80, 60, 0.1); }
+    body.light-mode.uncensored .input-area textarea {
+      border-color: #d0b8b0;
+      color: #4a2820;
+    }
+    body.light-mode.uncensored .settings-panel { background: #EAE2DE; }
+
     /* ===== UNCENSORED MODE — The Forbidden Wing ===== */
     body.uncensored {
       transition: background 1.5s ease;
@@ -829,7 +976,10 @@
 
       <div class="settings-section">
         <div class="settings-label">Appearance</div>
-        <span class="coming-soon">Dark & Light mode — coming soon</span>
+        <div class="settings-row">
+          <span id="themeLabel">Dark Mode</span>
+          <div class="toggle" id="themeToggle"></div>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -844,7 +994,17 @@
 
       <div class="settings-section">
         <div class="settings-label">Support the Library</div>
-        <span class="coming-soon">Membership & donations — coming soon</span>
+        <button class="settings-action support-btn" id="membershipBtn">Become a Member — $49</button>
+        <div style="margin-top:14px;">
+          <div class="settings-row">
+            <span style="font-size:12px;color:#8a8070;">Donate any amount</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
+            <span style="color:#5a5040;font-size:13px;">$</span>
+            <input type="number" id="donateAmount" class="donate-input" placeholder="5" min="1" max="999" value="5">
+            <button class="settings-action" id="donateBtn">Give</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -912,6 +1072,8 @@
     let isAsleep = false;
     let driftRAF = null;
     let trackingEnabled = false;
+    const paymentSuccess = new URLSearchParams(window.location.search).get('payment') === 'success';
+    if (window.location.search.includes('payment')) history.replaceState({}, '', '/');
 
     // ===== PHASE MANAGER =====
     function enterPhase(phase) {
@@ -1138,6 +1300,9 @@
       input.placeholder = 'Speak unto the Guardian...';
       input.focus();
       startDroneSound();
+      if (paymentSuccess) {
+        setTimeout(() => addTypedMessage('The Library acknowledges your tribute. The ancient halls grow brighter.', 'guardian', 25), 2000);
+      }
     }
 
     function handleSearching() {
@@ -1726,6 +1891,24 @@
       document.getElementById('settingsTomes').textContent = '0';
     });
 
+    // Theme toggle (dark/light)
+    const themeToggle = document.getElementById('themeToggle');
+    const themeLabel = document.getElementById('themeLabel');
+    let isLightMode = localStorage.getItem('gl-theme') === 'light';
+
+    function applyTheme() {
+      document.body.classList.toggle('light-mode', isLightMode);
+      themeToggle.classList.toggle('on', isLightMode);
+      themeLabel.textContent = isLightMode ? 'Light Mode' : 'Dark Mode';
+    }
+    applyTheme();
+
+    themeToggle.addEventListener('click', () => {
+      isLightMode = !isLightMode;
+      localStorage.setItem('gl-theme', isLightMode ? 'light' : 'dark');
+      applyTheme();
+    });
+
     // Guardian mode toggle (censored/uncensored)
     const censorToggle = document.getElementById('censorToggle');
     const modeLabel = document.getElementById('modeLabel');
@@ -1999,6 +2182,35 @@
       updateTomesDisplay();
     }
     updateTomesDisplay();
+
+    // ===== PAYMENT =====
+    document.getElementById('membershipBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('membershipBtn');
+      btn.disabled = true; btn.textContent = 'Opening...';
+      try {
+        const res = await fetch('/api/checkout/membership', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+        else { btn.disabled = false; btn.textContent = 'Become a Member — $49'; }
+      } catch { btn.disabled = false; btn.textContent = 'Become a Member — $49'; }
+    });
+
+    document.getElementById('donateBtn').addEventListener('click', async () => {
+      const amount = parseFloat(document.getElementById('donateAmount').value);
+      if (!amount || amount < 1) return;
+      const btn = document.getElementById('donateBtn');
+      btn.disabled = true; btn.textContent = '...';
+      try {
+        const res = await fetch('/api/checkout/donate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount })
+        });
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+        else { btn.disabled = false; btn.textContent = 'Give'; }
+      } catch { btn.disabled = false; btn.textContent = 'Give'; }
+    });
 
     // ===== START: BORDER UNLOADS → DORMANT → AWAKENING =====
     // Border starts full and retracts backwards on every page load
