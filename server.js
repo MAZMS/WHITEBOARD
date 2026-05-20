@@ -290,9 +290,12 @@ async function generateCover(title, subtitle) {
     let data;
 
     if (USE_VERTEX_AI && vertexAuth) {
-      // Service account auth via generativelanguage.googleapis.com (same as text gen)
+      // Vertex AI — service account auth, bills to GCP project
       const token = await getAccessToken();
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent`, {
+      const imgLocation = process.env.VERTEX_IMAGE_LOCATION || 'us-central1';
+      const url = `https://${imgLocation}-aiplatform.googleapis.com/v1beta1/projects/${vertexProjectId}/locations/${imgLocation}/publishers/google/models/${imageModel}:generateContent`;
+      console.log(`  Cover request: ${imageModel} @ ${imgLocation}`);
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
@@ -300,8 +303,9 @@ async function generateCover(title, subtitle) {
           generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
         })
       });
-      data = await res.json();
-      if (!data?.candidates) console.warn('Cover API response:', JSON.stringify(data).slice(0, 300));
+      const text = await res.text();
+      try { data = JSON.parse(text); } catch { console.warn('Cover non-JSON response:', text.slice(0, 300)); return null; }
+      if (!data?.candidates) console.warn('Cover API error:', JSON.stringify(data).slice(0, 500));
     } else if (geminiKey) {
       // API key auth (works for both GEMINI_API_KEY and VERTEX_API_KEY)
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
