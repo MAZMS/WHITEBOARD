@@ -311,26 +311,29 @@ async function generateCover(title, subtitle) {
       console.warn('Imagen 3 failed:', JSON.stringify(data).slice(0, 300));
     }
 
-    // Fallback: Gemini image gen via API key
+    // Fallback: Nano Banana models via API key (try each until one works)
     if (geminiKey) {
-      const imageModel = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-        })
+      const imageModels = ['gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-3-pro-image-preview'];
+      for (const imageModel of imageModels) {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+          })
       });
-      const data = await res.json();
-      const parts = data?.candidates?.[0]?.content?.parts || [];
-      const imagePart = parts.find(p => p.inlineData);
-      if (imagePart) {
-        const imgBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
-        const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
-        fs.writeFileSync(coverPath, imgBuffer);
-        console.log(`  Cover generated (API key fallback): ${coverPath}`);
-        return coverPath;
+        const data = await res.json();
+        const parts = data?.candidates?.[0]?.content?.parts || [];
+        const imagePart = parts.find(p => p.inlineData);
+        if (imagePart) {
+          const imgBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
+          const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
+          fs.writeFileSync(coverPath, imgBuffer);
+          console.log(`  Cover generated via ${imageModel}: ${coverPath}`);
+          return coverPath;
+        }
+        console.warn(`  ${imageModel} failed, trying next...`);
       }
     }
 
