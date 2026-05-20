@@ -112,14 +112,17 @@ async function llmCreate(opts) {
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
-      if (activeProvider === 'gemini' && clients.openai) {
-        console.warn(`Gemini failed (${err.message}), falling back to OpenAI`);
-        const fallbackOpts = { ...opts, model: getModelFor('openai') };
-        if (fallbackOpts.max_tokens) {
-          fallbackOpts.max_completion_tokens = fallbackOpts.max_tokens;
-          delete fallbackOpts.max_tokens;
-        }
+      // Fallback chain: try OpenAI, then Gemini
+      if (activeProvider !== 'openai' && clients.openai) {
+        console.warn(`${activeProvider} failed (${err.message}), falling back to OpenAI`);
+        const fallbackOpts = { ...opts, model: getModelFor('openai'), max_completion_tokens: opts.max_tokens || opts.max_completion_tokens };
+        delete fallbackOpts.max_tokens;
         return await clients.openai.chat.completions.create(fallbackOpts);
+      }
+      if (activeProvider !== 'gemini' && clients.gemini) {
+        console.warn(`${activeProvider} failed (${err.message}), falling back to Gemini`);
+        const fallbackOpts = { ...opts, model: getModelFor('gemini') };
+        return await clients.gemini.chat.completions.create(fallbackOpts);
       }
       throw err;
     }
