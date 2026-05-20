@@ -283,7 +283,7 @@ app.post('/api/chat', async (req, res) => {
 
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle) {
-  const prompt = `Professional book cover design for a book titled "${title}" with subtitle "${subtitle}". The cover art style and colors should match the book's subject matter. Display the title and subtitle text on the cover. No author name. Beautiful, high quality artwork that reflects the book's topic.`;
+  const prompt = `Beautiful high quality artwork for a book about "${title}". The art style and colors should match the subject matter. Atmospheric, cinematic, professional. This is ONLY the background artwork — do NOT include any text, letters, words, or titles anywhere in the image. Pure visual art only.`;
 
   try {
     if (USE_VERTEX_AI && vertexAuth) {
@@ -297,7 +297,7 @@ async function generateCover(title, subtitle) {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           instances: [{ prompt }],
-          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'gibberish text, random letters, nonsense words, watermark, placeholder text' }
+          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'text, letters, words, titles, numbers, writing, typography, watermark' }
         })
       });
       const data = await res.json();
@@ -461,7 +461,7 @@ function createPDF(filepath, outline, chapters, coverPath) {
     const H = doc.page.height;
     const gold = '#8B7D45';
 
-    // ===== PAGE 0: COVER IMAGE =====
+    // ===== PAGE 0: COVER (artwork + real text) =====
     if (coverPath && fs.existsSync(coverPath)) {
       doc.rect(0, 0, W, H).fill('#0a0a0a');
       try {
@@ -469,6 +469,22 @@ function createPDF(filepath, outline, chapters, coverPath) {
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
+      // Gradient-like dark band behind text
+      doc.save();
+      doc.rect(0, H * 0.32, W, H * 0.40).fillOpacity(0.6).fill('#000000');
+      doc.fillOpacity(1).restore();
+      // Title
+      doc.fontSize(34).font('Helvetica-Bold').fillColor('#F0E6C8')
+        .text(outline.title.toUpperCase(), 55, H * 0.38, { align: 'center', width: W - 110, characterSpacing: 1.5 });
+      // Subtitle
+      doc.moveDown(0.6);
+      doc.fontSize(13).font('Helvetica-Oblique').fillColor('#c8b88a')
+        .text(outline.subtitle, 55, doc.y, { align: 'center', width: W - 110 });
+      // Bottom branding
+      doc.fontSize(9).font('Helvetica').fillColor('rgba(200,184,138,0.7)')
+        .text('The Great Library', 55, H - 75, { align: 'center', width: W - 110 });
+      doc.fontSize(8).font('Helvetica-Oblique').fillColor('rgba(200,184,138,0.5)')
+        .text('greatlibrary.ai', 55, H - 60, { align: 'center', width: W - 110 });
       doc.addPage();
     }
     // Drawing helpers (no text = no ghost pages)
