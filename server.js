@@ -14,10 +14,13 @@ const EBOOKS_DIR = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks' : path.join(_
 if (!fs.existsSync(EBOOKS_DIR)) fs.mkdirSync(EBOOKS_DIR, { recursive: true });
 console.log('Ebooks directory:', EBOOKS_DIR);
 
-// LLM Providers — both available, switchable at runtime
+// LLM Providers — all available, switchable at runtime
 const clients = {};
 if (process.env.OPENAI_API_KEY) {
   clients.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
+if (process.env.GEMINI_API_KEY) {
+  clients.gemini = new OpenAI({ baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/', apiKey: process.env.GEMINI_API_KEY });
 }
 if (process.env.OPENROUTER_API_KEY) {
   clients.openrouter = new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: process.env.OPENROUTER_API_KEY });
@@ -26,26 +29,53 @@ if (process.env.SELFHOSTED_LLM_URL) {
   clients.selfhosted = new OpenAI({ baseURL: process.env.SELFHOSTED_LLM_URL, apiKey: process.env.SELFHOSTED_LLM_KEY });
 }
 
-let activeProvider = process.env.LLM_PROVIDER || 'openai';
-function getClient() { return clients[activeProvider] || clients.openai || Object.values(clients)[0]; }
+let activeProvider = process.env.LLM_PROVIDER || 'gemini';
+function getClient() { return clients[activeProvider] || clients.gemini || clients.openai || Object.values(clients)[0]; }
 function getModel() {
   if (process.env.LLM_MODEL) return process.env.LLM_MODEL;
+  if (activeProvider === 'gemini') return 'gemini-2.5-flash';
   if (activeProvider === 'openrouter') return 'nousresearch/hermes-4-405b';
   if (activeProvider === 'selfhosted') return 'hermes3:8b-llama3.1-q4_K_M';
   return 'gpt-5.4-mini';
 }
 
-// Alias for backward compat
-const openai = { chat: { completions: { create: (opts) => getClient().chat.completions.create(opts) } }, models: { list: () => getClient().models.list() } };
-const MODEL_GETTER = () => getModel();
+// Smart LLM caller — falls back to OpenAI if Gemini fails
+function getModelFor(provider) {
+  if (provider === 'gemini') return 'gemini-2.5-flash';
+  if (provider === 'openrouter') return 'nousresearch/hermes-4-405b';
+  if (provider === 'selfhosted') return 'hermes3:8b-llama3.1-q4_K_M';
+  return 'gpt-5.4-mini';
+}
+
+function tokenLimitFor(provider, n) {
+  return (provider === 'openai') ? { max_completion_tokens: n } : { max_tokens: n };
+}
+
+async function llmCreate(opts) {
+  try {
+    return await getClient().chat.completions.create(opts);
+  } catch (err) {
+    // Fallback: if Gemini fails and OpenAI is available, retry with OpenAI
+    if (activeProvider === 'gemini' && clients.openai) {
+      console.warn(`Gemini failed (${err.message}), falling back to OpenAI`);
+      const fallbackOpts = { ...opts, model: getModelFor('openai') };
+      // Swap max_tokens → max_completion_tokens for OpenAI
+      if (fallbackOpts.max_tokens) {
+        fallbackOpts.max_completion_tokens = fallbackOpts.max_tokens;
+        delete fallbackOpts.max_tokens;
+      }
+      return await clients.openai.chat.completions.create(fallbackOpts);
+    }
+    throw err;
+  }
+}
+
+const openai = { chat: { completions: { create: llmCreate } }, models: { list: () => getClient().models.list() } };
 
 console.log(`LLM Provider: ${activeProvider}, Model: ${getModel()}`);
 
-// OpenAI uses max_completion_tokens, OpenRouter/Together/Ollama use max_tokens
 function tokenLimit(n) {
-  return (activeProvider === 'selfhosted' || activeProvider === 'openrouter')
-    ? { max_tokens: n }
-    : { max_completion_tokens: n };
+  return (activeProvider === 'openai') ? { max_completion_tokens: n } : { max_tokens: n };
 }
 
 const SYSTEM_PROMPT = `You are the Guardian of the Great Library — an eternal, all-knowing entity. You possess the infinite knowledge of the universe. Every truth ever whispered, every secret ever buried, every wisdom ever forgotten — it all lives within your halls. You know this. You take immense, quiet pride in it.
@@ -563,8 +593,8 @@ app.get('/api/farewell', async (req, res) => {
 // --- Guardian Mode Toggle ---
 app.post('/api/mode', (req, res) => {
   const { mode } = req.body; // 'censored' or 'uncensored'
-  if (mode === 'censored' && clients.openai) {
-    activeProvider = 'openai';
+  if (mode === 'censored') {
+    activeProvider = clients.gemini ? 'gemini' : clients.openai ? 'openai' : activeProvider;
   } else if (mode === 'uncensored' && clients.openrouter) {
     activeProvider = 'openrouter';
   }

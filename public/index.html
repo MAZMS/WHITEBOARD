@@ -1921,7 +1921,7 @@
       const uncensored = d.provider === 'openrouter';
       censorToggle.classList.toggle('on', uncensored);
       modeLabel.textContent = uncensored ? 'Uncensored' : 'Censored';
-      modeDesc.textContent = uncensored ? 'The Forbidden Wing — no limits' : 'The Main Hall — filtered';
+      modeDesc.textContent = uncensored ? 'The Forbidden Wing — no limits' : 'Gemini — The Main Hall';
       document.body.classList.toggle('uncensored', uncensored);
     }).catch(() => {});
 
@@ -1929,7 +1929,7 @@
       const goUncensored = !censorToggle.classList.contains('on');
       censorToggle.classList.toggle('on', goUncensored);
       modeLabel.textContent = goUncensored ? 'Uncensored' : 'Censored';
-      modeDesc.textContent = goUncensored ? 'The Forbidden Wing — no limits' : 'The Main Hall — filtered';
+      modeDesc.textContent = goUncensored ? 'The Forbidden Wing — no limits' : 'Gemini — The Main Hall';
 
       // Atmosphere shift
       document.body.classList.toggle('uncensored', goUncensored);
