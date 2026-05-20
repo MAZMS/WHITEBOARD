@@ -283,7 +283,7 @@ app.post('/api/chat', async (req, res) => {
 
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle) {
-  const coverPrompt = `A flat front-facing book cover. Title: "${title}". Subtitle: "${subtitle}". Show ONLY the title and subtitle as text — no author name, no other text. Beautiful artwork matching the topic.`;
+  const coverPrompt = `A flat 2D digital book cover illustration, front view. Title: "${title}". Subtitle: "${subtitle}". Show ONLY the title and subtitle as text — no author name, no other text. Beautiful artwork matching the topic. Flat graphic design, not a 3D render, not a photograph of a physical book object.`;
   // Imagen prompt — use "poster" to avoid 3D book mockups
   const imagenPrompt = `Digital art poster for "${title}". Cinematic, atmospheric illustration matching the theme. The words "${title}" displayed as large stylized text. No other text. Clean composition.`;
 
