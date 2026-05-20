@@ -471,7 +471,7 @@ function createPDF(filepath, outline, chapters, coverPath) {
     if (hasCover) {
       doc.rect(0, 0, W, H).fill('#0a0a0a');
       try {
-        doc.image(coverPath, 0, 0, { width: W, height: H, align: 'center', valign: 'center' });
+        doc.image(coverPath, 0, 0, { cover: [W, H], align: 'center', valign: 'center' });
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
