@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Great Library AI</title>
+  <link rel="icon" type="image/jpeg" href="/favicon.jpg">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -933,6 +934,7 @@
       }
     }
   </style>
+  <script src="https://app.lemonsqueezy.com/js/lemon.js" defer></script>
 </head>
 <body class="phase-dormant">
   <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
@@ -1001,7 +1003,7 @@
           </div>
           <div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
             <span style="color:#5a5040;font-size:13px;">$</span>
-            <input type="number" id="donateAmount" class="donate-input" placeholder="5" min="1" max="999" value="5">
+            <input type="number" id="donateAmount" class="donate-input" placeholder="4" min="4" max="999" value="4">
             <button class="settings-action" id="donateBtn">Give</button>
           </div>
         </div>
@@ -2183,33 +2185,29 @@
     }
     updateTomesDisplay();
 
-    // ===== PAYMENT =====
-    document.getElementById('membershipBtn').addEventListener('click', async () => {
-      const btn = document.getElementById('membershipBtn');
-      btn.disabled = true; btn.textContent = 'Opening...';
-      try {
-        const res = await fetch('/api/checkout/membership', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-        const data = await res.json();
-        if (data.url) window.location.href = data.url;
-        else { btn.disabled = false; btn.textContent = 'Become a Member — $49'; }
-      } catch { btn.disabled = false; btn.textContent = 'Become a Member — $49'; }
+    // ===== PAYMENT (Lemon Squeezy) =====
+    // Set your Lemon Squeezy checkout URLs here (from your dashboard)
+    const LS_MEMBERSHIP_URL = 'https://greatlibraryai.lemonsqueezy.com/checkout/buy/4e3760c1-eae3-4ae0-aa6e-20fe21b9bb1a';
+    const LS_DONATE_URL = 'https://greatlibraryai.lemonsqueezy.com/checkout/buy/8bd907ae-b11d-4307-9ec4-89d18be07b95';
+
+    document.getElementById('membershipBtn').addEventListener('click', () => {
+      if (window.LemonSqueezy) {
+        window.LemonSqueezy.Url.Open(LS_MEMBERSHIP_URL);
+      } else {
+        window.open(LS_MEMBERSHIP_URL, '_blank');
+      }
     });
 
-    document.getElementById('donateBtn').addEventListener('click', async () => {
+    document.getElementById('donateBtn').addEventListener('click', () => {
       const amount = parseFloat(document.getElementById('donateAmount').value);
       if (!amount || amount < 1) return;
-      const btn = document.getElementById('donateBtn');
-      btn.disabled = true; btn.textContent = '...';
-      try {
-        const res = await fetch('/api/checkout/donate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount })
-        });
-        const data = await res.json();
-        if (data.url) window.location.href = data.url;
-        else { btn.disabled = false; btn.textContent = 'Give'; }
-      } catch { btn.disabled = false; btn.textContent = 'Give'; }
+      const cents = Math.round(amount * 100);
+      const url = `${LS_DONATE_URL}?checkout[custom_price]=${cents}`;
+      if (window.LemonSqueezy) {
+        window.LemonSqueezy.Url.Open(url);
+      } else {
+        window.open(url, '_blank');
+      }
     });
 
     // ===== START: BORDER UNLOADS → DORMANT → AWAKENING =====
