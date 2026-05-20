@@ -283,7 +283,7 @@ app.post('/api/chat', async (req, res) => {
 
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle) {
-  const prompt = `Design a complete professional book cover for a book titled "${title}" with subtitle "${subtitle}". This must look like an actual published book cover you would see in a bookstore — with the title "${title}" prominently displayed, the subtitle "${subtitle}" below it, and beautiful cover art that matches the topic. Professional typography, compelling layout, high quality design.`;
+  const prompt = `A flat front-facing book cover design. Title: "${title}". Subtitle: "${subtitle}". Beautiful cover art matching the topic, professional typography. Flat 2D design, NOT a 3D mockup, NOT a photo of a physical book. Just the front cover image as a flat rectangle.`;
 
   try {
     if (USE_VERTEX_AI && vertexAuth) {
