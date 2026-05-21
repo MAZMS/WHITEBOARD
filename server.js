@@ -1390,7 +1390,13 @@ NEVER use: "threshold", "traveler", "tome", "seek", "knowledge you seek", "summo
       ...tokenLimit(200),
       temperature: 1.2,
     });
-    res.json({ reply: completion.choices[0].message.content.replace(/^["']|["']$/g, '').trim() });
+    // Strip stray placeholder tokens the model sometimes leaks, e.g. "(CONTACT_TAB)"
+    const greeting = completion.choices[0].message.content
+      .replace(/\s*\([A-Z0-9]+_[A-Z0-9_]*\)\s*/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/^["']|["']$/g, '')
+      .trim();
+    res.json({ reply: greeting });
   } catch (err) {
     res.json({ reply: 'What would you learn if no one was watching?' });
   }

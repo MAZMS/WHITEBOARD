@@ -1116,6 +1116,19 @@
     const sessionId = crypto.randomUUID();
     let greetingClickHandler = null;
 
+    // Keep the app sized to the visible area (above the mobile keyboard) so the
+    // input docks right above the keyboard instead of leaving dead space below.
+    // iOS ignores the viewport interactive-widget hint, so we drive it from JS.
+    if (window.visualViewport) {
+      const fitViewport = () => {
+        document.body.style.height = window.visualViewport.height + 'px';
+      };
+      window.visualViewport.addEventListener('resize', fitViewport);
+      window.visualViewport.addEventListener('scroll', fitViewport);
+      window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
+      fitViewport();
+    }
+
     // ===== STATE =====
     let guardianPhase = 'dormant';
     let particleInterval = null;
