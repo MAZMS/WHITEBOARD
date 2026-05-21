@@ -1265,13 +1265,13 @@
 
     function handleAwakening() {
       // Slow, cinematic eye open + rising drone
-      animateEyeOpen(2500);
+      animateEyeOpen(1800);
       if (audioCtx) soundAwakening();
 
       // Particles start midway, slow at first
       setTimeout(() => {
         particleInterval = setInterval(spawnParticle, 900);
-      }, 2000);
+      }, 1200);
 
       // Random awakening phrases
       const stirPhrases = [
@@ -1314,7 +1314,7 @@
       }));
 
       // Don't show anything until eye is mostly open
-      const minDelay = new Promise(resolve => setTimeout(resolve, 2500));
+      const minDelay = new Promise(resolve => setTimeout(resolve, 1800));
 
       Promise.all([greetPromise, minDelay]).then(([data]) => {
         // "The Guardian stirs..." appears briefly
@@ -2372,17 +2372,13 @@
       }
     });
 
-    // ===== START: BORDER UNLOADS → DORMANT → AWAKENING =====
-    // Border starts full and retracts backwards on every page load
+    // ===== START: BORDER UNLOADS + AWAKENING IN PARALLEL =====
     sizeBorderLoader();
     borderCurrent = 1;
-    borderPath.style.strokeDashoffset = 0; // show full border instantly
-    setTimeout(() => {
-      reverseBorderLoader(() => {
-        // Border fully retracted — now awaken
-        setTimeout(() => enterPhase('awakening'), 500);
-      });
-    }, 300);
+    borderPath.style.strokeDashoffset = 0;
+    setTimeout(() => reverseBorderLoader(), 300);
+    // Start awakening immediately — don't wait for border
+    setTimeout(() => enterPhase('awakening'), 400);
   </script>
 </body>
 </html>
