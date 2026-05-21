@@ -404,7 +404,7 @@ Available variables: doc (PDFDocument), W (595.28), H (841.89), outline ({title,
 Available fonts: 'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Courier', 'Courier-Bold', 'Courier-Oblique'.
 PDFKit methods: doc.fontSize(), doc.font(), doc.fillColor(), doc.text(str, opts), doc.moveDown(), doc.rect().fill(), doc.moveTo().lineTo().stroke(), doc.circle().fill(), doc.lineWidth(), doc.strokeColor(), doc.save(), doc.restore(), doc.addPage().
 
-IMPORTANT: Keep each code string SHORT (under 15 lines). Use semicolons, not newlines. Return ONLY valid JSON, no other text:
+Return ONLY valid JSON, no other text:
 {
   "accent": "#hex accent color matching the book mood",
   "accentLight": "#hex lighter version",
@@ -421,8 +421,8 @@ IMPORTANT: Keep each code string SHORT (under 15 lines). Use semicolons, not new
   "dropCapSize": 24 to 40
 }
 
-Design for "${outline.title}" — make it match the mood. Be creative but keep code SHORT!` }],
-      ...tokenLimit(4096),
+Design for "${outline.title}" — make it match the mood. Be creative!` }],
+      ...tokenLimit(16384),
       temperature: 0.9,
     });
     let designRaw = designRes.choices[0].message.content;
