@@ -966,8 +966,10 @@
 
       .input-area textarea {
         font-size: 16px; /* prevents iOS zoom on focus */
-        padding: 12px 14px;
+        padding: 18px 18px;
+        border-radius: 14px;
       }
+      #sendBtn { border-radius: 14px; padding: 0 18px; }
 
       .download-link {
         padding: 12px 18px;
@@ -1131,14 +1133,15 @@
       const fitViewport = () => {
         document.body.style.height = vv.height + 'px';
         document.body.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : 'none';
-        // Mark when the keyboard is up so we can dock the input to the bottom.
-        document.body.classList.toggle('kb-open', vv.height < window.innerHeight - 120);
       };
       vv.addEventListener('resize', fitViewport);
       vv.addEventListener('scroll', fitViewport);
       window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
       fitViewport();
     }
+    // Dock the input to the bottom while the field is focused (keyboard up).
+    input.addEventListener('focus', () => document.body.classList.add('kb-open'));
+    input.addEventListener('blur', () => document.body.classList.remove('kb-open'));
 
     // ===== STATE =====
     let guardianPhase = 'dormant';
