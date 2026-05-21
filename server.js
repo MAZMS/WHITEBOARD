@@ -683,14 +683,15 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
         // PDFKit doesn't support stretch, so we scale by width then use transform to stretch height
         const img = doc.openImage(coverPath);
         doc.save();
-        // 1% overscale to guarantee zero white gaps at edges
-        const scaleX = (W / img.width) * 1.01;
-        const scaleY = (H / img.height) * 1.01;
-        // Center the overflow so it bleeds evenly on all sides
-        const offsetX = -(img.width * scaleX - W) / 2 / scaleX;
-        const offsetY = -(img.height * scaleY - H) / 2 / scaleY;
-        doc.transform(scaleX, 0, 0, scaleY, 0, 0);
-        doc.image(img, offsetX, offsetY);
+        // Stretch image to exactly fill A4 — 2% overscale to kill any gaps
+        const sx = (W / img.width) * 1.02;
+        const sy = (H / img.height) * 1.02;
+        // Offset to center the 2% overflow
+        const ox = -(W * 0.02) / 2;
+        const oy = -(H * 0.02) / 2;
+        doc.translate(ox, oy);
+        doc.scale(sx, sy);
+        doc.image(img, 0, 0);
         doc.restore();
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
