@@ -533,7 +533,7 @@ Return ONLY valid JSON:
   "runningHeader": true/false,
   "runningHeaderStyle": "JS code for running header — draws at top of page using doc.save()/doc.restore(). Vars: doc, W, H, accent, fontItalic, outline, pageNum. Be creative — centered, left/right split, with ornaments, etc.",
   "titlePageCode": "JS code for title page. Vars: doc, W, H, outline, accent, accentLight, headingColor, fontHead, fontBody, fontItalic. MUST display outline.title and outline.subtitle. Use doc.moveDown + doc.text({align}) for text. Decorative elements with doc.save()/doc.restore(). Keep it clean — no overlapping elements. End with 'greatlibrary.ai' at bottom.",
-  "chapterHeaderCode": "JS code for chapter header. Vars: doc, W, H, ch, i, accent, accentLight, headingColor, fontHead, fontBody. ch.title = chapter title string. i = 0-based index (use i+1 for display number). Use doc.moveDown + doc.text + decorative drawing. MUST leave room for body text — keep doc.y under 400.",
+  "chapterHeaderCode": "JS code for chapter header. Vars: doc, W, H, ch, i, accent, accentLight, headingColor, fontHead, fontBody. ch.title = chapter title (already clean, no number prefix). i = 0-based index (use i+1 for display). Show the chapter number ONCE and the title ONCE — never repeat. Example: either '01' + title, or 'Chapter 1' + title, NOT both. Keep doc.y under 400.",
   "dividerCode": "JS code for divider at y. Vars: doc, W, y, accent. Creative — dots, lines, shapes, symbols, anything.",
   "chapterEndCode": "JS code for chapter end decoration. Vars: doc, W, accent. Optional ornament after last paragraph.",
   "coverStyle": "10-15 word art direction for cover image generation"
@@ -948,10 +948,11 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
     const tocY = [];
     chapters.forEach((ch, i) => {
       tocY.push(doc.y);
+      const tocTitle = ch.title.replace(/^(Chapter\s+)?\d+[\.\:\)\-\s]*/i, '').trim() || ch.title;
       doc.fontSize(11).font(fontHead).fillColor(accent)
         .text(`${String(i+1).padStart(2,'0')}   `, { continued: true });
       doc.font(fontBody).fillColor(bodyColor)
-        .text(ch.title);
+        .text(tocTitle);
       doc.moveDown(0.7);
     });
 
@@ -963,15 +964,18 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
       border();
       chapterPageIndex.push(doc.bufferedPageRange().count - 1);
 
+      // Strip number prefixes from chapter title (e.g. "1. Title" → "Title", "Chapter 1: Title" → "Title")
+      const cleanCh = { ...ch, title: ch.title.replace(/^(Chapter\s+)?\d+[\.\:\)\-\s]*/i, '').trim() || ch.title };
+
       // Chapter header (AI-designed)
-      if (!runDesignCode(d.chapterHeaderCode, { ch, i })) {
+      if (!runDesignCode(d.chapterHeaderCode, { ch: cleanCh, i })) {
         // Fallback chapter header
         doc.moveDown(3);
         doc.fontSize(42).font(fontHead).fillColor(accentLight)
           .text(`${String(i+1).padStart(2,'0')}`, { align: 'center' });
         doc.moveDown(0.2);
         doc.fontSize(20).font(fontHead).fillColor(headingColor)
-          .text(ch.title, { align: 'center' });
+          .text(cleanCh.title, { align: 'center' });
         doc.moveDown(0.5);
         divider(doc.y);
         doc.moveDown(1.5);
