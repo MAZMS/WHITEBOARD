@@ -97,10 +97,18 @@ async function llmCreateGemini(opts) {
   const geminiOpts = { ...opts, model: 'gemini-2.5-flash' };
   delete geminiOpts.max_completion_tokens;
 
-  // Try clients.gemini first (uses GEMINI_API_KEY or VERTEX_API_KEY)
+  // Try clients.gemini first (uses GEMINI_API_KEY or VERTEX_API_KEY) with retry
   if (clients.gemini) {
-    try { return await clients.gemini.chat.completions.create(geminiOpts); } catch (e) {
-      console.warn(`  Gemini client failed: ${e.message}`);
+    for (let retry = 0; retry < 3; retry++) {
+      try { return await clients.gemini.chat.completions.create(geminiOpts); } catch (e) {
+        if (e.status === 429 && retry < 2) {
+          console.warn(`  Gemini rate limited, retrying in ${(retry+1)*5}s...`);
+          await new Promise(r => setTimeout(r, (retry+1) * 5000));
+          continue;
+        }
+        console.warn(`  Gemini client failed: ${e.message}`);
+        break;
+      }
     }
   }
   // Try service account via generativelanguage.googleapis.com
@@ -111,8 +119,13 @@ async function llmCreateGemini(opts) {
       return await saClient.chat.completions.create(geminiOpts);
     } catch (e) { console.warn(`  Gemini SA failed: ${e.message}`); }
   }
-  // Last resort: OpenAI
-  if (clients.openai) return await clients.openai.chat.completions.create(opts);
+  // Last resort: OpenAI with its own model
+  if (clients.openai) {
+    const openaiOpts = { ...opts, model: 'gpt-4o-mini' };
+    delete openaiOpts.max_tokens;
+    openaiOpts.max_completion_tokens = opts.max_tokens || 4096;
+    return await clients.openai.chat.completions.create(openaiOpts);
+  }
   throw new Error('No Gemini or OpenAI client available');
 }
 
