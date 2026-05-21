@@ -1327,8 +1327,11 @@
           greetDiv.classList.add('first-greeting');
 
           // Eye click cycles the greeting to a new AI-generated question
+          let greetCooldown = false;
           greetingClickHandler = async () => {
-            if (!document.body.classList.contains('centered')) return;
+            if (!document.body.classList.contains('centered') || greetCooldown) return;
+            greetCooldown = true;
+            setTimeout(() => greetCooldown = false, 4000);
             const el = chatArea.querySelector('.first-greeting');
             if (!el) return;
             el.style.opacity = '0';
