@@ -959,6 +959,11 @@
         padding-bottom: calc(20px + env(safe-area-inset-bottom));
       }
 
+      /* When the keyboard is open, dock the input at the bottom (eye + question stay
+         up top) so it sits right above the keyboard — like Gemini. The centered
+         eye-opening intro is preserved while the keyboard is closed. */
+      body.kb-open.centered .input-area { margin-top: auto; }
+
       .input-area textarea {
         font-size: 16px; /* prevents iOS zoom on focus */
         padding: 12px 14px;
@@ -1118,13 +1123,19 @@
 
     // Keep the app sized to the visible area (above the mobile keyboard) so the
     // input docks right above the keyboard instead of leaving dead space below.
-    // iOS ignores the viewport interactive-widget hint, so we drive it from JS.
+    // iOS ignores the viewport interactive-widget hint AND scrolls the page up to
+    // reveal a focused field, so we size to visualViewport.height and translate by
+    // its offsetTop to cancel that scroll (otherwise the top content gets cut off).
     if (window.visualViewport) {
+      const vv = window.visualViewport;
       const fitViewport = () => {
-        document.body.style.height = window.visualViewport.height + 'px';
+        document.body.style.height = vv.height + 'px';
+        document.body.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : 'none';
+        // Mark when the keyboard is up so we can dock the input to the bottom.
+        document.body.classList.toggle('kb-open', vv.height < window.innerHeight - 120);
       };
-      window.visualViewport.addEventListener('resize', fitViewport);
-      window.visualViewport.addEventListener('scroll', fitViewport);
+      vv.addEventListener('resize', fitViewport);
+      vv.addEventListener('scroll', fitViewport);
       window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
       fitViewport();
     }
