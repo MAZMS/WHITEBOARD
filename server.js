@@ -532,8 +532,8 @@ Return ONLY valid JSON:
   "smallCapsFirstWords": true/false,
   "runningHeader": true/false,
   "runningHeaderStyle": "JS code for running header — draws at top of page using doc.save()/doc.restore(). Vars: doc, W, H, accent, fontItalic, outline, pageNum. Be creative — centered, left/right split, with ornaments, etc.",
-  "titlePageCode": "JS code for title page layout. Vars: doc, W, H, outline, accent, accentLight, headingColor, fontHead, fontBody, fontItalic. Use doc.moveDown + doc.text + decorative save/restore drawing. Be WILDLY creative.",
-  "chapterHeaderCode": "JS code for chapter header. Vars: doc, W, H, ch, i, accent, accentLight, headingColor, fontHead, fontBody. Use doc.moveDown + doc.text + decorative drawing. Each book should have a DIFFERENT chapter header style.",
+  "titlePageCode": "JS code for title page. Vars: doc, W, H, outline, accent, accentLight, headingColor, fontHead, fontBody, fontItalic. MUST display outline.title and outline.subtitle. Use doc.moveDown + doc.text({align}) for text. Decorative elements with doc.save()/doc.restore(). Keep it clean — no overlapping elements. End with 'greatlibrary.ai' at bottom.",
+  "chapterHeaderCode": "JS code for chapter header. Vars: doc, W, H, ch, i, accent, accentLight, headingColor, fontHead, fontBody. ch.title = chapter title string. i = 0-based index (use i+1 for display number). Use doc.moveDown + doc.text + decorative drawing. MUST leave room for body text — keep doc.y under 400.",
   "dividerCode": "JS code for divider at y. Vars: doc, W, y, accent. Creative — dots, lines, shapes, symbols, anything.",
   "chapterEndCode": "JS code for chapter end decoration. Vars: doc, W, accent. Optional ornament after last paragraph.",
   "coverStyle": "10-15 word art direction for cover image generation"
