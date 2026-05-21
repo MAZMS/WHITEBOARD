@@ -504,10 +504,13 @@
       font-size: 12px;
       font-style: italic;
       z-index: 10;
-      transition: color 0.5s;
+      transition: color 0.5s, bottom 0.8s ease;
       pointer-events: none;
     }
     body.phase-sleeping .tomes-counter { opacity: 0.3; transition: opacity 3s; }
+    /* In conversation mode the input bar sits at the bottom — lift the counter
+       clear of its top divider so it never overlaps. */
+    body:not(.centered) .tomes-counter { bottom: 110px; right: 24px; }
 
     /* ===== SETTINGS ===== */
     .settings-btn {
