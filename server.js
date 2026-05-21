@@ -883,15 +883,14 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
       // Zero-margin page for full bleed cover
       doc.addPage({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 } });
       try {
-        // Force stretch to EXACT page size using raw PDF content stream
-        // cm operator applies transformation matrix: W 0 0 H 0 0 = stretch to WxH
+        // Force-stretch image to fill EXACT A4 dimensions
         const img = doc.openImage(coverPath);
-        const imgName = 'Cover' + img.obj.id;
-        doc.page.xobjects[imgName] = img.obj;
-        doc.addContent('q');
-        doc.addContent(`${W.toFixed(2)} 0 0 ${H.toFixed(2)} 0 0 cm`);
-        doc.addContent(`/${imgName} Do`);
-        doc.addContent('Q');
+        const scaleX = W / img.width;
+        const scaleY = H / img.height;
+        doc.save();
+        doc.transform(scaleX, 0, 0, scaleY, 0, 0);
+        doc.image(img, 0, 0);
+        doc.restore();
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
