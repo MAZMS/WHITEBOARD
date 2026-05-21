@@ -543,7 +543,110 @@ Design for "${outline.title}". Follow the MANDATORY design direction above — i
     console.warn('  Design generation failed, using defaults:', err.message);
   }
 
-  // Step 1.5: Generate cover image (using design theme for consistency)
+  // Step 1.6: Validate design code — test render + AI self-correct loop
+  if (designCode) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const issues = [];
+      const d = designCode;
+      try {
+        // Test on a throwaway PDF doc
+        const testDoc = new PDFDocument({ size: 'A4', autoFirstPage: true });
+        const { Writable } = require('stream');
+        testDoc.pipe(new Writable({ write(c, e, cb) { cb(); } }));
+
+        const testVars = {
+          doc: testDoc, W: 595.28, H: 841.89, outline,
+          accent: d.accent || '#888', accentLight: d.accentLight || '#ddd',
+          headingColor: d.headingColor || '#1a1a1a', bodyColor: d.bodyColor || '#333',
+          fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique',
+          bodySize: d.bodySize || 11, lineGap: d.lineGap || 4,
+          paragraphSpacing: d.paragraphSpacing || 0.5, indent: d.indent || 15,
+          textAlign: d.textAlign || 'justify', showBorder: d.showBorder,
+          borderWeight: d.borderWeight || 0.4, borderColor: d.borderColor || d.accent,
+          showDropCap: d.showDropCap, dropCapSize: d.dropCapSize || 28,
+          dropCapColor: d.dropCapColor || d.accent, smallCapsFirstWords: d.smallCapsFirstWords,
+        };
+
+        // Test title page code
+        if (d.titlePageCode) {
+          try {
+            const fn = new Function(...Object.keys(testVars), d.titlePageCode);
+            fn(...Object.values(testVars));
+            if (testDoc.y > 780) issues.push(`titlePageCode overflow: doc.y=${Math.round(testDoc.y)} exceeds page`);
+          } catch (e) { issues.push(`titlePageCode error: ${e.message}`); }
+        }
+
+        // Test chapter header code
+        if (d.chapterHeaderCode) {
+          testDoc.addPage();
+          try {
+            const chVars = { ...testVars, doc: testDoc, ch: { title: 'Test Chapter Title' }, i: 0 };
+            const fn = new Function(...Object.keys(chVars), d.chapterHeaderCode);
+            fn(...Object.values(chVars));
+            if (testDoc.y > 550) issues.push(`chapterHeaderCode overflow: doc.y=${Math.round(testDoc.y)} leaves no room for body text`);
+          } catch (e) { issues.push(`chapterHeaderCode error: ${e.message}`); }
+        }
+
+        // Test divider code
+        if (d.dividerCode) {
+          try {
+            const divVars = { ...testVars, doc: testDoc, y: 400 };
+            const fn = new Function(...Object.keys(divVars), d.dividerCode);
+            fn(...Object.values(divVars));
+          } catch (e) { issues.push(`dividerCode error: ${e.message}`); }
+        }
+
+        testDoc.end();
+      } catch (e) {
+        issues.push(`validation crash: ${e.message}`);
+      }
+
+      if (issues.length === 0) {
+        console.log(`  Design validation passed (attempt ${attempt + 1})`);
+        break;
+      }
+
+      console.warn(`  Design issues (attempt ${attempt + 1}): ${issues.join('; ')}`);
+      if (attempt >= 2) { console.warn('  Max retries — using design as-is'); break; }
+
+      // Send issues back to AI for self-correction
+      try {
+        const fixRes = await openai.chat.completions.create({
+          model: getModel(),
+          messages: [{ role: 'user', content: `Your PDFKit design code has these problems:
+${issues.map(i => '- ' + i).join('\n')}
+
+Here is the broken code:
+${d.titlePageCode ? 'titlePageCode: ' + d.titlePageCode : ''}
+${d.chapterHeaderCode ? 'chapterHeaderCode: ' + d.chapterHeaderCode : ''}
+${d.dividerCode ? 'dividerCode: ' + d.dividerCode : ''}
+
+FIX the broken code. Rules:
+- doc.y must stay under 762 for title page, under 450 for chapter header
+- Use doc.moveDown() not absolute y positioning for text
+- Wrap ALL drawing in doc.save()/doc.restore()
+- Never call doc.addPage()
+
+Return ONLY a JSON with the FIXED fields (only include fields that needed fixing):
+{"titlePageCode": "...", "chapterHeaderCode": "...", "dividerCode": "..."}` }],
+          ...tokenLimit(4096),
+          temperature: 0.7,
+        });
+        let fixRaw = fixRes.choices[0].message.content;
+        fixRaw = fixRaw.replace(/```json?\s*/g, '').replace(/```\s*/g, '');
+        const fixMatch = fixRaw.match(/\{[\s\S]*\}/);
+        const fixes = JSON.parse(fixMatch[0]);
+        if (fixes.titlePageCode) designCode.titlePageCode = fixes.titlePageCode;
+        if (fixes.chapterHeaderCode) designCode.chapterHeaderCode = fixes.chapterHeaderCode;
+        if (fixes.dividerCode) designCode.dividerCode = fixes.dividerCode;
+        console.log(`  Design self-corrected (attempt ${attempt + 1})`);
+      } catch (fixErr) {
+        console.warn(`  Self-correction failed: ${fixErr.message}`);
+      }
+    }
+  }
+
+  // Step 1.7: Generate cover image (using design theme for consistency)
   saveJob(ebookId, { status: 'generating', progress: 1.5 / totalSteps, step: 'cover' });
   const coverPath = await generateCover(outline.title, outline.subtitle, designCode);
 
