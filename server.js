@@ -359,6 +359,8 @@ async function generateEbook(ebookId, conversationHistory) {
 Conversation:
 ${conversationHistory.map(m => `${m.role}: ${m.content}`).join('\n')}
 
+Also design a visual theme for the PDF interior that matches the book's topic and mood. Pick colors and a font family (only "helvetica", "times", or "courier" are available).
+
 Respond in this exact JSON format only, no other text:
 {
   "title": "The title of the ebook",
@@ -369,7 +371,14 @@ Respond in this exact JSON format only, no other text:
     {"title": "Chapter 3 title", "description": "Brief description"},
     {"title": "Chapter 4 title", "description": "Brief description"},
     {"title": "Chapter 5 title", "description": "Brief description"}
-  ]
+  ],
+  "theme": {
+    "accent": "#hex color for accents, drop caps, dividers — match the book mood",
+    "accentLight": "#hex lighter version of accent for chapter numbers",
+    "heading": "#hex color for headings and titles",
+    "body": "#hex color for body text (dark, readable)",
+    "font": "helvetica or times or courier — pick what fits the topic"
+  }
 }`;
 
   const outlineRes = await openai.chat.completions.create({
@@ -466,21 +475,22 @@ function createPDF(filepath, outline, chapters, coverPath) {
     const W = 595.28;
     const H = 841.89;
 
-    // Dynamic theme — each book gets a unique look based on title hash
-    const themes = [
-      { accent: '#8B7D45', accentLight: '#E8E0D0', body: '#333', heading: '#1a1a1a', fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique', name: 'gold' },
-      { accent: '#2E6B5A', accentLight: '#D0E8DF', body: '#2a2a2a', heading: '#1a2a20', fontHead: 'Times-Bold', fontBody: 'Times-Roman', fontItalic: 'Times-Italic', name: 'forest' },
-      { accent: '#8B4513', accentLight: '#E8D5C0', body: '#3a2a1a', heading: '#2a1a0a', fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique', name: 'amber' },
-      { accent: '#4A5568', accentLight: '#E2E8F0', body: '#2D3748', heading: '#1A202C', fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique', name: 'slate' },
-      { accent: '#9B2C2C', accentLight: '#FED7D7', body: '#2a1a1a', heading: '#1a0a0a', fontHead: 'Times-Bold', fontBody: 'Times-Roman', fontItalic: 'Times-Italic', name: 'crimson' },
-      { accent: '#2B6CB0', accentLight: '#BEE3F8', body: '#2a3a4a', heading: '#1a2a3a', fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique', name: 'ocean' },
-      { accent: '#6B46C1', accentLight: '#E9D8FD', body: '#2a1a3a', heading: '#1a0a2a', fontHead: 'Times-Bold', fontBody: 'Times-Roman', fontItalic: 'Times-Italic', name: 'violet' },
-      { accent: '#C05621', accentLight: '#FEEBC8', body: '#3a2a1a', heading: '#2a1a0a', fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique', name: 'ember' },
-    ];
-    const titleHash = outline.title.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
-    const theme = themes[Math.abs(titleHash) % themes.length];
-    console.log(`  PDF theme: ${theme.name} (accent: ${theme.accent})`);
-    const { accent, accentLight, body: bodyColor, heading: headingColor, fontHead, fontBody, fontItalic } = theme;
+    // AI-generated theme from outline, with fallback
+    const fontMap = {
+      helvetica: { head: 'Helvetica-Bold', body: 'Helvetica', italic: 'Helvetica-Oblique' },
+      times: { head: 'Times-Bold', body: 'Times-Roman', italic: 'Times-Italic' },
+      courier: { head: 'Courier-Bold', body: 'Courier', italic: 'Courier-Oblique' },
+    };
+    const t = outline.theme || {};
+    const accent = t.accent || '#8B7D45';
+    const accentLight = t.accentLight || '#E8E0D0';
+    const headingColor = t.heading || '#1a1a1a';
+    const bodyColor = t.body || '#333';
+    const fonts = fontMap[(t.font || 'helvetica').toLowerCase()] || fontMap.helvetica;
+    const fontHead = fonts.head;
+    const fontBody = fonts.body;
+    const fontItalic = fonts.italic;
+    console.log(`  PDF theme: accent=${accent} font=${t.font || 'helvetica'}`);
 
     // ===== PAGE 0: COVER IMAGE (fully AI-generated, edge-to-edge) =====
     const hasCover = coverPath && fs.existsSync(coverPath);
