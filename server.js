@@ -93,19 +93,27 @@ function tokenLimitFor(provider, n) {
 
 // Always uses Gemini — for design, outline, style seed (never uncensored model)
 async function llmCreateGemini(opts) {
-  try {
-    if (USE_VERTEX_AI && vertexAuth) {
+  // Force gemini-2.5-flash model and remove any other model override
+  const geminiOpts = { ...opts, model: 'gemini-2.5-flash' };
+  delete geminiOpts.max_completion_tokens;
+
+  // Try clients.gemini first (uses GEMINI_API_KEY or VERTEX_API_KEY)
+  if (clients.gemini) {
+    try { return await clients.gemini.chat.completions.create(geminiOpts); } catch (e) {
+      console.warn(`  Gemini client failed: ${e.message}`);
+    }
+  }
+  // Try service account via generativelanguage.googleapis.com
+  if (USE_VERTEX_AI && vertexAuth) {
+    try {
       const token = await getAccessToken();
       const saClient = new OpenAI({ baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/', apiKey: token });
-      return await saClient.chat.completions.create({ ...opts, model: opts.model || 'gemini-2.5-flash' });
-    }
-    if (clients.gemini) return await clients.gemini.chat.completions.create({ ...opts, model: opts.model || 'gemini-2.5-flash' });
-    if (clients.openai) return await clients.openai.chat.completions.create(opts);
-    throw new Error('No Gemini client available');
-  } catch (err) {
-    if (clients.openai) return await clients.openai.chat.completions.create(opts);
-    throw err;
+      return await saClient.chat.completions.create(geminiOpts);
+    } catch (e) { console.warn(`  Gemini SA failed: ${e.message}`); }
   }
+  // Last resort: OpenAI
+  if (clients.openai) return await clients.openai.chat.completions.create(opts);
+  throw new Error('No Gemini or OpenAI client available');
 }
 
 async function llmCreate(opts) {
@@ -418,7 +426,6 @@ Respond in this exact JSON format only, no other text:
   let styleSeed = '';
   try {
     const seedRes = await llmCreateGemini({
-      model: getModel(),
       messages: [{ role: 'user', content: `Invent a UNIQUE visual design aesthetic for a book titled "${outline.title}" (${outline.subtitle}).
 
 In ONE sentence, describe: 3 specific hex colors, a SPECIFIC Google Font name for headings (pick something unexpected — NOT Playfair Display, NOT Source Serif, NOT Lora, NOT Merriweather — explore the full Google Fonts library), a SPECIFIC Google Font for body, the decorative style, and the overall mood.
@@ -445,7 +452,6 @@ Your response must be ONLY the one sentence. Be specific and NEVER repeat fonts 
   let designCode = null;
   try {
     const designRes = await llmCreateGemini({
-      model: getModel(),
       messages: [{ role: 'user', content: `You are a PDF book designer writing PDFKit JavaScript code. Design a unique ebook interior for "${outline.title}" (${outline.subtitle}).
 
 === PDF DOCUMENT SPECS (you have FULL control over this canvas) ===
@@ -688,7 +694,6 @@ Design for "${outline.title}". Follow the MANDATORY design direction above — i
       // Send issues back to AI for self-correction
       try {
         const fixRes = await llmCreateGemini({
-          model: getModel(),
           messages: [{ role: 'user', content: `Your PDFKit design code has these problems:
 ${issues.map(i => '- ' + i).join('\n')}
 
