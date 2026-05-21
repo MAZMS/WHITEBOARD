@@ -91,6 +91,23 @@ function tokenLimitFor(provider, n) {
   return (provider === 'openai') ? { max_completion_tokens: n } : { max_tokens: n };
 }
 
+// Always uses Gemini — for design, outline, style seed (never uncensored model)
+async function llmCreateGemini(opts) {
+  try {
+    if (USE_VERTEX_AI && vertexAuth) {
+      const token = await getAccessToken();
+      const saClient = new OpenAI({ baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/', apiKey: token });
+      return await saClient.chat.completions.create({ ...opts, model: opts.model || 'gemini-2.5-flash' });
+    }
+    if (clients.gemini) return await clients.gemini.chat.completions.create({ ...opts, model: opts.model || 'gemini-2.5-flash' });
+    if (clients.openai) return await clients.openai.chat.completions.create(opts);
+    throw new Error('No Gemini client available');
+  } catch (err) {
+    if (clients.openai) return await clients.openai.chat.completions.create(opts);
+    throw err;
+  }
+}
+
 async function llmCreate(opts) {
   const maxRetries = 3;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -400,7 +417,7 @@ Respond in this exact JSON format only, no other text:
   // AI generates a unique style seed — like DNA, never the same twice
   let styleSeed = '';
   try {
-    const seedRes = await openai.chat.completions.create({
+    const seedRes = await llmCreateGemini({
       model: getModel(),
       messages: [{ role: 'user', content: `Invent a UNIQUE visual design aesthetic for a book titled "${outline.title}" (${outline.subtitle}).
 
@@ -427,7 +444,7 @@ Your response must be ONLY the one sentence. Be specific and NEVER repeat fonts 
 
   let designCode = null;
   try {
-    const designRes = await openai.chat.completions.create({
+    const designRes = await llmCreateGemini({
       model: getModel(),
       messages: [{ role: 'user', content: `You are a PDF book designer writing PDFKit JavaScript code. Design a unique ebook interior for "${outline.title}" (${outline.subtitle}).
 
@@ -502,10 +519,10 @@ You MUST follow this aesthetic direction. Extract the colors, mood, and style fr
 
 Return ONLY valid JSON:
 {
-  "accent": "#hex",
-  "accentLight": "#hex lighter",
-  "headingColor": "#hex",
-  "bodyColor": "#hex (dark, readable, NOT pure black)",
+  "accent": "#hex (must be visible on white — no pastels lighter than #888)",
+  "accentLight": "#hex lighter version (for background elements only, not text)",
+  "headingColor": "#hex (must be dark enough to read — darker than #555)",
+  "bodyColor": "#hex (MUST be dark enough to read on white background — darker than #555. Good examples: #2c1e12, #1a2a1a, #333, #2D3748. NEVER use light colors for body text)",
   "fontHead": "Google Font name",
   "fontBody": "Google Font name",
   "fontItalic": "Google Font name",
@@ -670,7 +687,7 @@ Design for "${outline.title}". Follow the MANDATORY design direction above — i
 
       // Send issues back to AI for self-correction
       try {
-        const fixRes = await openai.chat.completions.create({
+        const fixRes = await llmCreateGemini({
           model: getModel(),
           messages: [{ role: 'user', content: `Your PDFKit design code has these problems:
 ${issues.map(i => '- ' + i).join('\n')}
