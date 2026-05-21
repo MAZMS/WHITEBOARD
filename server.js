@@ -881,16 +881,22 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
     const hasCover = coverPath && fs.existsSync(coverPath);
     if (hasCover) {
       // Zero-margin page for full bleed cover
-      doc.addPage({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 } });
+      doc.addPage({ size: [W, H], margins: { top: 0, bottom: 0, left: 0, right: 0 } });
       try {
-        // Force-stretch image to fill EXACT A4 dimensions
         const img = doc.openImage(coverPath);
-        const scaleX = W / img.width;
-        const scaleY = H / img.height;
-        doc.save();
-        doc.transform(scaleX, 0, 0, scaleY, 0, 0);
-        doc.image(img, 0, 0);
-        doc.restore();
+        // 3% overscale to guarantee zero gaps
+        const overscale = 1.03;
+        const scaledH = (W * overscale / img.width) * img.height;
+        const scaledW = W * overscale;
+        if (scaledH >= H) {
+          // Width-fit: image fills width + extra, tall enough
+          doc.image(img, -(scaledW - W) / 2, 0, { width: scaledW });
+        } else {
+          // Height-fit: image fills height + extra, wide enough
+          const hScale = H * overscale;
+          const wFromH = (hScale / img.height) * img.width;
+          doc.image(img, -(wFromH - W) / 2, -(hScale - H) / 2, { height: hScale });
+        }
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
