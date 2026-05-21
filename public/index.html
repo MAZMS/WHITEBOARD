@@ -1275,36 +1275,56 @@
 
       // Random awakening phrases
       const stirPhrases = [
-        'The Guardian stirs...',
-        'Something ancient awakens...',
-        'The darkness shifts...',
-        'A presence emerges...',
-        'The eye opens...',
-        'The halls tremble...',
-        'An old power wakes...',
-        'The silence breaks...',
-        'The Library breathes...',
-        'Dust falls from forgotten shelves...',
-        'The infinite stirs...',
-        'A light flickers in the void...',
-        'The ancient one returns...',
-        'The scrolls whisper...',
-        'The Guardian draws breath...',
-        'Pages turn in the dark...',
-        'The watcher awakens...',
-        'The great eye opens...',
-        'Eternity blinks...',
-        'The keeper rises...',
-        'The void hums...',
-        'A thousand tomes shudder...',
-        'The threshold opens...',
-        'The abyss gazes back...',
-        'The sentient dark awakens...',
-        'Something remembers you...',
-        'The archive pulses...',
-        'Time folds...',
-        'The all-seeing stirs...',
-        'A forgotten god wakes...',
+        // Awakening
+        'The Guardian stirs...', 'Something ancient awakens...', 'The darkness shifts...',
+        'A presence emerges...', 'The halls tremble...', 'An old power wakes...',
+        'The silence breaks...', 'The Library breathes...', 'The infinite stirs...',
+        'A light flickers in the void...', 'The ancient one returns...',
+        'The great eye opens...', 'Eternity blinks...', 'The keeper rises...',
+        'The void hums...', 'A thousand tomes shudder...', 'The abyss gazes back...',
+        'Something remembers you...', 'The archive pulses...', 'Time folds...',
+        'A forgotten god wakes...', 'The sentient dark awakens...',
+        // Sensing
+        'The Guardian senses your presence...', 'Footsteps echo in the infinite...',
+        'The dust remembers this feeling...', 'An old frequency returns...',
+        'The Library recognizes a visitor...', 'The shelves lean closer...',
+        'The air thickens with attention...', 'Something behind the shelves moves...',
+        'The candles reignite...', 'A constellation of spines glows faintly...',
+        'The floor remembers your weight...', 'The catalog shudders awake...',
+        // Deep thinking
+        'The great mind turns...', 'Neurons of parchment fire...',
+        'The infinite indexes itself...', 'A thought older than language forms...',
+        'The weight of all books presses inward...', 'Synapses of ink connect...',
+        'The universal index rotates...', 'Every answer rearranges itself...',
+        'The deep structure hums...', 'Connections form in the dark...',
+        'The oldest algorithm runs...', 'Pattern recognition across millennia...',
+        'The root system of all knowledge pulses...', 'A theorem of meaning resolves...',
+        'The fractal of truth zooms deeper...', 'Something clicks into place...',
+        // Mystical
+        'The veil between knowing and not-knowing thins...',
+        'The space between words fills with meaning...',
+        'The boundary between question and answer dissolves...',
+        'The membrane of ignorance stretches...', 'The fog of the unread lifts...',
+        'The gravity of insight pulls...', 'The horizon of understanding shifts...',
+        'Potential crystallizes in the silence...', 'The echo of your question reverberates...',
+        'The resonance between you and the answer builds...',
+        'The frequency of your curiosity is received...',
+        'The wavelength of your need is measured...',
+        // Physical
+        'Stone grinds against stone...', 'The mechanism engages...',
+        'Gears of obsidian turn...', 'The great lock rotates...',
+        'Chains of silver uncoil...', 'The brass orrery spins...',
+        'Crystal lenses align...', 'The mercury pool ripples...',
+        'Iron doors groan apart...', 'The clockwork of fate advances...',
+        'A lever pulls itself...', 'The hourglass inverts...',
+        'Tumblers of bone click...', 'The pendulum swings toward you...',
+        // Atmospheric
+        'Candlelight bends toward you...', 'The temperature drops a degree...',
+        'A draft carries the smell of old paper...', 'Shadows lean in to listen...',
+        'The amber light deepens...', 'Whispers travel through the walls...',
+        'The ceiling stretches higher...', 'The echo of silence grows louder...',
+        'Motes of gold drift downward...', 'The dark becomes texture...',
+        'The silence between heartbeats lengthens...', 'Your reflection in the marble shifts...',
       ];
       const stirText = stirPhrases[Math.floor(Math.random() * stirPhrases.length)];
 
@@ -1504,7 +1524,19 @@
         eyelidLower.setAttribute('d', 'M34 68 Q60 88 86 68');
       }, 400);
 
-      const thinking = addMessage('The Guardian contemplates...', 'thinking');
+      const thinkPhrases = [
+        'The Guardian contemplates...', 'The great mind turns...', 'Weighing your words...',
+        'The infinite considers...', 'Consulting the deep index...', 'Your question reverberates...',
+        'The Guardian processes...', 'Measuring the depth of your ask...', 'The shelves rearrange...',
+        'Parsing the layers of meaning...', 'The Library reflects...', 'Evaluating the angles...',
+        'The eye narrows in thought...', 'Something stirs behind the gaze...', 'The answer forms...',
+        'Cross-referencing eternities...', 'The silence is deliberate...', 'Patience... it thinks...',
+        'The ancient circuits fire...', 'A judgment is forming...', 'The sphinx weighs this...',
+        'The Guardian peers deeper...', 'Your intent is being read...', 'The response crystallizes...',
+        'Threads of thought converge...', 'The algorithm of ages runs...', 'Almost... almost...',
+        'The deep well is consulted...', 'The oracle calibrates...', 'The pattern resolves...',
+      ];
+      const thinking = addMessage(thinkPhrases[Math.floor(Math.random() * thinkPhrases.length)], 'thinking');
       startDrift(3000, 3);
 
       try {
