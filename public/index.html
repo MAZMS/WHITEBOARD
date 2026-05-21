@@ -960,6 +960,10 @@
         padding-bottom: calc(20px + env(safe-area-inset-bottom));
       }
 
+      /* First open stays centered (eye + question + input grouped in the middle).
+         Only once the keyboard is up do we dock the input to the bottom so it sits
+         right above the keyboard. The body-height transition smooths the shift. */
+      body.kb-open.centered .input-area { margin-top: auto; }
 
       .input-area textarea {
         font-size: 16px; /* prevents iOS zoom on focus */
@@ -1125,18 +1129,20 @@
     // iOS ignores the viewport interactive-widget hint AND scrolls the page up to
     // reveal a focused field, so we size to visualViewport.height and translate by
     // its offsetTop to cancel that scroll (otherwise the top content gets cut off).
-    // Size the app to the visible area so content stays centered above the mobile
-    // keyboard. The body's height/transform transition makes the open/close glide
-    // smoothly (one centered layout — no snap from switching to a docked layout).
     if (window.visualViewport) {
       const vv = window.visualViewport;
+      let maxVVH = vv.height; // tallest viewport seen = the "keyboard closed" height
       const fitViewport = () => {
         document.body.style.height = vv.height + 'px';
         document.body.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : 'none';
+        if (vv.height > maxVVH) maxVVH = vv.height;
+        // Dock the input only when the viewport actually shrinks a lot (keyboard
+        // truly open) — NOT merely on focus, which can fire without a keyboard.
+        document.body.classList.toggle('kb-open', vv.height < maxVVH - 150);
       };
       vv.addEventListener('resize', fitViewport);
       vv.addEventListener('scroll', fitViewport);
-      window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
+      window.addEventListener('orientationchange', () => { maxVVH = 0; setTimeout(fitViewport, 300); });
       fitViewport();
     }
 
