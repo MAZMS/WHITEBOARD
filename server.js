@@ -404,28 +404,30 @@ Available variables: doc (PDFDocument), W (595.28), H (841.89), outline ({title,
 Available fonts: 'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Courier', 'Courier-Bold', 'Courier-Oblique'.
 PDFKit methods: doc.fontSize(), doc.font(), doc.fillColor(), doc.text(str, opts), doc.moveDown(), doc.rect().fill(), doc.moveTo().lineTo().stroke(), doc.circle().fill(), doc.lineWidth(), doc.strokeColor(), doc.save(), doc.restore(), doc.addPage().
 
-Return ONLY a JSON object with this structure (no other text):
+IMPORTANT: Keep each code string SHORT (under 15 lines). Use semicolons, not newlines. Return ONLY valid JSON, no other text:
 {
-  "accent": "#hex accent color that matches the book's mood and topic",
+  "accent": "#hex accent color matching the book mood",
   "accentLight": "#hex lighter version",
   "headingColor": "#hex for headings",
-  "bodyColor": "#hex for body text (must be dark and readable)",
-  "fontBody": "one of the available fonts",
-  "fontHead": "one of the available bold fonts",
-  "fontItalic": "one of the available italic fonts",
-  "titlePageCode": "JavaScript code string — draws the title page. Use doc.moveDown(), doc.fontSize(), doc.font(), doc.fillColor(), doc.text(). You have: doc, W, H, outline, accent, accentLight, headingColor, fontHead, fontBody, fontItalic. Be creative with layout, spacing, decorative elements (lines, circles, rectangles). Do NOT call doc.addPage().",
-  "chapterHeaderCode": "JavaScript code string — draws a chapter header. You have: doc, W, H, ch (chapter object with .title), i (chapter index 0-based), accent, accentLight, headingColor, fontHead, fontBody. Be creative with chapter number styling, title positioning, decorative elements. Do NOT call doc.addPage().",
-  "dividerCode": "JavaScript code string — draws a small decorative divider at current doc.y. You have: doc, W, y (the y position), accent. Draw something unique — dots, lines, shapes, ornaments.",
-  "showBorder": true/false,
-  "showDropCap": true/false,
-  "dropCapSize": number between 24-40
+  "bodyColor": "#hex for body (dark, readable)",
+  "fontBody": "font name",
+  "fontHead": "bold font name",
+  "fontItalic": "italic font name",
+  "titlePageCode": "SHORT JS code. Vars: doc,W,H,outline,accent,accentLight,headingColor,fontHead,fontBody,fontItalic. Use doc.moveDown/fontSize/font/fillColor/text/rect/moveTo/lineTo/circle/stroke/fill/save/restore. Do NOT call doc.addPage(). Draw title page with outline.title and outline.subtitle. Be creative with decorative elements.",
+  "chapterHeaderCode": "SHORT JS code. Vars: doc,W,H,ch,i,accent,accentLight,headingColor,fontHead,fontBody. ch.title is chapter title, i is 0-based index. Do NOT call doc.addPage(). Draw chapter heading creatively.",
+  "dividerCode": "SHORT JS code. Vars: doc,W,y,accent. Draw a small decorative element at y position.",
+  "showBorder": true or false,
+  "showDropCap": true or false,
+  "dropCapSize": 24 to 40
 }
 
-Design something UNIQUE that matches the mood of "${outline.title}". A horror book should feel dark and heavy. A self-help book should feel clean and inspiring. A cooking book should feel warm and inviting. Be creative!` }],
-      ...tokenLimit(2048),
+Design for "${outline.title}" — make it match the mood. Be creative but keep code SHORT!` }],
+      ...tokenLimit(4096),
       temperature: 0.9,
     });
-    const designRaw = designRes.choices[0].message.content;
+    let designRaw = designRes.choices[0].message.content;
+    // Strip markdown code fences if present
+    designRaw = designRaw.replace(/```json?\s*/g, '').replace(/```\s*/g, '');
     const designMatch = designRaw.match(/\{[\s\S]*\}/);
     designCode = JSON.parse(designMatch[0]);
     console.log(`  Design generated: accent=${designCode.accent} font=${designCode.fontBody}`);
