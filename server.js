@@ -402,16 +402,19 @@ Respond in this exact JSON format only, no other text:
   try {
     const seedRes = await openai.chat.completions.create({
       model: getModel(),
-      messages: [{ role: 'user', content: `Invent a UNIQUE, never-before-seen visual design aesthetic for a book titled "${outline.title}" (${outline.subtitle}").
+      messages: [{ role: 'user', content: `Invent a UNIQUE visual design aesthetic for a book titled "${outline.title}" (${outline.subtitle}).
 
-Describe it in exactly ONE sentence: the color palette (specific hex colors), typography mood, decorative style, and overall feeling. Be wildly creative — draw from architecture, nature, music, fashion, cultures, eras, emotions, textures, materials, weather, dreams, or anything.
+In ONE sentence, describe: 3 specific hex colors, a SPECIFIC Google Font name for headings (pick something unexpected — NOT Playfair Display, NOT Source Serif, NOT Lora, NOT Merriweather — explore the full Google Fonts library), a SPECIFIC Google Font for body, the decorative style, and the overall mood.
 
-Examples of the FORMAT (but NEVER copy these — invent your own):
-- "Molten copper (#B87333) on charcoal (#2D2D2D), with Didot-style serifs, hairline geometric dividers, and the cold precision of a Swiss bank vault"
-- "Electric violet (#7B2FBE) bleeding into midnight (#0D0221), monospace typography, fractured grid lines, like a corrupted terminal in a neon city"
-- "Sun-bleached linen (#F5F0E8) with dried herb green (#6B7F4E), hand-drawn serif, botanical ornaments, a kitchen window in Provence at noon"
+Draw inspiration from: architecture, nature, music genres, fashion decades, world cultures, art movements, materials, weather, emotions, dreams, film genres, or anything unexpected.
 
-Your response must be ONLY the one sentence — nothing else. Make it specific with hex colors.` }],
+Examples of FORMAT only (NEVER copy these — invent your own):
+- "Burnt sienna (#A0522D) and bone white (#F5F0E1) on slate (#3D3D3D), headings in Cormorant Garamond, body in Crimson Text, thick horizontal rules, the weight of an old courthouse ledger"
+- "Electric cyan (#00E5FF) on void black (#050505), headings in Space Grotesk, body in DM Sans, pixel-grid dividers, a hacker's manifesto printed on thermal paper"
+- "Sage green (#87A878) with cream (#FFFDD0) and bark brown (#6B4226), headings in Vollkorn, body in Spectral, leaf-vein line ornaments, a field guide found in a cabin"
+- "Coral (#FF6B6B) and midnight navy (#1A1A40), headings in Josefin Sans, body in Nunito, circular chapter markers, a surf magazine from the 80s"
+
+Your response must be ONLY the one sentence. Be specific and NEVER repeat fonts or color combos you've used before.` }],
       ...tokenLimit(200),
       temperature: 1.3,
     });
