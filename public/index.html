@@ -1317,47 +1317,41 @@
       const minDelay = new Promise(resolve => setTimeout(resolve, 1800));
 
       Promise.all([greetPromise, minDelay]).then(([data]) => {
-        // "The Guardian stirs..." appears briefly
-        const thinking = addMessage(stirText, 'thinking');
+        // Show greeting directly — no stir text
+        const greetDiv = addTypedMessage(data.reply, 'guardian', 30);
+        greetDiv.classList.add('first-greeting');
 
-        // Replace with greeting after a beat
-        setTimeout(() => {
-          thinking.remove();
-          const greetDiv = addTypedMessage(data.reply, 'guardian', 30);
-          greetDiv.classList.add('first-greeting');
+        // Eye click cycles the greeting to a new AI-generated question
+        let greetCooldown = false;
+        const pastGreetings = [data.reply];
+        greetingClickHandler = async () => {
+          if (!document.body.classList.contains('centered') || greetCooldown) return;
+          greetCooldown = true;
+          setTimeout(() => greetCooldown = false, 4000);
+          const el = chatArea.querySelector('.first-greeting');
+          if (!el) return;
+          el.style.opacity = '0';
+          try {
+            const r = await fetch('/api/greet', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ previous: pastGreetings.slice(-10) })
+            }).then(r => r.json());
+            pastGreetings.push(r.reply);
+            setTimeout(() => { el.textContent = r.reply; el.style.opacity = '1'; }, 500);
+          } catch {
+            setTimeout(() => { el.style.opacity = '1'; }, 500);
+          }
+        };
+        eyeSymbol.addEventListener('click', greetingClickHandler);
 
-          // Eye click cycles the greeting to a new AI-generated question
-          let greetCooldown = false;
-          const pastGreetings = [data.reply];
-          greetingClickHandler = async () => {
-            if (!document.body.classList.contains('centered') || greetCooldown) return;
-            greetCooldown = true;
-            setTimeout(() => greetCooldown = false, 4000);
-            const el = chatArea.querySelector('.first-greeting');
-            if (!el) return;
-            el.style.opacity = '0';
-            try {
-              const r = await fetch('/api/greet', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ previous: pastGreetings.slice(-10) })
-              }).then(r => r.json());
-              pastGreetings.push(r.reply);
-              setTimeout(() => { el.textContent = r.reply; el.style.opacity = '1'; }, 500);
-            } catch {
-              setTimeout(() => { el.style.opacity = '1'; }, 500);
-            }
-          };
-          eyeSymbol.addEventListener('click', greetingClickHandler);
+        // Speed up particles, start blinking
+        clearInterval(particleInterval);
+        particleInterval = setInterval(spawnParticle, 600);
+        scheduleBlink();
 
-          // Speed up particles, start blinking
-          clearInterval(particleInterval);
-          particleInterval = setInterval(spawnParticle, 600);
-          scheduleBlink();
-
-          // Pause, then go alive
-          setTimeout(() => enterPhase('alive'), 1500);
-        }, 1200);
+        // Go alive
+        setTimeout(() => enterPhase('alive'), 1000);
       });
     }
 
