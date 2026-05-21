@@ -321,7 +321,7 @@ async function generateCover(title, subtitle, designTheme, styleSeedText) {
   const colorMood = d.accent ? `Use a color palette that includes tones similar to ${d.accent} and ${d.accentLight || d.accent}. Match the mood: ${d.coverStyle || 'matching the book topic'}.` : '';
 
   const coverPrompt = `A flat 2D digital book cover. Title: "${title}". Subtitle: "${subtitle}". No author name. Not a 3D render. IMPORTANT: Keep the title and subtitle text AWAY from the edges — leave safe margins so text is not cut off. Center the text within the image. ${colorMood} NEVER display font names, hex codes, or technical info as text on the cover — only the title and subtitle.`;
-  const imagenPrompt = `Digital art poster for "${title}". Title "${title}" as large centered text with safe margins. No font names, no hex codes, no technical text. Only the title. ${d.coverStyle || ''}`;
+  const imagenPrompt = `Cinematic artwork about "${title}". Atmospheric, dramatic, no text at all, no letters, no words, no title. Pure visual art only. ${d.coverStyle || ''}`;
 
   try {
     // 1. Try Nano Banana models via Vertex AI (bills to GCP $300 credits)
@@ -361,7 +361,7 @@ async function generateCover(title, subtitle, designTheme, styleSeedText) {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           instances: [{ prompt: imagenPrompt }],
-          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: '3D, mockup, physical book, book spine, shadow, perspective, small text, author name, gibberish, watermark' }
+          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'text, letters, words, title, subtitle, author name, typography, writing, font, watermark, 3D, mockup, book spine' }
         })
       });
       const imgData = await imgRes.json();
