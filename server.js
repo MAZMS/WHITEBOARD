@@ -892,7 +892,7 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
         console.warn('Failed to embed cover image:', err.message);
       }
     }
-    const tocPage = hasCover ? 2 : 1; // TOC page index shifts when cover exists
+    let tocPage = -1; // Will be set when TOC page is actually added
     // Drawing helpers (no text = no ghost pages)
     function divider(y) {
       if (!runDesignCode(d.dividerCode, { y })) {
@@ -910,6 +910,7 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
 
     // ===== TITLE PAGE (AI-designed) =====
     doc.addPage({ size: 'A4', margins: { top: 80, bottom: 80, left: 80, right: 80 } });
+    const titlePageIdx = doc.bufferedPageRange().count - 1;
     border();
     if (!runDesignCode(d.titlePageCode)) {
       // Fallback title page
@@ -926,8 +927,9 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
         .text('greatlibrary.ai', { align: 'center' });
     }
 
-    // ===== PAGE 1: TABLE OF CONTENTS =====
+    // ===== TABLE OF CONTENTS =====
     doc.addPage();
+    tocPage = doc.bufferedPageRange().count - 1; // Record actual TOC page index
     border();
     doc.moveDown(3);
     doc.fontSize(20).font(fontHead).fillColor(headingColor)
