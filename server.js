@@ -282,14 +282,23 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
-async function generateCover(title, subtitle, designTheme) {
+async function generateCover(title, subtitle, designTheme, styleSeedText) {
   const d = designTheme || {};
-  const colorGuide = d.accent ? `Use these brand colors: primary accent ${d.accent}, lighter shade ${d.accentLight || d.accent}. The cover must feel visually connected to the interior that uses these same colors.` : '';
-  const styleGuide = d.coverStyle ? `Art style: ${d.coverStyle}.` : '';
-  const moodGuide = d.fontHead ? `The interior uses ${d.fontHead} for headings — match this typographic mood.` : '';
 
-  const coverPrompt = `A flat 2D digital book cover illustration in portrait 2:3 aspect ratio. Title: "${title}". Subtitle: "${subtitle}". Show ONLY the title and subtitle as text — no author name, no other text. The artwork must go edge-to-edge — no borders, no frames, no margins. Flat graphic design, not a 3D render. ${styleGuide} ${colorGuide} ${moodGuide}`;
-  const imagenPrompt = `Digital art poster for "${title}". The words "${title}" displayed as large stylized text. No other text. ${styleGuide} ${colorGuide}`;
+  // Build a comprehensive brand brief for the cover
+  const brandBrief = d.accent ? `
+BRAND CONSISTENCY (CRITICAL — the cover MUST match the interior design):
+- Primary accent color: ${d.accent}
+- Secondary color: ${d.accentLight || d.accent}
+- Heading color: ${d.headingColor || '#1a1a1a'}
+- Body text color: ${d.bodyColor || '#333'}
+- Interior font: ${d.fontHead || 'serif'} for headings, ${d.fontBody || 'serif'} for body
+- Cover art style: ${d.coverStyle || 'matching the book topic'}
+${styleSeedText ? '- Design DNA: ' + styleSeedText : ''}
+The cover must look like it belongs to the SAME book as the interior. Same color palette, same mood, same visual language.` : '';
+
+  const coverPrompt = `A flat 2D digital book cover. Title: "${title}". Subtitle: "${subtitle}". No author name. Edge-to-edge art, no borders/frames. Not a 3D render. ${brandBrief}`;
+  const imagenPrompt = `Digital art poster for "${title}". Title "${title}" as large text. No other text. ${d.accent ? 'Use colors: ' + d.accent + ' and ' + (d.accentLight || d.accent) : ''}. ${d.coverStyle || ''}`;
 
   try {
     // 1. Try Nano Banana models via Vertex AI (bills to GCP $300 credits)
@@ -707,7 +716,7 @@ Return ONLY a JSON with the FIXED fields (only include fields that needed fixing
 
   // Step 1.7: Generate cover image (using design theme for consistency)
   saveJob(ebookId, { status: 'generating', progress: 1.5 / totalSteps, step: 'cover' });
-  const coverPath = await generateCover(outline.title, outline.subtitle, designCode);
+  const coverPath = await generateCover(outline.title, outline.subtitle, designCode, styleSeed);
 
   // Step 2: Generate each chapter
   const chapters = [];
