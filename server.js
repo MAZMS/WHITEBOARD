@@ -866,7 +866,21 @@ app.get('/api/greet', async (req, res) => {
       model: getModel(),
       messages: [
         { role: 'system', content: getSystemPrompt()},
-        { role: 'user', content: 'Greet me and ask what knowledge I seek — in one sphinx-like sentence. Cryptic, powerful. You already know I came for a tome. Each greeting must be unique.' }
+        { role: 'user', content: `Generate a unique sphinx-like greeting that asks what knowledge the seeker wants. One sentence only. Cryptic, powerful.
+
+CRITICAL: Every greeting must feel COMPLETELY different. Vary the structure, metaphor, and approach. Pick ONE style at random:
+- A question about doors, paths, or corridors
+- A statement about what you already sense about them
+- A challenge or dare to name what they seek
+- A metaphor involving fire, water, stars, shadows, or bones
+- An observation about time, fear, or hunger
+- A riddle-like invitation
+- A cold acknowledgment of their presence
+- A reference to what the last seeker asked
+- A warning wrapped in an invitation
+- Speaking about the Library itself as if it's alive
+
+NEVER start with "Ah." more than occasionally. Vary your opening word every time. Do NOT use the word "threshold" or "traveler" every time.` }
       ],
       ...tokenLimit(200),
       temperature: 1,
