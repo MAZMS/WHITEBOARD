@@ -359,7 +359,7 @@ async function generateEbook(ebookId, conversationHistory) {
 Conversation:
 ${conversationHistory.map(m => `${m.role}: ${m.content}`).join('\n')}
 
-Also design a visual theme for the PDF interior that matches the book's topic and mood. Pick colors and a font family (only "helvetica", "times", or "courier" are available).
+Also design a unique visual theme for the PDF interior that matches the book's topic and mood. Every book should feel different.
 
 Respond in this exact JSON format only, no other text:
 {
@@ -373,11 +373,16 @@ Respond in this exact JSON format only, no other text:
     {"title": "Chapter 5 title", "description": "Brief description"}
   ],
   "theme": {
-    "accent": "#hex color for accents, drop caps, dividers — match the book mood",
-    "accentLight": "#hex lighter version of accent for chapter numbers",
-    "heading": "#hex color for headings and titles",
-    "body": "#hex color for body text (dark, readable)",
-    "font": "helvetica or times or courier — pick what fits the topic"
+    "accent": "#hex color for accents — match the book mood",
+    "accentLight": "#hex lighter version of accent",
+    "heading": "#hex color for headings",
+    "body": "#hex color for body text (must be dark/readable)",
+    "font": "helvetica or times or courier",
+    "border": true or false,
+    "divider": "line" or "dots" or "ornament" or "none",
+    "chapterStyle": "centered" or "left" or "minimal",
+    "dropCap": true or false,
+    "titlePageStyle": "classic" or "modern" or "bold"
   }
 }`;
 
@@ -490,7 +495,12 @@ function createPDF(filepath, outline, chapters, coverPath) {
     const fontHead = fonts.head;
     const fontBody = fonts.body;
     const fontItalic = fonts.italic;
-    console.log(`  PDF theme: accent=${accent} font=${t.font || 'helvetica'}`);
+    const showBorder = t.border !== false;
+    const dividerStyle = t.divider || 'line';
+    const chapterStyle = t.chapterStyle || 'centered';
+    const showDropCap = t.dropCap !== false;
+    const titlePageStyle = t.titlePageStyle || 'classic';
+    console.log(`  PDF theme: accent=${accent} font=${t.font || 'helvetica'} border=${showBorder} divider=${dividerStyle} chapter=${chapterStyle}`);
 
     // ===== PAGE 0: COVER IMAGE (fully AI-generated, edge-to-edge) =====
     const hasCover = coverPath && fs.existsSync(coverPath);
@@ -502,7 +512,7 @@ function createPDF(filepath, outline, chapters, coverPath) {
         const img = doc.openImage(coverPath);
         const scaleW = W / img.width;
         const scaleH = H / img.height;
-        const scale = Math.max(scaleW, scaleH);
+        const scale = Math.max(scaleW, scaleH) * 1.05; // 5% overscale to fill gaps
         const drawW = img.width * scale;
         const drawH = img.height * scale;
         const x = (W - drawW) / 2;
@@ -516,36 +526,78 @@ function createPDF(filepath, outline, chapters, coverPath) {
     // Drawing helpers (no text = no ghost pages)
     function divider(y, w = 140) {
       const cx = W / 2;
-      doc.save().moveTo(cx - w/2, y).lineTo(cx + w/2, y)
-        .lineWidth(0.5).strokeColor(accent).stroke().restore();
-      doc.save().moveTo(cx, y-2.5).lineTo(cx+2.5, y).lineTo(cx, y+2.5).lineTo(cx-2.5, y)
-        .closePath().fillColor(accent).fill().restore();
+      if (dividerStyle === 'none') return;
+      if (dividerStyle === 'dots') {
+        for (let dx = -w/2; dx <= w/2; dx += 12) {
+          doc.save().circle(cx + dx, y, 1.2).fillColor(accent).fill().restore();
+        }
+      } else if (dividerStyle === 'ornament') {
+        doc.save().moveTo(cx - w/2, y).lineTo(cx + w/2, y)
+          .lineWidth(0.3).strokeColor(accent).stroke().restore();
+        doc.save().circle(cx, y, 3).fillColor(accent).fill().restore();
+        doc.save().circle(cx - 12, y, 1.5).fillColor(accent).fill().restore();
+        doc.save().circle(cx + 12, y, 1.5).fillColor(accent).fill().restore();
+      } else {
+        doc.save().moveTo(cx - w/2, y).lineTo(cx + w/2, y)
+          .lineWidth(0.5).strokeColor(accent).stroke().restore();
+        doc.save().moveTo(cx, y-2.5).lineTo(cx+2.5, y).lineTo(cx, y+2.5).lineTo(cx-2.5, y)
+          .closePath().fillColor(accent).fill().restore();
+      }
     }
 
     function border() {
+      if (!showBorder) return;
       doc.save().rect(40, 40, W-80, H-80).lineWidth(0.4).strokeColor(accent).stroke().restore();
     }
 
     // ===== TITLE PAGE =====
     doc.addPage({ size: 'A4', margins: { top: 80, bottom: 80, left: 80, right: 80 } });
     border();
-    doc.moveDown(7);
-    divider(doc.y, 180);
-    doc.moveDown(2);
-    doc.fontSize(30).font(fontHead).fillColor(headingColor)
-      .text(outline.title, { align: 'center' });
-    doc.moveDown(0.8);
-    divider(doc.y, 80);
-    doc.moveDown(1);
-    doc.fontSize(13).font(fontItalic).fillColor('#666')
-      .text(outline.subtitle, { align: 'center' });
-    doc.moveDown(7);
-    divider(doc.y, 50);
-    doc.moveDown(1);
-    doc.fontSize(9).font(fontBody).fillColor('#888')
-      .text('Retrieved from the Great Library', { align: 'center' });
-    doc.fontSize(9).font(fontItalic).fillColor(accent)
-      .text('greatlibrary.ai', { align: 'center' });
+    if (titlePageStyle === 'bold') {
+      doc.moveDown(5);
+      doc.fontSize(40).font(fontHead).fillColor(accent)
+        .text(outline.title.toUpperCase(), { align: 'center', characterSpacing: 2 });
+      doc.moveDown(1);
+      doc.fontSize(14).font(fontItalic).fillColor(bodyColor)
+        .text(outline.subtitle, { align: 'center' });
+      doc.moveDown(10);
+      doc.fontSize(9).font(fontBody).fillColor('#888')
+        .text('Retrieved from the Great Library', { align: 'center' });
+      doc.fontSize(9).font(fontItalic).fillColor(accent)
+        .text('greatlibrary.ai', { align: 'center' });
+    } else if (titlePageStyle === 'modern') {
+      doc.moveDown(12);
+      doc.fontSize(28).font(fontHead).fillColor(headingColor)
+        .text(outline.title, { align: 'left' });
+      doc.moveDown(0.5);
+      doc.moveTo(80, doc.y).lineTo(200, doc.y).lineWidth(2).strokeColor(accent).stroke();
+      doc.moveDown(1);
+      doc.fontSize(13).font(fontItalic).fillColor('#666')
+        .text(outline.subtitle, { align: 'left' });
+      doc.moveDown(6);
+      doc.fontSize(9).font(fontBody).fillColor('#888')
+        .text('Retrieved from the Great Library', { align: 'left' });
+      doc.fontSize(9).font(fontItalic).fillColor(accent)
+        .text('greatlibrary.ai', { align: 'left' });
+    } else {
+      doc.moveDown(7);
+      divider(doc.y, 180);
+      doc.moveDown(2);
+      doc.fontSize(30).font(fontHead).fillColor(headingColor)
+        .text(outline.title, { align: 'center' });
+      doc.moveDown(0.8);
+      divider(doc.y, 80);
+      doc.moveDown(1);
+      doc.fontSize(13).font(fontItalic).fillColor('#666')
+        .text(outline.subtitle, { align: 'center' });
+      doc.moveDown(7);
+      divider(doc.y, 50);
+      doc.moveDown(1);
+      doc.fontSize(9).font(fontBody).fillColor('#888')
+        .text('Retrieved from the Great Library', { align: 'center' });
+      doc.fontSize(9).font(fontItalic).fillColor(accent)
+        .text('greatlibrary.ai', { align: 'center' });
+    }
 
     // ===== PAGE 1: TABLE OF CONTENTS =====
     doc.addPage();
@@ -575,38 +627,57 @@ function createPDF(filepath, outline, chapters, coverPath) {
       border();
       chapterPageIndex.push(doc.bufferedPageRange().count - 1);
 
-      // Chapter header
-      doc.moveDown(3);
-      doc.fontSize(42).font(fontHead).fillColor(accentLight)
-        .text(`${String(i+1).padStart(2,'0')}`, { align: 'center' });
-      doc.moveDown(0.2);
-      doc.fontSize(20).font(fontHead).fillColor(headingColor)
-        .text(ch.title, { align: 'center' });
-      doc.moveDown(0.5);
-      divider(doc.y, 70);
-      doc.moveDown(1.5);
+      // Chapter header — varies by style
+      if (chapterStyle === 'left') {
+        doc.moveDown(5);
+        doc.fontSize(11).font(fontHead).fillColor(accent)
+          .text(`Chapter ${i+1}`, { align: 'left' });
+        doc.moveDown(0.3);
+        doc.fontSize(22).font(fontHead).fillColor(headingColor)
+          .text(ch.title, { align: 'left' });
+        doc.moveDown(0.3);
+        doc.moveTo(80, doc.y).lineTo(180, doc.y).lineWidth(1.5).strokeColor(accent).stroke();
+        doc.moveDown(2);
+      } else if (chapterStyle === 'minimal') {
+        doc.moveDown(8);
+        doc.fontSize(18).font(fontHead).fillColor(headingColor)
+          .text(ch.title, { align: 'center' });
+        doc.moveDown(2);
+      } else {
+        doc.moveDown(3);
+        doc.fontSize(42).font(fontHead).fillColor(accentLight)
+          .text(`${String(i+1).padStart(2,'0')}`, { align: 'center' });
+        doc.moveDown(0.2);
+        doc.fontSize(20).font(fontHead).fillColor(headingColor)
+          .text(ch.title, { align: 'center' });
+        doc.moveDown(0.5);
+        divider(doc.y, 70);
+        doc.moveDown(1.5);
+      }
 
-      // First paragraph with drop cap
+      // Chapter body
       const paragraphs = ch.content.split(/\n\n+/);
       let didDropCap = false;
 
       paragraphs.forEach(p => {
-        const t = p.trim();
-        if (!t) return;
+        const txt = p.trim();
+        if (!txt) return;
 
-        if (!didDropCap && t.length > 10) {
+        if (!didDropCap && showDropCap && txt.length > 10) {
           didDropCap = true;
-          const letter = t[0].toUpperCase();
-          const rest = t.slice(1);
-
-          // Drop cap: first letter big in accent color
+          const letter = txt[0].toUpperCase();
+          const rest = txt.slice(1);
           doc.fontSize(28).font(fontHead).fillColor(accent)
             .text(letter, { continued: true, baseline: -4 });
           doc.fontSize(11).font(fontBody).fillColor(bodyColor)
             .text(rest, { align: 'justify', lineGap: 4 });
+        } else if (!didDropCap && !showDropCap && txt.length > 10) {
+          didDropCap = true;
+          doc.fontSize(11).font(fontHead).fillColor(bodyColor)
+            .text(txt, { align: 'justify', lineGap: 4 });
         } else {
           doc.fontSize(11).font(fontBody).fillColor(bodyColor)
-            .text(t, { align: 'justify', lineGap: 4, indent: 15 });
+            .text(txt, { align: 'justify', lineGap: 4, indent: 15 });
         }
         doc.moveDown(0.5);
       });
