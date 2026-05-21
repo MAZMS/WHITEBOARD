@@ -1328,6 +1328,7 @@
 
           // Eye click cycles the greeting to a new AI-generated question
           let greetCooldown = false;
+          const pastGreetings = [data.reply];
           greetingClickHandler = async () => {
             if (!document.body.classList.contains('centered') || greetCooldown) return;
             greetCooldown = true;
@@ -1336,7 +1337,12 @@
             if (!el) return;
             el.style.opacity = '0';
             try {
-              const r = await fetch('/api/greet').then(r => r.json());
+              const r = await fetch('/api/greet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ previous: pastGreetings.slice(-10) })
+              }).then(r => r.json());
+              pastGreetings.push(r.reply);
               setTimeout(() => { el.textContent = r.reply; el.style.opacity = '1'; }, 500);
             } catch {
               setTimeout(() => { el.style.opacity = '1'; }, 500);

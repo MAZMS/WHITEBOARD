@@ -860,36 +860,44 @@ Respond in JSON only: {"linkText": "...", "noteText": "..."}`
 });
 
 // --- Greeting ---
-app.get('/api/greet', async (req, res) => {
+app.get('/api/greet', async (req, res) => { greetHandler(req, res); });
+app.post('/api/greet', async (req, res) => { greetHandler(req, res); });
+
+async function greetHandler(req, res) {
+  const previous = req.body?.previous || [];
+  const prevBlock = previous.length > 0
+    ? `\n\nYou have ALREADY said these — NEVER repeat or rephrase any of them:\n${previous.map((p, i) => `${i+1}. "${p}"`).join('\n')}\n\nYour new question must be COMPLETELY different in structure, words, and metaphor.`
+    : '';
+
   try {
     const completion = await openai.chat.completions.create({
       model: getModel(),
       messages: [
         { role: 'system', content: getSystemPrompt()},
-        { role: 'user', content: `Generate a SHORT question (one sentence) that forces the user to tell you what topic they want an ebook about. You are a sphinx — cryptic but the question must clearly ask WHAT THEY WANT.
+        { role: 'user', content: `Generate a SHORT question (one sentence) that forces the user to tell you what topic they want an ebook about. Sphinx-like but clearly asking WHAT THEY WANT.
 
-It must be a QUESTION (end with ?) that makes the user type their topic. Like a search bar prompt but sphinx-flavored.
+Must be a QUESTION ending with ?. Under 15 words. Modern sphinx — mysterious but clear.
 
-Examples of what we want:
-- "What keeps you awake that a book might quiet?"
-- "If the Library held one answer for you — what would it be?"
-- "What skill haunts you with its absence?"
-- "What would you master if failure were impossible?"
-- "What question has followed you longest?"
-- "What does your ambition need to read next?"
-- "What knowledge would change your tomorrow?"
-- "If I wrote you one book — what would it solve?"
+Vary wildly between these approaches:
+- Ask about their pain, gap, or unsolved problem
+- Ask what they'd master, build, or become
+- Ask what keeps them up at night
+- Ask about their next move, dream, or obsession
+- Frame it as "if I gave you one book..."
+- Ask what they're afraid to learn
+- Ask what they'd teach if they could
+- Reference something specific (a skill, a feeling, a moment)
 
-CRITICAL: Must be unique every time. Vary structure. Always a question. Short — under 15 words. Never use "threshold", "traveler", "tome", "seek", "knowledge you seek". Speak like a modern sphinx — mysterious but clear in what it's asking.` }
+NEVER use: "threshold", "traveler", "tome", "seek", "knowledge you seek", "summon", "draw from".${prevBlock}` }
       ],
       ...tokenLimit(200),
-      temperature: 1,
+      temperature: 1.2,
     });
-    res.json({ reply: completion.choices[0].message.content });
+    res.json({ reply: completion.choices[0].message.content.replace(/^["']|["']$/g, '').trim() });
   } catch (err) {
-    res.json({ reply: 'I am the Guardian of the Great Library — keeper of infinite knowledge, watcher of forgotten truths. What knowledge do you seek, Traveler?' });
+    res.json({ reply: 'What would you learn if no one was watching?' });
   }
-});
+}
 
 // --- Farewell ---
 app.get('/api/farewell', async (req, res) => {
