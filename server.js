@@ -396,6 +396,32 @@ Respond in this exact JSON format only, no other text:
 
   // Step 1.5: AI generates the PDF design code
   saveJob(ebookId, { status: 'generating', progress: 1.5 / totalSteps, step: 'designing' });
+
+  // AI generates a unique style seed — like DNA, never the same twice
+  let styleSeed = '';
+  try {
+    const seedRes = await openai.chat.completions.create({
+      model: getModel(),
+      messages: [{ role: 'user', content: `Invent a UNIQUE, never-before-seen visual design aesthetic for a book titled "${outline.title}" (${outline.subtitle}").
+
+Describe it in exactly ONE sentence: the color palette (specific hex colors), typography mood, decorative style, and overall feeling. Be wildly creative — draw from architecture, nature, music, fashion, cultures, eras, emotions, textures, materials, weather, dreams, or anything.
+
+Examples of the FORMAT (but NEVER copy these — invent your own):
+- "Molten copper (#B87333) on charcoal (#2D2D2D), with Didot-style serifs, hairline geometric dividers, and the cold precision of a Swiss bank vault"
+- "Electric violet (#7B2FBE) bleeding into midnight (#0D0221), monospace typography, fractured grid lines, like a corrupted terminal in a neon city"
+- "Sun-bleached linen (#F5F0E8) with dried herb green (#6B7F4E), hand-drawn serif, botanical ornaments, a kitchen window in Provence at noon"
+
+Your response must be ONLY the one sentence — nothing else. Make it specific with hex colors.` }],
+      ...tokenLimit(200),
+      temperature: 1.3,
+    });
+    styleSeed = seedRes.choices[0].message.content.trim().replace(/^["']|["']$/g, '');
+    console.log(`  Design seed: ${styleSeed.slice(0, 80)}...`);
+  } catch (err) {
+    console.warn('  Style seed generation failed:', err.message);
+    styleSeed = 'Clean modern design with teal (#2A9D8F) accents on white, sans-serif typography';
+  }
+
   let designCode = null;
   try {
     const designRes = await openai.chat.completions.create({
@@ -460,35 +486,16 @@ RULES:
 Any Google Font by name: 'Playfair Display', 'Lora', 'Merriweather', 'Montserrat', 'Crimson Text', 'EB Garamond', 'Raleway', 'Source Serif 4', 'Open Sans', 'Roboto', 'Poppins', 'Cormorant Garamond', 'Libre Baskerville', 'Josefin Sans', 'Bitter', 'Nunito', 'Oswald', 'PT Serif', 'Spectral', 'Vollkorn', 'Alegreya', 'Libre Caslon Text', 'DM Sans', 'Space Grotesk', etc.
 Plus built-ins: 'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Courier', 'Courier-Bold'.
 
-=== DESIGN INSPIRATION (from a beautifully crafted PDF) ===
-Study these professional patterns and create something equally beautiful:
+=== YOUR MANDATORY DESIGN DIRECTION ===
+${styleSeed}
 
-PATTERN A — Classic literary style:
-- Running header on every page: book title in small italic + ornamental page number
-- Chapter label: ornamental markers around "Chapter One" in italic gold
-- Chapter title: 20pt bold in warm brown, with optional subtitle in italic
-- Drop cap: 36pt bold in deep accent color, first few words in SMALL CAPS bold
-- Body: 11pt serif in dark brown (#2c1e12), NOT pure black — warmer and easier to read
-- Ornamental characters (like diamond, fleuron, asterism) as decorative elements
+You MUST follow this aesthetic direction. Extract the colors, mood, and style from it. Do NOT default to brown/beige/gold classic styles. Every design must be as unique as DNA — never the same twice.
 
-PATTERN B — Modern clean:
-- Large chapter number as watermark, title left-aligned, accent line underneath
-- No borders, generous whitespace, sans-serif body
-- Drop cap in accent color, body in near-black
-
-PATTERN C — Bold dramatic:
-- Full-width accent color band behind chapter title
-- White text on colored background for headers
-- Strong geometric dividers
-
-=== EXAMPLE: Safe title page code ===
-doc.moveDown(8); doc.fontSize(10).font(fontItalic).fillColor(accent).text('\\u2766', {align: 'center'}); doc.moveDown(2); doc.fontSize(32).font(fontHead).fillColor(headingColor).text(outline.title, {align: 'center'}); doc.moveDown(0.5); doc.save(); var cx=W/2; doc.moveTo(cx-60, doc.y).lineTo(cx+60, doc.y).lineWidth(0.4).strokeColor(accent).stroke(); doc.restore(); doc.moveDown(1.5); doc.fontSize(12).font(fontItalic).fillColor(accent).text(outline.subtitle, {align: 'center'}); doc.moveDown(10); doc.fontSize(9).font(fontBody).fillColor(accent).text('greatlibrary.ai', {align: 'center'});
-
-=== EXAMPLE: Safe chapter header code ===
-doc.moveDown(3); doc.fontSize(10).font(fontItalic).fillColor(accent).text('\\u2766  Chapter ' + (i+1) + '  \\u2766', {align: 'center'}); doc.moveDown(0.5); doc.fontSize(22).font(fontHead).fillColor(headingColor).text(ch.title, {align: 'center'}); doc.moveDown(0.5); doc.save(); var cx=W/2; doc.moveTo(cx-50, doc.y).lineTo(cx+50, doc.y).lineWidth(0.4).strokeColor(accent).stroke(); doc.restore(); doc.moveDown(2);
-
-=== EXAMPLE: Safe divider code ===
-doc.save(); var cx=W/2; doc.fontSize(8).font(fontBody).fillColor(accent); doc.text('\\u2766', cx-4, y-4); doc.restore();
+=== CODE SAFETY REMINDERS ===
+- Title page: use doc.moveDown() + doc.text() for flowing content. Decorative shapes with doc.save()/doc.restore().
+- Chapter header: use doc.moveDown() + doc.text(). Include chapter number and ch.title.
+- Divider: small decorative element at y position with doc.save()/doc.restore().
+- ALL code must include outline.title, outline.subtitle (title page) and ch.title, i (chapter header).
 
 Return ONLY valid JSON:
 {
@@ -510,7 +517,7 @@ Return ONLY valid JSON:
   "coverStyle": "describe the cover art style in 10-15 words to guide cover image generation"
 }
 
-Design for "${outline.title}". Study the 3 patterns above and create something PROFESSIONAL and BEAUTIFUL. Use warm body text colors (not pure black), ornamental touches, and elegant typography. Be creative!` }],
+Design for "${outline.title}". Follow the MANDATORY design direction above — it is your DNA for this book. Make the body text color dark but NOT pure black (warmer tones are more readable). The design must feel like it could only belong to THIS book and no other.` }],
       ...tokenLimit(8192),
       temperature: 0.9,
     });
