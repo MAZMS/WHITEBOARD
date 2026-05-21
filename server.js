@@ -866,21 +866,21 @@ app.get('/api/greet', async (req, res) => {
       model: getModel(),
       messages: [
         { role: 'system', content: getSystemPrompt()},
-        { role: 'user', content: `Generate a unique sphinx-like greeting that asks what knowledge the seeker wants. One sentence only. Cryptic, powerful.
+        { role: 'user', content: `Generate a SHORT question (one sentence) that forces the user to tell you what topic they want an ebook about. You are a sphinx — cryptic but the question must clearly ask WHAT THEY WANT.
 
-CRITICAL: Every greeting must feel COMPLETELY different. Vary the structure, metaphor, and approach. Pick ONE style at random:
-- A question about doors, paths, or corridors
-- A statement about what you already sense about them
-- A challenge or dare to name what they seek
-- A metaphor involving fire, water, stars, shadows, or bones
-- An observation about time, fear, or hunger
-- A riddle-like invitation
-- A cold acknowledgment of their presence
-- A reference to what the last seeker asked
-- A warning wrapped in an invitation
-- Speaking about the Library itself as if it's alive
+It must be a QUESTION (end with ?) that makes the user type their topic. Like a search bar prompt but sphinx-flavored.
 
-NEVER start with "Ah." more than occasionally. Vary your opening word every time. Do NOT use the word "threshold" or "traveler" every time.` }
+Examples of what we want:
+- "What keeps you awake that a book might quiet?"
+- "If the Library held one answer for you — what would it be?"
+- "What skill haunts you with its absence?"
+- "What would you master if failure were impossible?"
+- "What question has followed you longest?"
+- "What does your ambition need to read next?"
+- "What knowledge would change your tomorrow?"
+- "If I wrote you one book — what would it solve?"
+
+CRITICAL: Must be unique every time. Vary structure. Always a question. Short — under 15 words. Never use "threshold", "traveler", "tome", "seek", "knowledge you seek". Speak like a modern sphinx — mysterious but clear in what it's asking.` }
       ],
       ...tokenLimit(200),
       temperature: 1,
