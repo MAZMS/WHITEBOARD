@@ -1156,30 +1156,11 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
       // Running header on content pages (skip cover + title)
       if (runningHeader && i > coverOffset + 1) {
         const pageNum = i - coverOffset;
-        // Always use save/restore to prevent cursor corruption
+        // Fixed position at top — uses explicit x,y so it NEVER overlaps body text
         doc.save();
-        try {
-          if (d.runningHeaderStyle) {
-            // Wrap AI code in save/restore for safety
-            const headerVars = { doc, W, H, outline, accent, fontItalic, fontHead, fontBody, pageNum, headingColor, bodyColor };
-            const hKeys = Object.keys(headerVars);
-            const safeHeader = d.runningHeaderStyle
-              .replace(/doc\.transform\s*\(/g, '/* blocked */ void(')
-              .replace(/doc\.rotate\s*\(/g, '/* blocked */ void(')
-              .replace(/doc\.scale\s*\(/g, '/* blocked */ void(');
-            const hFn = new Function(...hKeys, safeHeader);
-            hFn(...hKeys.map(k => headerVars[k]));
-          } else {
-            doc.fontSize(8).font(fontItalic).fillColor(accent);
-            doc.text(outline.title, 80, 30, { width: W - 160, align: 'left', lineBreak: false });
-            doc.text(String(pageNum), 80, 30, { width: W - 160, align: 'right', lineBreak: false });
-          }
-        } catch (e) {
-          // Fallback on any error
-          doc.fontSize(8).font(fontItalic).fillColor(accent);
-          doc.text(outline.title, 80, 30, { width: W - 160, align: 'left', lineBreak: false });
-          doc.text(String(pageNum), 80, 30, { width: W - 160, align: 'right', lineBreak: false });
-        }
+        doc.fontSize(8).font(fontItalic).fillColor(accent);
+        doc.text(outline.title, 80, 25, { width: W - 160, align: 'left', lineBreak: false });
+        doc.text(String(pageNum), 80, 25, { width: W - 160, align: 'right', lineBreak: false });
         doc.restore();
       }
     }
