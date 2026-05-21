@@ -401,7 +401,7 @@ Respond in this exact JSON format only, no other text:
       messages: [{ role: 'user', content: `You are a PDF designer. Write JavaScript code for PDFKit to design a beautiful, unique ebook interior for a book titled "${outline.title}" (${outline.subtitle}).
 
 Available variables: doc (PDFDocument), W (595.28), H (841.89), outline ({title, subtitle}), accent (hex color you choose), fontBody, fontHead, fontItalic.
-Available fonts: 'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Courier', 'Courier-Bold', 'Courier-Oblique'.
+Available fonts: 'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Courier', 'Courier-Bold', 'Courier-Oblique', 'PlayfairDisplay', 'Lora', 'Merriweather', 'Merriweather-Bold', 'Merriweather-Italic', 'Montserrat', 'CrimsonText', 'CrimsonText-Bold', 'CrimsonText-Italic', 'EBGaramond', 'Raleway', 'SourceSerif4', 'OpenSans', 'Roboto'.
 PDFKit methods: doc.fontSize(), doc.font(), doc.fillColor(), doc.text(str, opts), doc.moveDown(), doc.rect().fill(), doc.moveTo().lineTo().stroke(), doc.circle().fill(), doc.lineWidth(), doc.strokeColor(), doc.save(), doc.restore(), doc.addPage().
 
 Return ONLY valid JSON, no other text:
@@ -501,6 +501,31 @@ function createPDF(filepath, outline, chapters, coverPath, designCode) {
         Creator: 'greatlibrary.ai'
       }
     });
+
+    // Register Google Fonts
+    const fontsDir = path.join(__dirname, 'fonts');
+    if (fs.existsSync(fontsDir)) {
+      const fontFiles = {
+        'PlayfairDisplay': 'PlayfairDisplay.ttf',
+        'Lora': 'Lora.ttf',
+        'Merriweather': 'Merriweather.ttf',
+        'Merriweather-Bold': 'Merriweather-Bold.ttf',
+        'Merriweather-Italic': 'Merriweather-Italic.ttf',
+        'Montserrat': 'Montserrat.ttf',
+        'CrimsonText': 'CrimsonText.ttf',
+        'CrimsonText-Bold': 'CrimsonText-Bold.ttf',
+        'CrimsonText-Italic': 'CrimsonText-Italic.ttf',
+        'EBGaramond': 'EBGaramond.ttf',
+        'Raleway': 'Raleway.ttf',
+        'SourceSerif4': 'SourceSerif4.ttf',
+        'OpenSans': 'OpenSans.ttf',
+        'Roboto': 'Roboto.ttf',
+      };
+      for (const [name, file] of Object.entries(fontFiles)) {
+        const fp = path.join(fontsDir, file);
+        if (fs.existsSync(fp)) doc.registerFont(name, fp);
+      }
+    }
 
     const stream = fs.createWriteStream(filepath);
     doc.pipe(stream);
