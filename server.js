@@ -980,7 +980,7 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
       try {
         const img = doc.openImage(coverPath);
         // 3% overscale to guarantee zero gaps
-        const overscale = 1.03;
+        const overscale = 1.10; // 10% overscale — aggressive but guarantees zero gaps
         const scaledH = (W * overscale / img.width) * img.height;
         const scaledW = W * overscale;
         if (scaledH >= H) {
