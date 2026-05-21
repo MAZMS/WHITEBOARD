@@ -898,10 +898,23 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
 
     // AI-generated design — every value is AI-decided
     const d = designCode || {};
-    const accent = d.accent || '#8B7D45';
+    // Ensure colors are dark enough to read on white
+    function ensureDark(hex, maxBrightness = 150) {
+      if (!hex || !hex.startsWith('#')) return hex;
+      const r = parseInt(hex.slice(1,3), 16) || 0;
+      const g = parseInt(hex.slice(3,5), 16) || 0;
+      const b = parseInt(hex.slice(5,7), 16) || 0;
+      const brightness = (r + g + b) / 3;
+      if (brightness > maxBrightness) {
+        const scale = maxBrightness / brightness;
+        return '#' + [r,g,b].map(c => Math.round(c * scale).toString(16).padStart(2,'0')).join('');
+      }
+      return hex;
+    }
+    const accent = ensureDark(d.accent, 180) || '#8B7D45';
     const accentLight = d.accentLight || '#E8E0D0';
-    const headingColor = d.headingColor || '#1a1a1a';
-    const bodyColor = d.bodyColor || '#333';
+    const headingColor = ensureDark(d.headingColor, 120) || '#1a1a1a';
+    const bodyColor = ensureDark(d.bodyColor, 100) || '#333';
     let fontHead = d.fontHead || 'Helvetica-Bold';
     let fontBody = d.fontBody || 'Helvetica';
     let fontItalic = d.fontItalic || 'Helvetica-Oblique';
@@ -935,9 +948,12 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
       try {
         // Safety: strip dangerous calls that break layouts
         let safeCode = code
-          .replace(/doc\.transform\s*\(/g, '/* blocked transform */ void(')
-          .replace(/doc\.rotate\s*\(/g, '/* blocked rotate */ void(')
-          .replace(/doc\.addPage\s*\(/g, '/* blocked addPage */ void(');
+          .replace(/doc\.transform\s*\(/g, '/* blocked */ void(')
+          .replace(/doc\.rotate\s*\(/g, '/* blocked */ void(')
+          .replace(/doc\.scale\s*\(/g, '/* blocked */ void(')
+          .replace(/doc\.translate\s*\(/g, '/* blocked */ void(')
+          .replace(/doc\.addPage\s*\(/g, '/* blocked */ void(')
+          .replace(/doc\.addContent\s*\(/g, '/* blocked */ void(');
         const vars = {
           doc, W, H, outline, accent, accentLight, headingColor, bodyColor,
           fontHead, fontBody, fontItalic, bodySize, lineGap, paragraphSpacing,
