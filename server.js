@@ -713,20 +713,25 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
       doc.addPage({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 } });
       doc.rect(0, 0, W, H).fill('#0a0a0a');
       try {
-        // Force-stretch image to fill entire A4 page regardless of aspect ratio
-        // PDFKit doesn't support stretch, so we scale by width then use transform to stretch height
+        // Two-pass stretch: draw by width to fill horizontally, then by height to fill vertically
+        // Whichever is larger wins — the other dimension overflows off-page
         const img = doc.openImage(coverPath);
-        doc.save();
-        // Stretch image to exactly fill A4 — 2% overscale to kill any gaps
-        const sx = (W / img.width) * 1.02;
-        const sy = (H / img.height) * 1.02;
-        // Offset to center the 2% overflow
-        const ox = -(W * 0.02) / 2;
-        const oy = -(H * 0.02) / 2;
-        doc.translate(ox, oy);
-        doc.scale(sx, sy);
-        doc.image(img, 0, 0);
-        doc.restore();
+        const imgRatio = img.width / img.height;
+        const pageRatio = W / H;
+
+        if (imgRatio > pageRatio) {
+          // Image is wider than A4 — fit by height, overflow width
+          const drawH = H;
+          const drawW = drawH * imgRatio;
+          const x = -(drawW - W) / 2;
+          doc.image(img, x, 0, { width: drawW });
+        } else {
+          // Image is taller than A4 — fit by width, overflow height
+          const drawW = W;
+          const drawH = drawW / imgRatio;
+          const y = -(drawH - H) / 2;
+          doc.image(img, 0, y, { width: drawW });
+        }
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
