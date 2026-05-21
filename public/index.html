@@ -960,10 +960,10 @@
         padding-bottom: calc(20px + env(safe-area-inset-bottom));
       }
 
-      /* On mobile the input stays docked at the bottom (eye + question up top),
-         so opening/closing the keyboard just smoothly resizes the app — no snap
-         from a centered layout. */
-      body.centered .input-area { margin-top: auto; }
+      /* First open stays centered (eye + question + input grouped in the middle).
+         Only once the keyboard is up do we dock the input to the bottom so it sits
+         right above the keyboard. The body-height transition smooths the shift. */
+      body.kb-open.centered .input-area { margin-top: auto; }
 
       .input-area textarea {
         font-size: 16px; /* prevents iOS zoom on focus */
@@ -1140,6 +1140,10 @@
       window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
       fitViewport();
     }
+    // Dock the input to the bottom only while typing (keyboard up); first open
+    // stays centered. Toggled on focus/blur so it's reliable across browsers.
+    input.addEventListener('focus', () => document.body.classList.add('kb-open'));
+    input.addEventListener('blur', () => document.body.classList.remove('kb-open'));
 
     // ===== STATE =====
     let guardianPhase = 'dormant';
