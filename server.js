@@ -601,10 +601,69 @@ Design for "${outline.title}". Follow the MANDATORY design direction above — i
         issues.push(`validation crash: ${e.message}`);
       }
 
+      // Code-level check passed — now do visual AI review
       if (issues.length === 0) {
-        console.log(`  Design validation passed (attempt ${attempt + 1})`);
-        break;
+        try {
+          // Render a test PDF with title page + chapter header
+          const testPdfPath = path.join(EBOOKS_DIR, `test-design-${Date.now()}.pdf`);
+          await new Promise((res, rej) => {
+            const td = new PDFDocument({ size: 'A4', autoFirstPage: true, margins: { top: 80, bottom: 80, left: 80, right: 80 } });
+            const ts = fs.createWriteStream(testPdfPath);
+            td.pipe(ts);
+            // Register fonts for test doc
+            const fontsDir = path.join(__dirname, 'fonts');
+            if (fs.existsSync(fontsDir)) {
+              for (const file of fs.readdirSync(fontsDir).filter(f => f.endsWith('.ttf'))) {
+                try { td.registerFont(file.replace('.ttf', ''), path.join(fontsDir, file)); } catch {}
+              }
+            }
+            const tv = { doc: td, W: 595.28, H: 841.89, outline, accent: d.accent||'#888', accentLight: d.accentLight||'#ddd', headingColor: d.headingColor||'#1a1a1a', bodyColor: d.bodyColor||'#333', fontHead: d.fontHead||'Helvetica-Bold', fontBody: d.fontBody||'Helvetica', fontItalic: d.fontItalic||'Helvetica-Oblique', bodySize: d.bodySize||11, lineGap: d.lineGap||4, paragraphSpacing: d.paragraphSpacing||0.5, indent: d.indent||15, textAlign: d.textAlign||'justify', showBorder: d.showBorder, borderWeight: d.borderWeight||0.4, borderColor: d.borderColor||d.accent, showDropCap: d.showDropCap, dropCapSize: d.dropCapSize||28, dropCapColor: d.dropCapColor||d.accent, smallCapsFirstWords: d.smallCapsFirstWords };
+            try { const fn = new Function(...Object.keys(tv), d.titlePageCode); fn(...Object.values(tv)); } catch {}
+            td.addPage();
+            try { const cv = { ...tv, doc: td, ch: { title: 'Sample Chapter' }, i: 0 }; const fn = new Function(...Object.keys(cv), d.chapterHeaderCode); fn(...Object.values(cv)); } catch {}
+            td.fontSize(tv.bodySize).font(tv.fontBody||'Helvetica').fillColor(tv.bodyColor).text('Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.', { align: tv.textAlign, lineGap: tv.lineGap });
+            td.end();
+            ts.on('finish', res);
+            ts.on('error', rej);
+          });
+
+          // Send test PDF to Gemini vision for quality review
+          const { GoogleAuth: GA } = require('google-auth-library');
+          const saRaw = process.env.VERTEX_SERVICE_ACCOUNT_JSON_B64;
+          let saJ; try { saJ = JSON.parse(saRaw); } catch { saJ = JSON.parse(Buffer.from(saRaw, 'base64').toString()); }
+          const gAuth = new GA({ credentials: saJ, scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
+          const gClient = await gAuth.getClient();
+          const { token: vToken } = await gClient.getAccessToken();
+
+          const pdfBase64 = fs.readFileSync(testPdfPath).toString('base64');
+          const reviewRes = await fetch('https://us-central1-aiplatform.googleapis.com/v1beta1/projects/steady-datum-492117-f9/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${vToken}` },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [
+                { inlineData: { mimeType: 'application/pdf', data: pdfBase64 } },
+                { text: 'Review this PDF ebook design. Answer ONLY "PASS" if the design is clean and professional. Answer "FAIL:" followed by a short list of issues if there are problems like: overlapping elements, text on top of shapes, elements outside page bounds, unreadable text (bad contrast), cluttered layout, broken alignment. Be strict.' }
+              ]}]
+            })
+          });
+          const reviewData = await reviewRes.json();
+          const review = reviewData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || 'PASS';
+          fs.unlinkSync(testPdfPath);
+
+          if (review.startsWith('PASS')) {
+            console.log(`  Visual QA passed (attempt ${attempt + 1})`);
+            break;
+          } else {
+            issues.push(...review.replace('FAIL:', '').trim().split('\n').map(l => l.trim()).filter(Boolean));
+            console.warn(`  Visual QA failed (attempt ${attempt + 1}): ${review.slice(0, 200)}`);
+          }
+        } catch (qaErr) {
+          console.warn(`  Visual QA skipped: ${qaErr.message}`);
+          break; // Code-level passed, visual QA errored — use it
+        }
       }
+
+      if (issues.length === 0) break;
 
       console.warn(`  Design issues (attempt ${attempt + 1}): ${issues.join('; ')}`);
       if (attempt >= 2) { console.warn('  Max retries — using design as-is'); break; }
