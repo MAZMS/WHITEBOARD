@@ -450,7 +450,7 @@ function createPDF(filepath, outline, chapters, coverPath) {
       size: 'A4',
       margins: { top: 80, bottom: 80, left: 80, right: 80 },
       bufferPages: true,
-      autoFirstPage: true,
+      autoFirstPage: false,
       info: {
         Title: outline.title,
         Author: 'The Great Library',
@@ -469,13 +469,14 @@ function createPDF(filepath, outline, chapters, coverPath) {
     // ===== PAGE 0: COVER IMAGE (fully AI-generated, edge-to-edge) =====
     const hasCover = coverPath && fs.existsSync(coverPath);
     if (hasCover) {
+      // Zero-margin page for full bleed cover
+      doc.addPage({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 } });
       doc.rect(0, 0, W, H).fill('#0a0a0a');
       try {
-        // Manual cover: scale image to fill entire page, center and crop
         const img = doc.openImage(coverPath);
         const scaleW = W / img.width;
         const scaleH = H / img.height;
-        const scale = Math.max(scaleW, scaleH) * 1.02; // 2% overscale to eliminate edge gaps
+        const scale = Math.max(scaleW, scaleH);
         const drawW = img.width * scale;
         const drawH = img.height * scale;
         const x = (W - drawW) / 2;
@@ -484,7 +485,6 @@ function createPDF(filepath, outline, chapters, coverPath) {
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
-      doc.addPage();
     }
     const tocPage = hasCover ? 2 : 1; // TOC page index shifts when cover exists
     // Drawing helpers (no text = no ghost pages)
@@ -500,7 +500,8 @@ function createPDF(filepath, outline, chapters, coverPath) {
       doc.save().rect(40, 40, W-80, H-80).lineWidth(0.4).strokeColor(gold).stroke().restore();
     }
 
-    // ===== PAGE 0: TITLE =====
+    // ===== TITLE PAGE =====
+    doc.addPage({ size: 'A4', margins: { top: 80, bottom: 80, left: 80, right: 80 } });
     border();
     doc.moveDown(7);
     divider(doc.y, 180);
