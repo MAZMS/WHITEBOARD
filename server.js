@@ -462,8 +462,9 @@ function createPDF(filepath, outline, chapters, coverPath) {
     const stream = fs.createWriteStream(filepath);
     doc.pipe(stream);
 
-    const W = doc.page.width;
-    const H = doc.page.height;
+    // A4 dimensions in points (autoFirstPage is off, so doc.page is null)
+    const W = 595.28;
+    const H = 841.89;
     const gold = '#8B7D45';
 
     // ===== PAGE 0: COVER IMAGE (fully AI-generated, edge-to-edge) =====
