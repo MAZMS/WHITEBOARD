@@ -398,39 +398,58 @@ Respond in this exact JSON format only, no other text:
   try {
     const designRes = await openai.chat.completions.create({
       model: getModel(),
-      messages: [{ role: 'user', content: `You are a PDF designer. Write JavaScript code for PDFKit to design a beautiful, unique ebook interior for a book titled "${outline.title}" (${outline.subtitle}).
+      messages: [{ role: 'user', content: `You are a PDF book designer writing PDFKit JavaScript code. Design a unique ebook interior for "${outline.title}" (${outline.subtitle}).
 
-Available variables: doc (PDFDocument), W (595.28), H (841.89), outline ({title, subtitle}), accent (hex color you choose), fontBody, fontHead, fontItalic.
-Available fonts: ANY Google Font by name (e.g. 'Playfair Display', 'Lora', 'Merriweather', 'Montserrat', 'Crimson Text', 'EB Garamond', 'Raleway', 'Source Serif 4', 'Open Sans', 'Roboto', 'Poppins', 'Inter', 'Cormorant Garamond', 'Libre Baskerville', 'Josefin Sans', 'Dancing Script', 'Bitter', 'Nunito', 'Oswald', etc.) plus built-ins: 'Helvetica', 'Helvetica-Bold', 'Times-Roman', 'Times-Bold', 'Courier', 'Courier-Bold'. Fonts are downloaded on demand — use any Google Font you want!
-PDFKit methods: doc.fontSize(), doc.font(), doc.fillColor(), doc.text(str, opts), doc.moveDown(), doc.rect().fill(), doc.moveTo().lineTo().stroke(), doc.circle().fill(), doc.lineWidth(), doc.strokeColor(), doc.save(), doc.restore(), doc.addPage().
+=== PDFKIT RULES (CRITICAL — follow these or the layout breaks) ===
+1. doc.text(str, options) flows text at the CURSOR position and advances the cursor down. NEVER use doc.text(str, x, y) for flowing content — it breaks the cursor.
+2. doc.moveDown(n) adds vertical space. This is how you control spacing.
+3. For DECORATIVE elements (lines, shapes, backgrounds) that should NOT move the cursor, ALWAYS wrap in doc.save() ... doc.restore().
+4. doc.rect(x,y,w,h).fill(color) draws a filled rectangle. doc.circle(x,y,r).fill(color) draws a circle.
+5. doc.moveTo(x,y).lineTo(x2,y2).lineWidth(w).strokeColor(c).stroke() draws a line.
+6. doc.y gives current cursor Y position. W=595.28, H=841.89 (A4).
+7. Page margins are 80px on all sides. Content area is x:80-515, y:80-762.
+8. NEVER call doc.addPage() in your code — the system handles pages.
+9. Use doc.save() before ANY drawing that shouldn't affect text flow, and doc.restore() after.
 
-Return ONLY valid JSON, no other text:
+=== AVAILABLE FONTS ===
+Any Google Font by name: 'Playfair Display', 'Lora', 'Merriweather', 'Montserrat', 'Crimson Text', 'EB Garamond', 'Raleway', 'Source Serif 4', 'Open Sans', 'Roboto', 'Poppins', 'Cormorant Garamond', 'Libre Baskerville', 'Josefin Sans', 'Bitter', 'Nunito', 'Oswald', 'PT Serif', 'Spectral', 'Vollkorn', 'Alegreya', 'Libre Caslon Text', 'DM Sans', 'Space Grotesk', etc.
+Plus built-ins: 'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Courier', 'Courier-Bold'.
+
+=== EXAMPLE: Safe title page code ===
+doc.moveDown(6); doc.save(); doc.moveTo(80, doc.y).lineTo(W-80, doc.y).lineWidth(0.5).strokeColor(accent).stroke(); doc.restore(); doc.moveDown(2); doc.fontSize(34).font(fontHead).fillColor(headingColor).text(outline.title, {align: 'center'}); doc.moveDown(1); doc.fontSize(13).font(fontItalic).fillColor('#666').text(outline.subtitle, {align: 'center'}); doc.moveDown(8); doc.fontSize(9).font(fontBody).fillColor(accent).text('greatlibrary.ai', {align: 'center'});
+
+=== EXAMPLE: Safe chapter header code ===
+doc.moveDown(4); doc.fontSize(48).font(fontHead).fillColor(accentLight).text(String(i+1).padStart(2,'0'), {align: 'center'}); doc.moveDown(0.3); doc.fontSize(22).font(fontHead).fillColor(headingColor).text(ch.title, {align: 'center'}); doc.moveDown(0.5); doc.save(); var cx=W/2; doc.moveTo(cx-40, doc.y).lineTo(cx+40, doc.y).lineWidth(0.5).strokeColor(accent).stroke(); doc.restore(); doc.moveDown(2);
+
+=== EXAMPLE: Safe divider code ===
+doc.save(); var cx=W/2; doc.circle(cx,y,2).fill(accent); doc.moveTo(cx-30,y).lineTo(cx-6,y).lineWidth(0.4).strokeColor(accent).stroke(); doc.moveTo(cx+6,y).lineTo(cx+30,y).stroke(); doc.restore();
+
+Return ONLY valid JSON:
 {
-  "accent": "#hex accent color matching the book mood",
-  "accentLight": "#hex lighter version",
-  "headingColor": "#hex for headings",
-  "bodyColor": "#hex for body (dark, readable)",
-  "fontBody": "font name",
-  "fontHead": "bold font name",
-  "fontItalic": "italic font name",
-  "titlePageCode": "SHORT JS code. Vars: doc,W,H,outline,accent,accentLight,headingColor,fontHead,fontBody,fontItalic. Use doc.moveDown/fontSize/font/fillColor/text/rect/moveTo/lineTo/circle/stroke/fill/save/restore. Do NOT call doc.addPage(). Draw title page with outline.title and outline.subtitle. Be creative with decorative elements.",
-  "chapterHeaderCode": "SHORT JS code. Vars: doc,W,H,ch,i,accent,accentLight,headingColor,fontHead,fontBody. ch.title is chapter title, i is 0-based index. Do NOT call doc.addPage(). Draw chapter heading creatively.",
-  "dividerCode": "SHORT JS code. Vars: doc,W,y,accent. Draw a small decorative element at y position.",
-  "showBorder": true or false,
-  "showDropCap": true or false,
-  "dropCapSize": 24 to 40
+  "accent": "#hex — accent color matching the book mood",
+  "accentLight": "#hex — lighter version for background elements",
+  "headingColor": "#hex — headings color",
+  "bodyColor": "#hex — body text (MUST be dark: #333 or darker)",
+  "fontHead": "Google Font for headings",
+  "fontBody": "Google Font for body text (must be readable)",
+  "fontItalic": "Google Font for subtitles/italic",
+  "showBorder": true/false,
+  "showDropCap": true/false,
+  "dropCapSize": 24-44,
+  "titlePageCode": "JS code for title page — use doc.moveDown, doc.fontSize, doc.font, doc.fillColor, doc.text, and SAFE decorative drawing with save/restore. Include outline.title and outline.subtitle.",
+  "chapterHeaderCode": "JS code for chapter header — use doc.moveDown, doc.fontSize, doc.font, doc.fillColor, doc.text. ch.title is the title, i is 0-based index. Include decorative elements with save/restore.",
+  "dividerCode": "JS code for divider — draw at y position using save/restore. Keep small."
 }
 
-Design for "${outline.title}" — make it match the mood. Be creative!` }],
-      ...tokenLimit(16384),
+Design for "${outline.title}". Match the mood: horror=dark/heavy/serif, tech=clean/modern/sans, cooking=warm/inviting, romance=elegant/flowing, sci-fi=futuristic/geometric. Be creative!` }],
+      ...tokenLimit(8192),
       temperature: 0.9,
     });
     let designRaw = designRes.choices[0].message.content;
-    // Strip markdown code fences if present
     designRaw = designRaw.replace(/```json?\s*/g, '').replace(/```\s*/g, '');
     const designMatch = designRaw.match(/\{[\s\S]*\}/);
     designCode = JSON.parse(designMatch[0]);
-    console.log(`  Design generated: accent=${designCode.accent} font=${designCode.fontBody}`);
+    console.log(`  Design generated: accent=${designCode.accent} fontBody=${designCode.fontBody} fontHead=${designCode.fontHead}`);
   } catch (err) {
     console.warn('  Design generation failed, using defaults:', err.message);
   }
