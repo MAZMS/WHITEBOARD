@@ -417,21 +417,42 @@ Respond in this exact JSON format only, no other text:
 Any Google Font by name: 'Playfair Display', 'Lora', 'Merriweather', 'Montserrat', 'Crimson Text', 'EB Garamond', 'Raleway', 'Source Serif 4', 'Open Sans', 'Roboto', 'Poppins', 'Cormorant Garamond', 'Libre Baskerville', 'Josefin Sans', 'Bitter', 'Nunito', 'Oswald', 'PT Serif', 'Spectral', 'Vollkorn', 'Alegreya', 'Libre Caslon Text', 'DM Sans', 'Space Grotesk', etc.
 Plus built-ins: 'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Courier', 'Courier-Bold'.
 
+=== DESIGN INSPIRATION (from a beautifully crafted PDF) ===
+Study these professional patterns and create something equally beautiful:
+
+PATTERN A — Classic literary style:
+- Running header on every page: book title in small italic + ornamental page number
+- Chapter label: ornamental markers around "Chapter One" in italic gold
+- Chapter title: 20pt bold in warm brown, with optional subtitle in italic
+- Drop cap: 36pt bold in deep accent color, first few words in SMALL CAPS bold
+- Body: 11pt serif in dark brown (#2c1e12), NOT pure black — warmer and easier to read
+- Ornamental characters (like diamond, fleuron, asterism) as decorative elements
+
+PATTERN B — Modern clean:
+- Large chapter number as watermark, title left-aligned, accent line underneath
+- No borders, generous whitespace, sans-serif body
+- Drop cap in accent color, body in near-black
+
+PATTERN C — Bold dramatic:
+- Full-width accent color band behind chapter title
+- White text on colored background for headers
+- Strong geometric dividers
+
 === EXAMPLE: Safe title page code ===
-doc.moveDown(6); doc.save(); doc.moveTo(80, doc.y).lineTo(W-80, doc.y).lineWidth(0.5).strokeColor(accent).stroke(); doc.restore(); doc.moveDown(2); doc.fontSize(34).font(fontHead).fillColor(headingColor).text(outline.title, {align: 'center'}); doc.moveDown(1); doc.fontSize(13).font(fontItalic).fillColor('#666').text(outline.subtitle, {align: 'center'}); doc.moveDown(8); doc.fontSize(9).font(fontBody).fillColor(accent).text('greatlibrary.ai', {align: 'center'});
+doc.moveDown(8); doc.fontSize(10).font(fontItalic).fillColor(accent).text('\\u2766', {align: 'center'}); doc.moveDown(2); doc.fontSize(32).font(fontHead).fillColor(headingColor).text(outline.title, {align: 'center'}); doc.moveDown(0.5); doc.save(); var cx=W/2; doc.moveTo(cx-60, doc.y).lineTo(cx+60, doc.y).lineWidth(0.4).strokeColor(accent).stroke(); doc.restore(); doc.moveDown(1.5); doc.fontSize(12).font(fontItalic).fillColor(accent).text(outline.subtitle, {align: 'center'}); doc.moveDown(10); doc.fontSize(9).font(fontBody).fillColor(accent).text('greatlibrary.ai', {align: 'center'});
 
 === EXAMPLE: Safe chapter header code ===
-doc.moveDown(4); doc.fontSize(48).font(fontHead).fillColor(accentLight).text(String(i+1).padStart(2,'0'), {align: 'center'}); doc.moveDown(0.3); doc.fontSize(22).font(fontHead).fillColor(headingColor).text(ch.title, {align: 'center'}); doc.moveDown(0.5); doc.save(); var cx=W/2; doc.moveTo(cx-40, doc.y).lineTo(cx+40, doc.y).lineWidth(0.5).strokeColor(accent).stroke(); doc.restore(); doc.moveDown(2);
+doc.moveDown(3); doc.fontSize(10).font(fontItalic).fillColor(accent).text('\\u2766  Chapter ' + (i+1) + '  \\u2766', {align: 'center'}); doc.moveDown(0.5); doc.fontSize(22).font(fontHead).fillColor(headingColor).text(ch.title, {align: 'center'}); doc.moveDown(0.5); doc.save(); var cx=W/2; doc.moveTo(cx-50, doc.y).lineTo(cx+50, doc.y).lineWidth(0.4).strokeColor(accent).stroke(); doc.restore(); doc.moveDown(2);
 
 === EXAMPLE: Safe divider code ===
-doc.save(); var cx=W/2; doc.circle(cx,y,2).fill(accent); doc.moveTo(cx-30,y).lineTo(cx-6,y).lineWidth(0.4).strokeColor(accent).stroke(); doc.moveTo(cx+6,y).lineTo(cx+30,y).stroke(); doc.restore();
+doc.save(); var cx=W/2; doc.fontSize(8).font(fontBody).fillColor(accent); doc.text('\\u2766', cx-4, y-4); doc.restore();
 
 Return ONLY valid JSON:
 {
   "accent": "#hex — accent color matching the book mood",
   "accentLight": "#hex — lighter version for background elements",
   "headingColor": "#hex — headings color",
-  "bodyColor": "#hex — body text (MUST be dark: #333 or darker)",
+  "bodyColor": "#hex — body text (use warm dark tones like #2c1e12 or #1a2a1a, NOT pure black — more readable and elegant)",
   "fontHead": "Google Font for headings",
   "fontBody": "Google Font for body text (must be readable)",
   "fontItalic": "Google Font for subtitles/italic",
@@ -441,10 +462,12 @@ Return ONLY valid JSON:
   "titlePageCode": "JS code for title page — use doc.moveDown, doc.fontSize, doc.font, doc.fillColor, doc.text, and SAFE decorative drawing with save/restore. Include outline.title and outline.subtitle.",
   "chapterHeaderCode": "JS code for chapter header — use doc.moveDown, doc.fontSize, doc.font, doc.fillColor, doc.text. ch.title is the title, i is 0-based index. Include decorative elements with save/restore.",
   "dividerCode": "JS code for divider — draw at y position using save/restore. Keep small.",
-  "coverStyle": "describe the cover art style in 10-15 words — e.g. 'dark moody oil painting with deep reds and shadows' or 'bright flat vector illustration with warm pastels' — this guides the cover image generation to match the interior"
+  "smallCapsFirstWords": true/false — first few words after drop cap in SMALL CAPS bold (very professional),
+  "runningHeader": true/false — small italic book title + page number at top of every page,
+  "coverStyle": "describe the cover art style in 10-15 words to guide cover image generation"
 }
 
-Design for "${outline.title}". Match the mood: horror=dark/heavy/serif, tech=clean/modern/sans, cooking=warm/inviting, romance=elegant/flowing, sci-fi=futuristic/geometric. Be creative!` }],
+Design for "${outline.title}". Study the 3 patterns above and create something PROFESSIONAL and BEAUTIFUL. Use warm body text colors (not pure black), ornamental touches, and elegant typography. Be creative!` }],
       ...tokenLimit(8192),
       temperature: 0.9,
     });
@@ -578,6 +601,8 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
     const showBorder = d.showBorder !== false;
     const showDropCap = d.showDropCap !== false;
     const dropCapSize = d.dropCapSize || 28;
+    const smallCapsFirstWords = d.smallCapsFirstWords || false;
+    const runningHeader = d.runningHeader || false;
 
     // Download any Google Fonts the AI requested
     for (const f of [fontHead, fontBody, fontItalic]) {
@@ -718,8 +743,19 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
           const rest = txt.slice(1);
           doc.fontSize(dropCapSize).font(fontHead).fillColor(accent)
             .text(letter, { continued: true, baseline: -(dropCapSize / 7) });
-          doc.fontSize(11).font(fontBody).fillColor(bodyColor)
-            .text(rest, { align: 'justify', lineGap: 4 });
+          if (smallCapsFirstWords) {
+            // First few words in SMALL CAPS bold, then regular body
+            const words = rest.split(' ');
+            const capsWords = words.slice(0, 4).join('  ').toUpperCase();
+            const remaining = words.slice(4).join(' ');
+            doc.fontSize(11).font(fontHead).fillColor(headingColor)
+              .text(capsWords + ' ', { continued: true });
+            doc.fontSize(11).font(fontBody).fillColor(bodyColor)
+              .text(remaining, { align: 'justify', lineGap: 4 });
+          } else {
+            doc.fontSize(11).font(fontBody).fillColor(bodyColor)
+              .text(rest, { align: 'justify', lineGap: 4 });
+          }
         } else if (!didDropCap && !showDropCap && txt.length > 10) {
           didDropCap = true;
           doc.fontSize(11).font(fontHead).fillColor(bodyColor)
@@ -741,12 +777,26 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
     // ===== POST-PROCESSING: borders, TOC links, named destinations =====
     const totalPages = doc.bufferedPageRange().count;
 
+    const coverOffset = hasCover ? 1 : 0;
     for (let i = 0; i < totalPages; i++) {
       doc.switchToPage(i);
 
-      // Add border to overflow pages that don't have one yet
-      if (i > 1 && !chapterPageIndex.includes(i)) {
+      // Skip cover page for borders/headers
+      if (i < coverOffset) continue;
+
+      // Add border to overflow pages
+      if (i > coverOffset && !chapterPageIndex.includes(i)) {
         border();
+      }
+
+      // Running header on content pages (skip cover + title)
+      if (runningHeader && i > coverOffset + 1) {
+        doc.save();
+        const pageNum = i - coverOffset;
+        doc.fontSize(8).font(fontItalic).fillColor(accent);
+        doc.text(outline.title, 80, 30, { width: W - 160, align: 'left', lineBreak: false });
+        doc.text('\u2766 ' + pageNum + ' \u2766', 80, 30, { width: W - 160, align: 'right', lineBreak: false });
+        doc.restore();
       }
     }
 
