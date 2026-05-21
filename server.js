@@ -363,16 +363,14 @@ async function generateEbook(ebookId, conversationHistory) {
 Conversation:
 ${conversationHistory.map(m => `${m.role}: ${m.content}`).join('\n')}
 
+Decide the PERFECT number of chapters for this topic — could be 3 for a short focused guide, 7 for a deep dive, 10+ for a comprehensive manual. Let the topic dictate the structure.
+
 Respond in this exact JSON format only, no other text:
 {
   "title": "The title of the ebook",
   "subtitle": "A subtitle",
   "chapters": [
-    {"title": "Chapter 1 title", "description": "Brief description of what this chapter covers"},
-    {"title": "Chapter 2 title", "description": "Brief description"},
-    {"title": "Chapter 3 title", "description": "Brief description"},
-    {"title": "Chapter 4 title", "description": "Brief description"},
-    {"title": "Chapter 5 title", "description": "Brief description"}
+    {"title": "Chapter title", "description": "Brief description of what this chapter covers"}
   ]
 }`;
 
