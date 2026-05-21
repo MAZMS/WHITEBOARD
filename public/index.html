@@ -1719,33 +1719,37 @@
     sizeBorderLoader();
     window.addEventListener('resize', sizeBorderLoader);
 
+    let borderStartTime = 0;
+    const EXPECTED_DURATION = 120; // assume ~120 seconds for full generation
+
     function borderAnimLoop() {
       if (borderDone) return;
 
       if (borderTarget >= 1) {
-        // Ebook is ready — rush to the end
-        borderCurrent += (1 - borderCurrent) * 0.12;
+        // Ebook is ready — race to the end
+        borderCurrent += (1 - borderCurrent) * 0.15;
         if (borderCurrent > 0.999) {
           borderCurrent = 1;
           borderDone = true;
           borderLoader.classList.add('complete');
           setTimeout(() => borderLoader.classList.add('fade-out'), 3000);
         }
-      } else if (borderCurrent < borderTarget - 0.01) {
-        // Real progress ahead — ease toward it
-        borderCurrent += (borderTarget - borderCurrent) * 0.06;
       } else {
-        // No new progress — keep creeping forward slowly (the illusion)
-        // Slower as we get closer to 90%, creating natural tension
-        const remainingToMax = 0.90 - borderCurrent;
-        if (remainingToMax > 0) {
-          const creepSpeed = 0.0002 + remainingToMax * 0.0008;
-          borderCurrent += creepSpeed;
-        } else {
-          // Past 90% — ultra slow crawl, just enough to show movement
-          borderCurrent += 0.00008;
+        // Time-based fake progress — always moves, slows as it approaches cap
+        const elapsed = (Date.now() - borderStartTime) / 1000;
+        const timeProgress = 1 - Math.exp(-elapsed / EXPECTED_DURATION); // asymptotic curve 0→1
+        const fakeTarget = Math.min(timeProgress * 0.92, 0.92); // cap fake at 92%
+
+        // Use whichever is higher: real server progress or time-based fake
+        const effectiveTarget = Math.max(borderTarget * 0.95, fakeTarget);
+
+        // Smoothly ease toward effective target
+        borderCurrent += (effectiveTarget - borderCurrent) * 0.03;
+
+        // Guarantee minimum visible movement per frame
+        if (borderCurrent < 0.92) {
+          borderCurrent = Math.max(borderCurrent, borderCurrent + 0.0001);
         }
-        borderCurrent = Math.min(borderCurrent, 0.96);
       }
 
       borderPath.style.strokeDashoffset = borderPerimeter * (1 - borderCurrent);
@@ -1757,6 +1761,7 @@
       borderCurrent = 0;
       borderTarget = 0;
       borderDone = false;
+      borderStartTime = Date.now();
       borderLoader.classList.remove('complete', 'fade-out');
       if (borderRAF) cancelAnimationFrame(borderRAF);
       borderRAF = requestAnimationFrame(borderAnimLoop);
