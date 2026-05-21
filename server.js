@@ -689,7 +689,13 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
     function runDesignCode(code, extraVars = {}) {
       if (!code) return false;
       try {
-        const vars = { doc, W, H, outline, accent, accentLight, headingColor, bodyColor, fontHead, fontBody, fontItalic, ...extraVars };
+        const vars = {
+          doc, W, H, outline, accent, accentLight, headingColor, bodyColor,
+          fontHead, fontBody, fontItalic, bodySize, lineGap, paragraphSpacing,
+          indent, textAlign, showBorder, borderWeight, borderColor,
+          showDropCap, dropCapSize, dropCapColor, smallCapsFirstWords,
+          ...extraVars
+        };
         const keys = Object.keys(vars);
         const fn = new Function(...keys, code);
         fn(...keys.map(k => vars[k]));
