@@ -1131,19 +1131,20 @@
     // its offsetTop to cancel that scroll (otherwise the top content gets cut off).
     if (window.visualViewport) {
       const vv = window.visualViewport;
+      let maxVVH = vv.height; // tallest viewport seen = the "keyboard closed" height
       const fitViewport = () => {
         document.body.style.height = vv.height + 'px';
         document.body.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : 'none';
+        if (vv.height > maxVVH) maxVVH = vv.height;
+        // Dock the input only when the viewport actually shrinks a lot (keyboard
+        // truly open) — NOT merely on focus, which can fire without a keyboard.
+        document.body.classList.toggle('kb-open', vv.height < maxVVH - 150);
       };
       vv.addEventListener('resize', fitViewport);
       vv.addEventListener('scroll', fitViewport);
-      window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
+      window.addEventListener('orientationchange', () => { maxVVH = 0; setTimeout(fitViewport, 300); });
       fitViewport();
     }
-    // Dock the input to the bottom only while typing (keyboard up); first open
-    // stays centered. Toggled on focus/blur so it's reliable across browsers.
-    input.addEventListener('focus', () => document.body.classList.add('kb-open'));
-    input.addEventListener('blur', () => document.body.classList.remove('kb-open'));
 
     // ===== STATE =====
     let guardianPhase = 'dormant';
