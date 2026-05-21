@@ -151,7 +151,7 @@ Clients are constructed at startup from whichever API keys are present; `activeP
 
 ## Workflow
 - Run locally with `npm start` (needs `.env` with at least one provider key)
-- **Always commit and push** to GitHub after completing any task
+- **After EVERY feature or fix, commit and push directly to `main`** — no feature branches or PRs needed (Mohamed's standing instruction). Don't wait to batch changes.
 - Railway auto-deploys from GitHub `main`
 
 ## Git Remote
