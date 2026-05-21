@@ -402,16 +402,59 @@ Respond in this exact JSON format only, no other text:
       model: getModel(),
       messages: [{ role: 'user', content: `You are a PDF book designer writing PDFKit JavaScript code. Design a unique ebook interior for "${outline.title}" (${outline.subtitle}).
 
-=== PDFKIT RULES (CRITICAL — follow these or the layout breaks) ===
-1. doc.text(str, options) flows text at the CURSOR position and advances the cursor down. NEVER use doc.text(str, x, y) for flowing content — it breaks the cursor.
-2. doc.moveDown(n) adds vertical space. This is how you control spacing.
-3. For DECORATIVE elements (lines, shapes, backgrounds) that should NOT move the cursor, ALWAYS wrap in doc.save() ... doc.restore().
-4. doc.rect(x,y,w,h).fill(color) draws a filled rectangle. doc.circle(x,y,r).fill(color) draws a circle.
-5. doc.moveTo(x,y).lineTo(x2,y2).lineWidth(w).strokeColor(c).stroke() draws a line.
-6. doc.y gives current cursor Y position. W=595.28, H=841.89 (A4).
-7. Page margins are 80px on all sides. Content area is x:80-515, y:80-762.
-8. NEVER call doc.addPage() in your code — the system handles pages.
-9. Use doc.save() before ANY drawing that shouldn't affect text flow, and doc.restore() after.
+=== PDF DOCUMENT SPECS (you have FULL control over this canvas) ===
+Page size: A4 (595.28 x 841.89 points = 210 x 297 mm)
+W = 595.28 (full page width in points)
+H = 841.89 (full page height in points)
+Margins: 80pt on all sides
+Content area: x: 80 to 515.28 (435.28pt wide), y: 80 to 761.89 (681.89pt tall)
+Center X: 297.64, Center Y: 420.945
+1 point = 1/72 inch = 0.353mm
+Total content width: 435.28pt = 153.6mm = 6.05 inches
+Total content height: 681.89pt = 240.7mm = 9.47 inches
+${outline.chapters.length} chapters will be generated
+
+=== PDFKIT API (your toolbox) ===
+TEXT:
+- doc.text(str, {align, indent, lineGap, continued, characterSpacing}) — flows at cursor, advances down
+- doc.fontSize(n) — set font size in points
+- doc.font(name) — set font family
+- doc.fillColor(hex) — set text/fill color
+- doc.moveDown(n) — add n lines of vertical space
+- doc.y — current cursor Y position (read/write)
+- doc.x — current cursor X position
+
+DRAWING (always wrap in doc.save()/doc.restore() to not break cursor):
+- doc.rect(x, y, w, h).fill(color) — filled rectangle
+- doc.rect(x, y, w, h).stroke() — outlined rectangle
+- doc.circle(x, y, r).fill(color) — filled circle
+- doc.ellipse(cx, cy, rx, ry).fill(color) — ellipse
+- doc.moveTo(x,y).lineTo(x2,y2).lineWidth(w).strokeColor(c).stroke() — line
+- doc.polygon([x1,y1], [x2,y2], [x3,y3]).fill(color) — polygon
+- doc.path('M0 0 L100 100').fill(color) — SVG path
+- doc.roundedRect(x, y, w, h, radius).fill(color) — rounded rectangle
+- doc.opacity(n) / doc.fillOpacity(n) — transparency 0-1
+- doc.linearGradient(x1,y1,x2,y2) — gradient fills
+
+STYLE:
+- doc.lineWidth(n) — stroke width
+- doc.strokeColor(hex) — stroke color
+- doc.fillColor(hex) — fill color
+- doc.dash(length, {space}) — dashed lines
+- doc.undash() — solid lines
+- doc.lineJoin('round'/'bevel'/'miter') — line join style
+- doc.lineCap('round'/'butt'/'square') — line cap style
+
+STATE:
+- doc.save() — save graphics state (MUST use before decorative drawing)
+- doc.restore() — restore graphics state (MUST use after decorative drawing)
+- doc.transform(a,b,c,d,e,f) — transformation matrix
+
+RULES:
+1. NEVER use doc.text(str, x, y) for flowing content — it breaks the cursor
+2. ALWAYS wrap decorative drawing in doc.save()/doc.restore()
+3. NEVER call doc.addPage()
+4. doc.y tracks cursor position — use it to know where you are on the page
 
 === AVAILABLE FONTS ===
 Any Google Font by name: 'Playfair Display', 'Lora', 'Merriweather', 'Montserrat', 'Crimson Text', 'EB Garamond', 'Raleway', 'Source Serif 4', 'Open Sans', 'Roboto', 'Poppins', 'Cormorant Garamond', 'Libre Baskerville', 'Josefin Sans', 'Bitter', 'Nunito', 'Oswald', 'PT Serif', 'Spectral', 'Vollkorn', 'Alegreya', 'Libre Caslon Text', 'DM Sans', 'Space Grotesk', etc.
