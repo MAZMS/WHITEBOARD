@@ -507,13 +507,17 @@ STYLE:
 STATE:
 - doc.save() — save graphics state (MUST use before decorative drawing)
 - doc.restore() — restore graphics state (MUST use after decorative drawing)
-- doc.transform(a,b,c,d,e,f) — transformation matrix
 
 RULES:
 1. NEVER use doc.text(str, x, y) for flowing content — it breaks the cursor
 2. ALWAYS wrap decorative drawing in doc.save()/doc.restore()
 3. NEVER call doc.addPage()
 4. doc.y tracks cursor position — use it to know where you are on the page
+5. NEVER use doc.transform() — it flips/distorts text and makes it upside down
+6. NEVER draw rectangles larger than 300x300 — no full-page background fills
+7. NEVER use doc.rotate() — it makes text unreadable
+8. Keep decorative elements SMALL (lines, dots, small shapes) — not page-filling
+9. Background tints: ONLY use doc.rect().fillOpacity(0.05-0.1).fill() for VERY subtle tints, then doc.fillOpacity(1) to reset
 
 === AVAILABLE FONTS ===
 Any Google Font by name: 'Playfair Display', 'Lora', 'Merriweather', 'Montserrat', 'Crimson Text', 'EB Garamond', 'Raleway', 'Source Serif 4', 'Open Sans', 'Roboto', 'Poppins', 'Cormorant Garamond', 'Libre Baskerville', 'Josefin Sans', 'Bitter', 'Nunito', 'Oswald', 'PT Serif', 'Spectral', 'Vollkorn', 'Alegreya', 'Libre Caslon Text', 'DM Sans', 'Space Grotesk', etc.
@@ -880,6 +884,11 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
     function runDesignCode(code, extraVars = {}) {
       if (!code) return false;
       try {
+        // Safety: strip dangerous calls that break layouts
+        let safeCode = code
+          .replace(/doc\.transform\s*\(/g, '/* blocked transform */ void(')
+          .replace(/doc\.rotate\s*\(/g, '/* blocked rotate */ void(')
+          .replace(/doc\.addPage\s*\(/g, '/* blocked addPage */ void(');
         const vars = {
           doc, W, H, outline, accent, accentLight, headingColor, bodyColor,
           fontHead, fontBody, fontItalic, bodySize, lineGap, paragraphSpacing,
@@ -888,7 +897,7 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
           ...extraVars
         };
         const keys = Object.keys(vars);
-        const fn = new Function(...keys, code);
+        const fn = new Function(...keys, safeCode);
         fn(...keys.map(k => vars[k]));
         return true;
       } catch (err) {
