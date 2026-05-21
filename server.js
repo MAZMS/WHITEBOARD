@@ -873,27 +873,16 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
     if (hasCover) {
       // Zero-margin page for full bleed cover
       doc.addPage({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 } });
-      doc.rect(0, 0, W, H).fill('#0a0a0a');
       try {
-        // Two-pass stretch: draw by width to fill horizontally, then by height to fill vertically
-        // Whichever is larger wins — the other dimension overflows off-page
+        // Force stretch to EXACT page size using raw PDF content stream
+        // cm operator applies transformation matrix: W 0 0 H 0 0 = stretch to WxH
         const img = doc.openImage(coverPath);
-        const imgRatio = img.width / img.height;
-        const pageRatio = W / H;
-
-        if (imgRatio > pageRatio) {
-          // Image is wider than A4 — fit by height, overflow width
-          const drawH = H;
-          const drawW = drawH * imgRatio;
-          const x = -(drawW - W) / 2;
-          doc.image(img, x, 0, { width: drawW });
-        } else {
-          // Image is taller than A4 — fit by width, overflow height
-          const drawW = W;
-          const drawH = drawW / imgRatio;
-          const y = -(drawH - H) / 2;
-          doc.image(img, 0, y, { width: drawW });
-        }
+        const imgName = 'Cover' + img.obj.id;
+        doc.page.xobjects[imgName] = img.obj;
+        doc.addContent('q');
+        doc.addContent(`${W.toFixed(2)} 0 0 ${H.toFixed(2)} 0 0 cm`);
+        doc.addContent(`/${imgName} Do`);
+        doc.addContent('Q');
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
