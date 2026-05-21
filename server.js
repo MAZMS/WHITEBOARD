@@ -401,7 +401,7 @@ Respond in this exact JSON format only, no other text:
       messages: [{ role: 'user', content: `You are a PDF designer. Write JavaScript code for PDFKit to design a beautiful, unique ebook interior for a book titled "${outline.title}" (${outline.subtitle}).
 
 Available variables: doc (PDFDocument), W (595.28), H (841.89), outline ({title, subtitle}), accent (hex color you choose), fontBody, fontHead, fontItalic.
-Available fonts: 'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Courier', 'Courier-Bold', 'Courier-Oblique', 'PlayfairDisplay', 'Lora', 'Merriweather', 'Merriweather-Bold', 'Merriweather-Italic', 'Montserrat', 'CrimsonText', 'CrimsonText-Bold', 'CrimsonText-Italic', 'EBGaramond', 'Raleway', 'SourceSerif4', 'OpenSans', 'Roboto'.
+Available fonts: ANY Google Font by name (e.g. 'Playfair Display', 'Lora', 'Merriweather', 'Montserrat', 'Crimson Text', 'EB Garamond', 'Raleway', 'Source Serif 4', 'Open Sans', 'Roboto', 'Poppins', 'Inter', 'Cormorant Garamond', 'Libre Baskerville', 'Josefin Sans', 'Dancing Script', 'Bitter', 'Nunito', 'Oswald', etc.) plus built-ins: 'Helvetica', 'Helvetica-Bold', 'Times-Roman', 'Times-Bold', 'Courier', 'Courier-Bold'. Fonts are downloaded on demand — use any Google Font you want!
 PDFKit methods: doc.fontSize(), doc.font(), doc.fillColor(), doc.text(str, opts), doc.moveDown(), doc.rect().fill(), doc.moveTo().lineTo().stroke(), doc.circle().fill(), doc.lineWidth(), doc.strokeColor(), doc.save(), doc.restore(), doc.addPage().
 
 Return ONLY valid JSON, no other text:
@@ -487,8 +487,8 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
   console.log(`Ebook "${outline.title}" ready: ${filename}`);
 }
 
-function createPDF(filepath, outline, chapters, coverPath, designCode) {
-  return new Promise((resolve, reject) => {
+async function createPDF(filepath, outline, chapters, coverPath, designCode) {
+  return new Promise(async (resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
       margins: { top: 80, bottom: 80, left: 80, right: 80 },
@@ -502,28 +502,38 @@ function createPDF(filepath, outline, chapters, coverPath, designCode) {
       }
     });
 
-    // Register Google Fonts
+    // Register bundled fonts + on-demand Google Font loader
     const fontsDir = path.join(__dirname, 'fonts');
-    if (fs.existsSync(fontsDir)) {
-      const fontFiles = {
-        'PlayfairDisplay': 'PlayfairDisplay.ttf',
-        'Lora': 'Lora.ttf',
-        'Merriweather': 'Merriweather.ttf',
-        'Merriweather-Bold': 'Merriweather-Bold.ttf',
-        'Merriweather-Italic': 'Merriweather-Italic.ttf',
-        'Montserrat': 'Montserrat.ttf',
-        'CrimsonText': 'CrimsonText.ttf',
-        'CrimsonText-Bold': 'CrimsonText-Bold.ttf',
-        'CrimsonText-Italic': 'CrimsonText-Italic.ttf',
-        'EBGaramond': 'EBGaramond.ttf',
-        'Raleway': 'Raleway.ttf',
-        'SourceSerif4': 'SourceSerif4.ttf',
-        'OpenSans': 'OpenSans.ttf',
-        'Roboto': 'Roboto.ttf',
-      };
-      for (const [name, file] of Object.entries(fontFiles)) {
-        const fp = path.join(fontsDir, file);
-        if (fs.existsSync(fp)) doc.registerFont(name, fp);
+    if (!fs.existsSync(fontsDir)) fs.mkdirSync(fontsDir, { recursive: true });
+    // Register any already-downloaded fonts
+    for (const file of fs.readdirSync(fontsDir).filter(f => f.endsWith('.ttf'))) {
+      const name = file.replace('.ttf', '');
+      doc.registerFont(name, path.join(fontsDir, file));
+    }
+    // Dynamic font loader — downloads from Google Fonts on demand
+    const registeredFonts = new Set(fs.readdirSync(fontsDir).filter(f => f.endsWith('.ttf')).map(f => f.replace('.ttf', '')));
+    const builtinFonts = new Set(['Helvetica','Helvetica-Bold','Helvetica-Oblique','Times-Roman','Times-Bold','Times-Italic','Courier','Courier-Bold','Courier-Oblique']);
+    async function ensureFont(fontName) {
+      if (builtinFonts.has(fontName) || registeredFonts.has(fontName)) return true;
+      try {
+        // Fetch CSS from Google Fonts to get the TTF URL
+        const cssRes = await fetch(`https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName.replace(/-/g, ' '))}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' } // Google Fonts needs this to return TTF
+        });
+        const css = await cssRes.text();
+        const urlMatch = css.match(/src:\s*url\(([^)]+\.ttf)\)/);
+        if (!urlMatch) return false;
+        const ttfRes = await fetch(urlMatch[1]);
+        const buf = Buffer.from(await ttfRes.arrayBuffer());
+        const fp = path.join(fontsDir, `${fontName}.ttf`);
+        fs.writeFileSync(fp, buf);
+        doc.registerFont(fontName, fp);
+        registeredFonts.add(fontName);
+        console.log(`  Font downloaded: ${fontName}`);
+        return true;
+      } catch (err) {
+        console.warn(`  Font download failed for ${fontName}:`, err.message);
+        return false;
       }
     }
 
@@ -540,12 +550,22 @@ function createPDF(filepath, outline, chapters, coverPath, designCode) {
     const accentLight = d.accentLight || '#E8E0D0';
     const headingColor = d.headingColor || '#1a1a1a';
     const bodyColor = d.bodyColor || '#333';
-    const fontHead = d.fontHead || 'Helvetica-Bold';
-    const fontBody = d.fontBody || 'Helvetica';
-    const fontItalic = d.fontItalic || 'Helvetica-Oblique';
+    let fontHead = d.fontHead || 'Helvetica-Bold';
+    let fontBody = d.fontBody || 'Helvetica';
+    let fontItalic = d.fontItalic || 'Helvetica-Oblique';
     const showBorder = d.showBorder !== false;
     const showDropCap = d.showDropCap !== false;
     const dropCapSize = d.dropCapSize || 28;
+
+    // Download any Google Fonts the AI requested
+    for (const f of [fontHead, fontBody, fontItalic]) {
+      if (!await ensureFont(f)) {
+        console.warn(`  Font "${f}" unavailable, falling back`);
+        if (f === fontHead) fontHead = 'Helvetica-Bold';
+        if (f === fontBody) fontBody = 'Helvetica';
+        if (f === fontItalic) fontItalic = 'Helvetica-Oblique';
+      }
+    }
 
     // Safe code executor for AI-generated design code
     function runDesignCode(code, extraVars = {}) {
