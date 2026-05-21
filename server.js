@@ -512,7 +512,7 @@ STATE:
 - doc.restore() — restore graphics state (MUST use after decorative drawing)
 
 RULES:
-1. NEVER use doc.text(str, x, y) for flowing content — it breaks the cursor
+1. NEVER EVER use doc.text(str, x, y) with x,y coordinates — it DESTROYS the cursor and makes text upside down or overlapping. ALWAYS use doc.text(str, {align: 'center'}) or doc.text(str, {align: 'left'}) — let PDFKit handle positioning
 2. ALWAYS wrap decorative drawing in doc.save()/doc.restore()
 3. NEVER call doc.addPage()
 4. doc.y tracks cursor position — use it to know where you are on the page
@@ -981,7 +981,11 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
       if (!code) return false;
       try {
         // Safety: strip dangerous calls that break layouts
+        // Replace doc.text(str, x, y, ...) with doc.text(str, {...}) to prevent cursor corruption
+        // Match: doc.text("...", NUMBER, NUMBER  → replace with doc.text("...", {
         let safeCode = code
+          .replace(/doc\.text\s*\(\s*([^,]+),\s*(\d+[\d.]*)\s*,\s*(\d+[\d.]*)\s*,/g, 'doc.text($1, {')
+          .replace(/doc\.text\s*\(\s*([^,]+),\s*(\d+[\d.]*)\s*,\s*(\d+[\d.]*)\s*\)/g, 'doc.text($1)')
           .replace(/doc\.transform\s*\(/g, '/* blocked */ void(')
           .replace(/doc\.rotate\s*\(/g, '/* blocked */ void(')
           .replace(/doc\.scale\s*\(/g, '/* blocked */ void(')
