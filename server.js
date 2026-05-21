@@ -952,8 +952,9 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
       }
     }
 
-    // Proxy doc that auto-darkens any fillColor to prevent invisible light text
+    // Proxy doc — intercepts fillColor (darken light colors) and text (block x,y positioning)
     const originalFillColor = doc.fillColor.bind(doc);
+    const originalText = doc.text.bind(doc);
     const safeDoc = new Proxy(doc, {
       get(target, prop) {
         if (prop === 'fillColor') {
@@ -969,6 +970,18 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
               }
             }
             return originalFillColor(color);
+          };
+        }
+        if (prop === 'text') {
+          return function(str, ...args) {
+            // Block: doc.text(str, x, y) or doc.text(str, x, y, opts)
+            // Allow: doc.text(str) or doc.text(str, opts)
+            if (args.length >= 2 && typeof args[0] === 'number' && typeof args[1] === 'number') {
+              // Strip x,y — just pass str and opts (if any)
+              const opts = args[2] || {};
+              return originalText(str, opts);
+            }
+            return originalText(str, ...args);
           };
         }
         const val = target[prop];
