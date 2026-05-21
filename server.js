@@ -556,6 +556,8 @@ Return ONLY valid JSON:
   "dropCapColor": "#hex",
   "smallCapsFirstWords": true/false,
   "runningHeader": true/false,
+  "runningHeaderPosition": "top" or "bottom",
+  "runningHeaderAlign": "split" or "center" or "left" or "right",
   "runningHeaderStyle": "JS code for running header — draws at top of page using doc.save()/doc.restore(). Vars: doc, W, H, accent, fontItalic, outline, pageNum. Be creative — centered, left/right split, with ornaments, etc.",
   "titlePageCode": "JS code for title page. Vars: doc, W, H, outline, accent, accentLight, headingColor, fontHead, fontBody, fontItalic. MUST display outline.title and outline.subtitle. Use doc.moveDown + doc.text({align}) for text. Decorative elements with doc.save()/doc.restore(). Keep it clean — no overlapping elements. End with 'greatlibrary.ai' at bottom.",
   "chapterHeaderCode": "JS code for chapter header. Vars: doc, W, H, ch, i, accent, accentLight, headingColor, fontHead, fontBody. ch.title = chapter title (already clean, no number prefix). i = 0-based index (use i+1 for display). Show the chapter number ONCE and the title ONCE — never repeat. Example: either '01' + title, or 'Chapter 1' + title, NOT both. Keep doc.y under 400.",
@@ -1156,11 +1158,22 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
       // Running header on content pages (skip cover + title)
       if (runningHeader && i > coverOffset + 1) {
         const pageNum = i - coverOffset;
-        // Fixed position at top — uses explicit x,y so it NEVER overlaps body text
+        // AI decides position but MUST use explicit x,y coordinates (not cursor)
+        const pos = d.runningHeaderPosition || 'top'; // AI picks: top, bottom
+        const hy = pos === 'bottom' ? H - 35 : 25;
+        const halign = d.runningHeaderAlign || 'split'; // AI picks: split, center, left, right
         doc.save();
         doc.fontSize(8).font(fontItalic).fillColor(accent);
-        doc.text(outline.title, 80, 25, { width: W - 160, align: 'left', lineBreak: false });
-        doc.text(String(pageNum), 80, 25, { width: W - 160, align: 'right', lineBreak: false });
+        if (halign === 'center') {
+          doc.text(`${outline.title}  \u2022  ${pageNum}`, 80, hy, { width: W - 160, align: 'center', lineBreak: false });
+        } else if (halign === 'left') {
+          doc.text(`${outline.title} \u2014 ${pageNum}`, 80, hy, { width: W - 160, align: 'left', lineBreak: false });
+        } else if (halign === 'right') {
+          doc.text(`${pageNum} \u2014 ${outline.title}`, 80, hy, { width: W - 160, align: 'right', lineBreak: false });
+        } else {
+          doc.text(outline.title, 80, hy, { width: W - 160, align: 'left', lineBreak: false });
+          doc.text(String(pageNum), 80, hy, { width: W - 160, align: 'right', lineBreak: false });
+        }
         doc.restore();
       }
     }
