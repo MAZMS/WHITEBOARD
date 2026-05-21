@@ -570,7 +570,11 @@ Return ONLY valid JSON:
   "coverOverlayCode": "JS code to overlay title + subtitle on a cover IMAGE. The background is a photo/artwork, not white. Vars: doc, W, H, outline, accent, fontHead, fontItalic. Use semi-transparent bands, contrasting text colors (white or light on dark overlay, dark on light overlay), creative positioning. Must show outline.title and outline.subtitle readably over the artwork."
 }
 
-Design for "${outline.title}". Follow the MANDATORY design direction above — it is your DNA. Every element must reflect the aesthetic: body text size, spacing, alignment, decorative elements, borders — EVERYTHING. This book must look like no other book ever made.` }],
+Design for "${outline.title}". Follow the MANDATORY design direction above — it is your DNA.
+
+CRITICAL: The PDF background is WHITE. ALL text and decorative elements must be dark enough to read on white. NEVER use light grey, pastel, or any color lighter than #666 for text. NEVER use white or near-white for any text. In your JS code, NEVER use fillColor with any light color (#999, #aaa, #bbb, #ccc, #ddd, #eee, #fff, etc.) for text. Body text should be #333 or darker. Headings should be #444 or darker. If you want light elements, use them ONLY for backgrounds with fillOpacity, not for text.
+
+This book must look like no other book ever made.` }],
       ...tokenLimit(8192),
       temperature: 0.9,
     });
@@ -931,10 +935,10 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
     const textAlign = d.textAlign || 'justify';
     const showBorder = d.showBorder !== false;
     const borderWeight = d.borderWeight || 0.4;
-    const borderColor = d.borderColor || accent;
+    const borderColor = ensureDark(d.borderColor, 0.60) || accent;
     const showDropCap = d.showDropCap !== false;
     const dropCapSize = d.dropCapSize || 28;
-    const dropCapColor = d.dropCapColor || accent;
+    const dropCapColor = ensureDark(d.dropCapColor, 0.55) || accent;
     const smallCapsFirstWords = d.smallCapsFirstWords || false;
     const runningHeader = d.runningHeader || false;
 
