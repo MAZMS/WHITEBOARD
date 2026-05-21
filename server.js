@@ -898,23 +898,24 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
 
     // AI-generated design — every value is AI-decided
     const d = designCode || {};
-    // Ensure colors are dark enough to read on white
-    function ensureDark(hex, maxBrightness = 150) {
-      if (!hex || !hex.startsWith('#')) return hex;
-      const r = parseInt(hex.slice(1,3), 16) || 0;
-      const g = parseInt(hex.slice(3,5), 16) || 0;
-      const b = parseInt(hex.slice(5,7), 16) || 0;
-      const brightness = (r + g + b) / 3;
-      if (brightness > maxBrightness) {
-        const scale = maxBrightness / brightness;
-        return '#' + [r,g,b].map(c => Math.round(c * scale).toString(16).padStart(2,'0')).join('');
+    // Ensure colors are dark enough to read on white (uses perceived luminance)
+    function ensureDark(hex, maxLum = 0.5) {
+      if (!hex || !hex.startsWith('#') || hex.length < 7) return hex;
+      const r = parseInt(hex.slice(1,3), 16) / 255;
+      const g = parseInt(hex.slice(3,5), 16) / 255;
+      const b = parseInt(hex.slice(5,7), 16) / 255;
+      // Perceived luminance (human eye is most sensitive to green, then red, then blue)
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      if (lum > maxLum) {
+        const scale = maxLum / lum;
+        return '#' + [r,g,b].map(c => Math.round(c * scale * 255).toString(16).padStart(2,'0')).join('');
       }
       return hex;
     }
-    const accent = ensureDark(d.accent, 180) || '#8B7D45';
+    const accent = ensureDark(d.accent, 0.55) || '#8B7D45';
     const accentLight = d.accentLight || '#E8E0D0';
-    const headingColor = ensureDark(d.headingColor, 120) || '#1a1a1a';
-    const bodyColor = ensureDark(d.bodyColor, 100) || '#333';
+    const headingColor = ensureDark(d.headingColor, 0.35) || '#1a1a1a';
+    const bodyColor = ensureDark(d.bodyColor, 0.30) || '#333';
     let fontHead = d.fontHead || 'Helvetica-Bold';
     let fontBody = d.fontBody || 'Helvetica';
     let fontItalic = d.fontItalic || 'Helvetica-Oblique';
@@ -1155,14 +1156,31 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
       // Running header on content pages (skip cover + title)
       if (runningHeader && i > coverOffset + 1) {
         const pageNum = i - coverOffset;
-        if (!runDesignCode(d.runningHeaderStyle, { pageNum })) {
-          // Fallback running header
-          doc.save();
+        // Always use save/restore to prevent cursor corruption
+        doc.save();
+        try {
+          if (d.runningHeaderStyle) {
+            // Wrap AI code in save/restore for safety
+            const headerVars = { doc, W, H, outline, accent, fontItalic, fontHead, fontBody, pageNum, headingColor, bodyColor };
+            const hKeys = Object.keys(headerVars);
+            const safeHeader = d.runningHeaderStyle
+              .replace(/doc\.transform\s*\(/g, '/* blocked */ void(')
+              .replace(/doc\.rotate\s*\(/g, '/* blocked */ void(')
+              .replace(/doc\.scale\s*\(/g, '/* blocked */ void(');
+            const hFn = new Function(...hKeys, safeHeader);
+            hFn(...hKeys.map(k => headerVars[k]));
+          } else {
+            doc.fontSize(8).font(fontItalic).fillColor(accent);
+            doc.text(outline.title, 80, 30, { width: W - 160, align: 'left', lineBreak: false });
+            doc.text(String(pageNum), 80, 30, { width: W - 160, align: 'right', lineBreak: false });
+          }
+        } catch (e) {
+          // Fallback on any error
           doc.fontSize(8).font(fontItalic).fillColor(accent);
           doc.text(outline.title, 80, 30, { width: W - 160, align: 'left', lineBreak: false });
           doc.text(String(pageNum), 80, 30, { width: W - 160, align: 'right', lineBreak: false });
-          doc.restore();
         }
+        doc.restore();
       }
     }
 
