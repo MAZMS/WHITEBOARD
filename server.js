@@ -285,20 +285,11 @@ app.post('/api/chat', async (req, res) => {
 async function generateCover(title, subtitle, designTheme, styleSeedText) {
   const d = designTheme || {};
 
-  // Build a comprehensive brand brief for the cover
-  const brandBrief = d.accent ? `
-BRAND CONSISTENCY (CRITICAL — the cover MUST match the interior design):
-- Primary accent color: ${d.accent}
-- Secondary color: ${d.accentLight || d.accent}
-- Heading color: ${d.headingColor || '#1a1a1a'}
-- Body text color: ${d.bodyColor || '#333'}
-- Interior font: ${d.fontHead || 'serif'} for headings, ${d.fontBody || 'serif'} for body
-- Cover art style: ${d.coverStyle || 'matching the book topic'}
-${styleSeedText ? '- Design DNA: ' + styleSeedText : ''}
-The cover must look like it belongs to the SAME book as the interior. Same color palette, same mood, same visual language.` : '';
+  // Build a brand brief — colors for matching only, NOT to display as text
+  const colorMood = d.accent ? `Use a color palette that includes tones similar to ${d.accent} and ${d.accentLight || d.accent}. Match the mood: ${d.coverStyle || 'matching the book topic'}.` : '';
 
-  const coverPrompt = `A flat 2D digital book cover. Title: "${title}". Subtitle: "${subtitle}". No author name. Edge-to-edge art, no borders/frames. Not a 3D render. ${brandBrief}`;
-  const imagenPrompt = `Digital art poster for "${title}". Title "${title}" as large text. No other text. ${d.accent ? 'Use colors: ' + d.accent + ' and ' + (d.accentLight || d.accent) : ''}. ${d.coverStyle || ''}`;
+  const coverPrompt = `A flat 2D digital book cover. Title: "${title}". Subtitle: "${subtitle}". No author name. Not a 3D render. IMPORTANT: Keep the title and subtitle text AWAY from the edges — leave safe margins so text is not cut off. Center the text within the image. ${colorMood} NEVER display font names, hex codes, or technical info as text on the cover — only the title and subtitle.`;
+  const imagenPrompt = `Digital art poster for "${title}". Title "${title}" as large centered text with safe margins. No font names, no hex codes, no technical text. Only the title. ${d.coverStyle || ''}`;
 
   try {
     // 1. Try Nano Banana models via Vertex AI (bills to GCP $300 credits)
