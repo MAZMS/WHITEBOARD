@@ -1910,6 +1910,8 @@
 
     eyeSymbol.addEventListener('click', async () => {
       if (eyeClickCooldown || guardianPhase === 'dormant' || guardianPhase === 'sleeping') return;
+      // In centered state, only cycle the big greeting — no whispers
+      if (document.body.classList.contains('centered')) return;
       eyeClickCooldown = true;
       setTimeout(() => eyeClickCooldown = false, 5000);
 
