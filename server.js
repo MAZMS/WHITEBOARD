@@ -464,6 +464,13 @@ Your response must be ONLY the one sentence. Be specific and NEVER repeat fonts 
     const designRes = await llmCreateGemini({
       messages: [{ role: 'user', content: `You are a PDF book designer writing PDFKit JavaScript code. Design a unique ebook interior for "${outline.title}" (${outline.subtitle}).
 
+=== DESIGN INTENT — READ FIRST ===
+This must be an INTENTIONAL design, not a random pile of styles. Before choosing anything, commit to ONE clear design concept for THIS book — a mood and visual direction that fits its subject and tone. Then make EVERY choice serve that one concept:
+- Fonts must pair deliberately and share a personality — not three unrelated faces.
+- Colors must form a coherent palette built from the concept — accent, headings, body clearly belong together.
+- The drop cap, small-caps lead-in, dividers, border, and running header must all reinforce the SAME concept. If a flourish doesn't serve it, leave it off — restraint is a design choice.
+- Vary wildly between books, but within ONE book every detail must look like a single designer made deliberate, consistent decisions. Never random or clashing.
+
 === PDF DOCUMENT SPECS (you have FULL control over this canvas) ===
 Page size: A4 (595.28 x 841.89 points = 210 x 297 mm)
 W = 595.28 (full page width in points)
@@ -557,7 +564,10 @@ Return ONLY valid JSON:
   "showDropCap": true/false,
   "dropCapSize": 20 to 50,
   "dropCapColor": "#hex",
-  "smallCapsFirstWords": true/false,
+  "smallCapsFirstWords": true/false — opening words after the drop cap set in small caps (uppercased + lightly tracked),
+  "leadInWordCount": 1-6 — how many opening words to set in small caps (default 3),
+  "leadInFont": "body" | "head" | "italic" — lead-in font. Default "body" is subtle/classic; use "head" only as a DELIBERATE choice for a bolder opening, never accidentally,
+  "leadInColor": "body" | "accent" | "heading" — lead-in color. Default "body" blends in; "accent"/"heading" make a stronger statement. Match it to your overall design,
   "runningHeader": true/false,
   "runningHeaderPosition": "top" or "bottom",
   "runningHeaderAlign": "split" or "center" or "left" or "right",
@@ -574,7 +584,7 @@ Design for "${outline.title}". Follow the MANDATORY design direction above — i
 
 CRITICAL: The PDF background is WHITE. ALL text and decorative elements must be dark enough to read on white. NEVER use light grey, pastel, or any color lighter than #666 for text. NEVER use white or near-white for any text. In your JS code, NEVER use fillColor with any light color (#999, #aaa, #bbb, #ccc, #ddd, #eee, #fff, etc.) for text. Body text should be #333 or darker. Headings should be #444 or darker. If you want light elements, use them ONLY for backgrounds with fillOpacity, not for text.
 
-This book must look like no other book ever made.` }],
+This book must look like no other book ever made — but as ONE coherent, intentional design, never a random mix.` }],
       ...tokenLimit(8192),
       temperature: 0.9,
     });
@@ -940,6 +950,10 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
     const dropCapSize = d.dropCapSize || 28;
     const dropCapColor = ensureDark(d.dropCapColor, 0.55) || accent;
     const smallCapsFirstWords = d.smallCapsFirstWords || false;
+    // Small-caps lead-in styling — an intentional design choice the AI controls.
+    const leadInWordCount = Math.max(1, Math.min(6, d.leadInWordCount || 3));
+    const leadInFont = ['head', 'italic', 'body'].includes(d.leadInFont) ? d.leadInFont : 'body';
+    const leadInColor = ['accent', 'heading', 'body'].includes(d.leadInColor) ? d.leadInColor : 'body';
     const runningHeader = d.runningHeader || false;
 
     // Download any Google Fonts the AI requested
@@ -1157,20 +1171,26 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
           doc.fontSize(dropCapSize).font(fontHead).fillColor(dropCapColor)
             .text(letter, { continued: true, baseline: -(dropCapSize / 7) });
           if (smallCapsFirstWords) {
-            const words = rest.split(' ');
-            const capsWords = words.slice(0, 4).join('  ').toUpperCase();
-            const remaining = words.slice(4).join(' ');
-            doc.fontSize(bodySize).font(fontHead).fillColor(headingColor)
-              .text(capsWords + ' ', { continued: true });
+            // Small-caps lead-in: opening words uppercased + lightly tracked.
+            // Font/color follow the AI's design choice, defaulting to the
+            // subtle body version — never the heavy heading font by default.
+            const leadFont = leadInFont === 'head' ? fontHead : leadInFont === 'italic' ? fontItalic : fontBody;
+            const leadColor = leadInColor === 'accent' ? accent : leadInColor === 'heading' ? headingColor : bodyColor;
+            const words = rest.replace(/^\s+/, '').split(/\s+/);
+            const leadCount = Math.min(leadInWordCount, Math.max(1, words.length - 1));
+            const capsWords = words.slice(0, leadCount).join(' ').toUpperCase();
+            const remaining = words.slice(leadCount).join(' ');
+            doc.fontSize(Math.max(9, bodySize - 1)).font(leadFont).fillColor(leadColor)
+              .text(capsWords + ' ', { continued: true, characterSpacing: 0.5 });
             doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
-              .text(remaining, { align: textAlign, lineGap });
+              .text(remaining, { align: textAlign, lineGap, characterSpacing: 0 });
           } else {
             doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
               .text(rest, { align: textAlign, lineGap });
           }
         } else if (!didDropCap && !showDropCap && txt.length > 10) {
           didDropCap = true;
-          doc.fontSize(bodySize).font(fontHead).fillColor(bodyColor)
+          doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
             .text(txt, { align: textAlign, lineGap });
         } else {
           doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
