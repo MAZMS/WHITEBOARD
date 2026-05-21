@@ -745,6 +745,52 @@ Return ONLY a JSON with the FIXED fields (only include fields that needed fixing
   const coverPath = coverResult?.path || null;
   const coverNeedsOverlay = coverResult?.needsOverlay || false;
 
+  // Step 1.8: If Imagen cover, let AI SEE the artwork and design the overlay
+  if (coverNeedsOverlay && coverPath && designCode) {
+    try {
+      const coverBase64 = fs.readFileSync(coverPath).toString('base64');
+      const { GoogleAuth: GA } = require('google-auth-library');
+      const saRaw = process.env.VERTEX_SERVICE_ACCOUNT_JSON_B64;
+      let saJ; try { saJ = JSON.parse(saRaw); } catch { saJ = JSON.parse(Buffer.from(saRaw, 'base64').toString()); }
+      const gAuth = new GA({ credentials: saJ, scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
+      const gClient = await gAuth.getClient();
+      const { token: vToken } = await gClient.getAccessToken();
+
+      const overlayRes = await fetch('https://us-central1-aiplatform.googleapis.com/v1beta1/projects/steady-datum-492117-f9/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${vToken}` },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [
+            { inlineData: { mimeType: 'image/png', data: coverBase64 } },
+            { text: `This is a book cover artwork. I need to overlay the title "${outline.title}" and subtitle "${outline.subtitle}" on top of it using PDFKit.
+
+Look at the image — analyze where the bright/dark areas are, what colors dominate.
+
+Write PDFKit JavaScript code that overlays the title and subtitle READABLY on this specific artwork. Choose:
+- Where to place text (top, center, bottom — based on where the image has space)
+- What background band to use (dark semi-transparent if image is bright, light if dark, or none if there's a clear area)
+- Text color that CONTRASTS with the image (white on dark areas, dark on light areas)
+- Font size and style that fits the mood
+
+Vars available: doc, W (595.28), H (841.89), outline, accent (${designCode.accent}), fontHead, fontItalic.
+RULES: Use doc.save()/doc.restore() for all drawing. Use doc.fillOpacity() for transparency. No doc.transform/rotate.
+
+Return ONLY the JavaScript code, no markdown, no explanation.` }
+          ]}]
+        })
+      });
+      const overlayData = await overlayRes.json();
+      const overlayText = overlayData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
+      const cleanCode = overlayText.replace(/```javascript?\s*/g, '').replace(/```\s*/g, '').trim();
+      if (cleanCode) {
+        designCode.coverOverlayCode = cleanCode;
+        console.log('  Cover overlay designed from image analysis');
+      }
+    } catch (err) {
+      console.warn('  Cover image analysis failed:', err.message);
+    }
+  }
+
   // Step 2: Generate each chapter
   const chapters = [];
   let chapterIndex = 0;
