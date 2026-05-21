@@ -1106,6 +1106,7 @@
     const input = document.getElementById('guardianInput');
     const sendBtn = document.getElementById('sendBtn');
     const sessionId = crypto.randomUUID();
+    let greetingClickHandler = null;
 
     // ===== STATE =====
     let guardianPhase = 'dormant';
@@ -1325,6 +1326,21 @@
           const greetDiv = addTypedMessage(data.reply, 'guardian', 30);
           greetDiv.classList.add('first-greeting');
 
+          // Eye click cycles the greeting to a new AI-generated question
+          greetingClickHandler = async () => {
+            if (!document.body.classList.contains('centered')) return;
+            const el = chatArea.querySelector('.first-greeting');
+            if (!el) return;
+            el.style.opacity = '0';
+            try {
+              const r = await fetch('/api/greet').then(r => r.json());
+              setTimeout(() => { el.textContent = r.reply; el.style.opacity = '1'; }, 500);
+            } catch {
+              setTimeout(() => { el.style.opacity = '1'; }, 500);
+            }
+          };
+          eyeSymbol.addEventListener('click', greetingClickHandler);
+
           // Speed up particles, start blinking
           clearInterval(particleInterval);
           particleInterval = setInterval(spawnParticle, 600);
@@ -1465,6 +1481,7 @@
 
       // Exit centered state on first message
       document.body.classList.remove('centered');
+      if (greetingClickHandler) eyeSymbol.removeEventListener('click', greetingClickHandler);
 
       addMessage(text, 'user');
       playTone(330, 0.08, 'sine', 0.05);
