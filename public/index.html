@@ -1722,24 +1722,30 @@
     function borderAnimLoop() {
       if (borderDone) return;
 
-      if (borderCurrent < borderTarget) {
-        borderCurrent += (borderTarget - borderCurrent) * 0.08;
-      } else if (borderCurrent < 0.92) {
-        borderCurrent += 0.0003;
-      }
-
-      if (borderTarget < 1) {
-        borderCurrent = Math.min(borderCurrent, 0.95);
-      }
-
       if (borderTarget >= 1) {
-        borderCurrent += (1 - borderCurrent) * 0.06;
+        // Ebook is ready — rush to the end
+        borderCurrent += (1 - borderCurrent) * 0.12;
         if (borderCurrent > 0.999) {
           borderCurrent = 1;
           borderDone = true;
           borderLoader.classList.add('complete');
           setTimeout(() => borderLoader.classList.add('fade-out'), 3000);
         }
+      } else if (borderCurrent < borderTarget - 0.01) {
+        // Real progress ahead — ease toward it
+        borderCurrent += (borderTarget - borderCurrent) * 0.06;
+      } else {
+        // No new progress — keep creeping forward slowly (the illusion)
+        // Slower as we get closer to 90%, creating natural tension
+        const remainingToMax = 0.90 - borderCurrent;
+        if (remainingToMax > 0) {
+          const creepSpeed = 0.0002 + remainingToMax * 0.0008;
+          borderCurrent += creepSpeed;
+        } else {
+          // Past 90% — ultra slow crawl, just enough to show movement
+          borderCurrent += 0.00008;
+        }
+        borderCurrent = Math.min(borderCurrent, 0.96);
       }
 
       borderPath.style.strokeDashoffset = borderPerimeter * (1 - borderCurrent);
