@@ -608,15 +608,16 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
       doc.addPage({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 } });
       doc.rect(0, 0, W, H).fill('#0a0a0a');
       try {
+        // Force-stretch image to fill entire A4 page regardless of aspect ratio
+        // PDFKit doesn't support stretch, so we scale by width then use transform to stretch height
         const img = doc.openImage(coverPath);
-        const scaleW = W / img.width;
-        const scaleH = H / img.height;
-        const scale = Math.max(scaleW, scaleH) * 1.05; // 5% overscale to fill gaps
-        const drawW = img.width * scale;
-        const drawH = img.height * scale;
-        const x = (W - drawW) / 2;
-        const y = (H - drawH) / 2;
-        doc.image(coverPath, x, y, { width: drawW });
+        const scaleX = W / img.width;
+        const scaleY = H / img.height;
+        doc.save();
+        // Apply non-uniform scale: stretch to fill exact page dimensions
+        doc.transform(scaleX, 0, 0, scaleY, 0, 0);
+        doc.image(img, 0, 0);
+        doc.restore();
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
