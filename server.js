@@ -321,7 +321,9 @@ async function generateCover(title, subtitle, designTheme, styleSeedText) {
   const colorMood = d.accent ? `Use a color palette that includes tones similar to ${d.accent} and ${d.accentLight || d.accent}. Match the mood: ${d.coverStyle || 'matching the book topic'}.` : '';
 
   const coverPrompt = `A flat 2D digital book cover. Title: "${title}". Subtitle: "${subtitle}". No author name. Not a 3D render. IMPORTANT: Keep the title and subtitle text AWAY from the edges — leave safe margins so text is not cut off. Center the text within the image. ${colorMood} NEVER display font names, hex codes, or technical info as text on the cover — only the title and subtitle.`;
-  const imagenPrompt = `Cinematic artwork about "${title}". Atmospheric, dramatic, no text at all, no letters, no words, no title. Pure visual art only. ${d.coverStyle || ''}`;
+  // Don't include the title in Imagen prompt — it tries to render it as text
+  const topicWords = title.replace(/[^a-zA-Z\s]/g, '').split(' ').slice(0, 3).join(' ');
+  const imagenPrompt = `Cinematic atmospheric artwork. Theme: ${topicWords}. Dramatic, moody, visually striking. Absolutely NO text, NO letters, NO words anywhere in the image. Pure visual art, abstract or figurative. ${d.coverStyle || ''}`;
 
   try {
     // 1. Try Nano Banana models via Vertex AI (bills to GCP $300 credits)
