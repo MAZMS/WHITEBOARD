@@ -1908,12 +1908,19 @@
       playTone(988, 0.6, 'sine', 0.06);
       setTimeout(() => playTone(1319, 0.8, 'sine', 0.03), 200);
 
-      // Oracle whisper — builds on previous whispers
+      // Oracle whisper — context-aware based on conversation
       try {
+        // Gather conversation context from chat
+        const chatMessages = [...chatArea.querySelectorAll('.message')].map(m => {
+          const isUser = m.classList.contains('user');
+          return { role: isUser ? 'user' : 'guardian', text: m.textContent.trim() };
+        }).filter(m => m.text && !m.text.startsWith('The ') && m.text.length > 2).slice(-6);
+        const isSearching = guardianPhase === 'searching';
+
         const res = await fetch('/api/whisper', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ previous: whisperHistory.slice(-10) })
+          body: JSON.stringify({ previous: whisperHistory.slice(-10), context: chatMessages, isSearching })
         });
         const data = await res.json();
         whisperHistory.push(data.reply);
