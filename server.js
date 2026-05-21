@@ -465,7 +465,22 @@ function createPDF(filepath, outline, chapters, coverPath) {
     // A4 dimensions in points (autoFirstPage is off, so doc.page is null)
     const W = 595.28;
     const H = 841.89;
-    const gold = '#8B7D45';
+
+    // Dynamic theme — each book gets a unique look based on title hash
+    const themes = [
+      { accent: '#8B7D45', accentLight: '#E8E0D0', body: '#333', heading: '#1a1a1a', fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique', name: 'gold' },
+      { accent: '#2E6B5A', accentLight: '#D0E8DF', body: '#2a2a2a', heading: '#1a2a20', fontHead: 'Times-Bold', fontBody: 'Times-Roman', fontItalic: 'Times-Italic', name: 'forest' },
+      { accent: '#8B4513', accentLight: '#E8D5C0', body: '#3a2a1a', heading: '#2a1a0a', fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique', name: 'amber' },
+      { accent: '#4A5568', accentLight: '#E2E8F0', body: '#2D3748', heading: '#1A202C', fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique', name: 'slate' },
+      { accent: '#9B2C2C', accentLight: '#FED7D7', body: '#2a1a1a', heading: '#1a0a0a', fontHead: 'Times-Bold', fontBody: 'Times-Roman', fontItalic: 'Times-Italic', name: 'crimson' },
+      { accent: '#2B6CB0', accentLight: '#BEE3F8', body: '#2a3a4a', heading: '#1a2a3a', fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique', name: 'ocean' },
+      { accent: '#6B46C1', accentLight: '#E9D8FD', body: '#2a1a3a', heading: '#1a0a2a', fontHead: 'Times-Bold', fontBody: 'Times-Roman', fontItalic: 'Times-Italic', name: 'violet' },
+      { accent: '#C05621', accentLight: '#FEEBC8', body: '#3a2a1a', heading: '#2a1a0a', fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique', name: 'ember' },
+    ];
+    const titleHash = outline.title.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+    const theme = themes[Math.abs(titleHash) % themes.length];
+    console.log(`  PDF theme: ${theme.name} (accent: ${theme.accent})`);
+    const { accent, accentLight, body: bodyColor, heading: headingColor, fontHead, fontBody, fontItalic } = theme;
 
     // ===== PAGE 0: COVER IMAGE (fully AI-generated, edge-to-edge) =====
     const hasCover = coverPath && fs.existsSync(coverPath);
@@ -492,13 +507,13 @@ function createPDF(filepath, outline, chapters, coverPath) {
     function divider(y, w = 140) {
       const cx = W / 2;
       doc.save().moveTo(cx - w/2, y).lineTo(cx + w/2, y)
-        .lineWidth(0.5).strokeColor(gold).stroke().restore();
+        .lineWidth(0.5).strokeColor(accent).stroke().restore();
       doc.save().moveTo(cx, y-2.5).lineTo(cx+2.5, y).lineTo(cx, y+2.5).lineTo(cx-2.5, y)
-        .closePath().fillColor(gold).fill().restore();
+        .closePath().fillColor(accent).fill().restore();
     }
 
     function border() {
-      doc.save().rect(40, 40, W-80, H-80).lineWidth(0.4).strokeColor(gold).stroke().restore();
+      doc.save().rect(40, 40, W-80, H-80).lineWidth(0.4).strokeColor(accent).stroke().restore();
     }
 
     // ===== TITLE PAGE =====
@@ -507,26 +522,26 @@ function createPDF(filepath, outline, chapters, coverPath) {
     doc.moveDown(7);
     divider(doc.y, 180);
     doc.moveDown(2);
-    doc.fontSize(30).font('Helvetica-Bold').fillColor('#1a1a1a')
+    doc.fontSize(30).font(fontHead).fillColor(headingColor)
       .text(outline.title, { align: 'center' });
     doc.moveDown(0.8);
     divider(doc.y, 80);
     doc.moveDown(1);
-    doc.fontSize(13).font('Helvetica-Oblique').fillColor('#666')
+    doc.fontSize(13).font(fontItalic).fillColor('#666')
       .text(outline.subtitle, { align: 'center' });
     doc.moveDown(7);
     divider(doc.y, 50);
     doc.moveDown(1);
-    doc.fontSize(9).font('Helvetica').fillColor('#888')
+    doc.fontSize(9).font(fontBody).fillColor('#888')
       .text('Retrieved from the Great Library', { align: 'center' });
-    doc.fontSize(9).font('Helvetica-Oblique').fillColor(gold)
+    doc.fontSize(9).font(fontItalic).fillColor(accent)
       .text('greatlibrary.ai', { align: 'center' });
 
     // ===== PAGE 1: TABLE OF CONTENTS =====
     doc.addPage();
     border();
     doc.moveDown(3);
-    doc.fontSize(20).font('Helvetica-Bold').fillColor('#1a1a1a')
+    doc.fontSize(20).font(fontHead).fillColor(headingColor)
       .text('Contents', { align: 'center' });
     doc.moveDown(0.5);
     divider(doc.y, 100);
@@ -535,9 +550,9 @@ function createPDF(filepath, outline, chapters, coverPath) {
     const tocY = [];
     chapters.forEach((ch, i) => {
       tocY.push(doc.y);
-      doc.fontSize(11).font('Helvetica-Bold').fillColor(gold)
+      doc.fontSize(11).font(fontHead).fillColor(accent)
         .text(`${String(i+1).padStart(2,'0')}   `, { continued: true });
-      doc.font('Helvetica').fillColor('#333')
+      doc.font(fontBody).fillColor(bodyColor)
         .text(ch.title);
       doc.moveDown(0.7);
     });
@@ -552,10 +567,10 @@ function createPDF(filepath, outline, chapters, coverPath) {
 
       // Chapter header
       doc.moveDown(3);
-      doc.fontSize(42).font('Helvetica-Bold').fillColor('#E8E0D0')
+      doc.fontSize(42).font(fontHead).fillColor(accentLight)
         .text(`${String(i+1).padStart(2,'0')}`, { align: 'center' });
       doc.moveDown(0.2);
-      doc.fontSize(20).font('Helvetica-Bold').fillColor('#1a1a1a')
+      doc.fontSize(20).font(fontHead).fillColor(headingColor)
         .text(ch.title, { align: 'center' });
       doc.moveDown(0.5);
       divider(doc.y, 70);
@@ -574,13 +589,13 @@ function createPDF(filepath, outline, chapters, coverPath) {
           const letter = t[0].toUpperCase();
           const rest = t.slice(1);
 
-          // Drop cap: just make first letter big inline with continued
-          doc.fontSize(28).font('Helvetica-Bold').fillColor(gold)
+          // Drop cap: first letter big in accent color
+          doc.fontSize(28).font(fontHead).fillColor(accent)
             .text(letter, { continued: true, baseline: -4 });
-          doc.fontSize(11).font('Helvetica').fillColor('#333')
+          doc.fontSize(11).font(fontBody).fillColor(bodyColor)
             .text(rest, { align: 'justify', lineGap: 4 });
         } else {
-          doc.fontSize(11).font('Helvetica').fillColor('#333')
+          doc.fontSize(11).font(fontBody).fillColor(bodyColor)
             .text(t, { align: 'justify', lineGap: 4, indent: 15 });
         }
         doc.moveDown(0.5);
