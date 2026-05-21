@@ -18,6 +18,7 @@
       flex-direction: column;
       overflow: hidden;
       -webkit-text-size-adjust: 100%;
+      transition: height 0.25s ease, transform 0.25s ease;
     }
 
     .main {
@@ -959,10 +960,10 @@
         padding-bottom: calc(20px + env(safe-area-inset-bottom));
       }
 
-      /* When the keyboard is open, dock the input at the bottom (eye + question stay
-         up top) so it sits right above the keyboard — like Gemini. The centered
-         eye-opening intro is preserved while the keyboard is closed. */
-      body.kb-open.centered .input-area { margin-top: auto; }
+      /* On mobile the input stays docked at the bottom (eye + question up top),
+         so opening/closing the keyboard just smoothly resizes the app — no snap
+         from a centered layout. */
+      body.centered .input-area { margin-top: auto; }
 
       .input-area textarea {
         font-size: 16px; /* prevents iOS zoom on focus */
@@ -1139,9 +1140,6 @@
       window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
       fitViewport();
     }
-    // Dock the input to the bottom while the field is focused (keyboard up).
-    input.addEventListener('focus', () => document.body.classList.add('kb-open'));
-    input.addEventListener('blur', () => document.body.classList.remove('kb-open'));
 
     // ===== STATE =====
     let guardianPhase = 'dormant';
@@ -1531,6 +1529,10 @@
     }
 
     // ===== FORM SUBMIT =====
+    // Keep the keyboard open when tapping send: stop the button from stealing
+    // focus, so the first tap submits instead of just dismissing the keyboard.
+    sendBtn.addEventListener('mousedown', (e) => e.preventDefault());
+
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (guardianPhase !== 'alive') return;
