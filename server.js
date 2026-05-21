@@ -561,7 +561,8 @@ Return ONLY valid JSON:
   "chapterHeaderCode": "JS code for chapter header. Vars: doc, W, H, ch, i, accent, accentLight, headingColor, fontHead, fontBody. ch.title = chapter title (already clean, no number prefix). i = 0-based index (use i+1 for display). Show the chapter number ONCE and the title ONCE — never repeat. Example: either '01' + title, or 'Chapter 1' + title, NOT both. Keep doc.y under 400.",
   "dividerCode": "JS code for divider at y. Vars: doc, W, y, accent. Creative — dots, lines, shapes, symbols, anything.",
   "chapterEndCode": "JS code for chapter end decoration. Vars: doc, W, accent. Optional ornament after last paragraph.",
-  "coverStyle": "10-15 word art direction for cover image generation"
+  "coverStyle": "10-15 word art direction for cover image generation",
+  "coverOverlayCode": "JS code to overlay title + subtitle on a cover IMAGE. The background is a photo/artwork, not white. Vars: doc, W, H, outline, accent, fontHead, fontItalic. Use semi-transparent bands, contrasting text colors (white or light on dark overlay, dark on light overlay), creative positioning. Must show outline.title and outline.subtitle readably over the artwork."
 }
 
 Design for "${outline.title}". Follow the MANDATORY design direction above — it is your DNA. Every element must reflect the aesthetic: body text size, spacing, alignment, decorative elements, borders — EVERYTHING. This book must look like no other book ever made.` }],
@@ -931,22 +932,19 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
       }
-      // Imagen fallback: overlay real title + subtitle since Imagen can't do text
+      // Imagen fallback: overlay title on artwork (AI designs the overlay)
       if (coverNeedsOverlay) {
-        doc.save();
-        // Dark gradient band for readability
-        doc.rect(0, H * 0.30, W, H * 0.35).fillOpacity(0.6).fill('#000000');
-        doc.fillOpacity(1);
-        // Title
-        doc.fontSize(32).font('Helvetica-Bold').fillColor('#FFFFFF')
-          .text(outline.title, 40, H * 0.36, { align: 'center', width: W - 80 });
-        // Subtitle
-        doc.fontSize(13).font('Helvetica-Oblique').fillColor('#dddddd')
-          .text(outline.subtitle, 40, doc.y + 8, { align: 'center', width: W - 80 });
-        // Branding
-        doc.fontSize(8).font('Helvetica').fillColor('#aaaaaa')
-          .text('greatlibrary.ai', 40, H - 50, { align: 'center', width: W - 80 });
-        doc.restore();
+        if (!runDesignCode(d.coverOverlayCode)) {
+          // Fallback overlay
+          doc.save();
+          doc.rect(0, H * 0.30, W, H * 0.35).fillOpacity(0.55).fill('#000000');
+          doc.fillOpacity(1);
+          doc.fontSize(32).font(fontHead).fillColor('#FFFFFF')
+            .text(outline.title, 40, H * 0.36, { align: 'center', width: W - 80 });
+          doc.fontSize(13).font(fontItalic).fillColor('#dddddd')
+            .text(outline.subtitle, 40, doc.y + 8, { align: 'center', width: W - 80 });
+          doc.restore();
+        }
       }
     }
     let tocPage = -1; // Will be set when TOC page is actually added
