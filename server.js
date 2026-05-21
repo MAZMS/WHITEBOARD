@@ -320,7 +320,7 @@ async function generateCover(title, subtitle, designTheme, styleSeedText) {
   // Build a brand brief — colors for matching only, NOT to display as text
   const colorMood = d.accent ? `Use a color palette that includes tones similar to ${d.accent} and ${d.accentLight || d.accent}. Match the mood: ${d.coverStyle || 'matching the book topic'}.` : '';
 
-  const coverPrompt = `A flat 2D digital book cover. Title: "${title}". Subtitle: "${subtitle}". No author name. Not a 3D render. IMPORTANT: Keep the title and subtitle text AWAY from the edges — leave safe margins so text is not cut off. Center the text within the image. ${colorMood} NEVER display font names, hex codes, or technical info as text on the cover — only the title and subtitle.`;
+  const coverPrompt = `A flat 2D digital book cover. Title: "${title}". Subtitle: "${subtitle}". No author name. Not a 3D render. CRITICAL: The edges of this image WILL BE CROPPED by 15% on all sides. ALL text and important elements must be in the CENTER 70% of the image — nothing important near any edge. Leave at least 15% margin on all sides. ${colorMood} NEVER display font names, hex codes, or technical info — only the title and subtitle.`;
   // AI-written art direction from coverStyle, topic keywords only (no title text)
   const topicWords = title.replace(/[^a-zA-Z\s]/g, '').split(' ').slice(0, 3).join(' ');
   const artDirection = d.coverStyle || `Artwork about ${topicWords}`;
@@ -1017,7 +1017,7 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
       try {
         const img = doc.openImage(coverPath);
         // 3% overscale to guarantee zero gaps
-        const overscale = 1.10; // 10% overscale — aggressive but guarantees zero gaps
+        const overscale = 1.15; // 15% overscale — edges will be cropped, text must have margins
         const scaledH = (W * overscale / img.width) * img.height;
         const scaledW = W * overscale;
         if (scaledH >= H) {
