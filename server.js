@@ -502,25 +502,35 @@ You MUST follow this aesthetic direction. Extract the colors, mood, and style fr
 
 Return ONLY valid JSON:
 {
-  "accent": "#hex — accent color matching the book mood",
-  "accentLight": "#hex — lighter version for background elements",
-  "headingColor": "#hex — headings color",
-  "bodyColor": "#hex — body text (use warm dark tones like #2c1e12 or #1a2a1a, NOT pure black — more readable and elegant)",
-  "fontHead": "Google Font for headings",
-  "fontBody": "Google Font for body text (must be readable)",
-  "fontItalic": "Google Font for subtitles/italic",
+  "accent": "#hex",
+  "accentLight": "#hex lighter",
+  "headingColor": "#hex",
+  "bodyColor": "#hex (dark, readable, NOT pure black)",
+  "fontHead": "Google Font name",
+  "fontBody": "Google Font name",
+  "fontItalic": "Google Font name",
+  "bodySize": 9.5 to 12,
+  "lineGap": 2 to 7,
+  "paragraphSpacing": 0.3 to 1.0,
+  "indent": 0 to 25,
+  "textAlign": "justify" or "left",
   "showBorder": true/false,
+  "borderWeight": 0.2 to 2.0,
+  "borderColor": "#hex or same as accent",
   "showDropCap": true/false,
-  "dropCapSize": 24-44,
-  "titlePageCode": "JS code for title page — use doc.moveDown, doc.fontSize, doc.font, doc.fillColor, doc.text, and SAFE decorative drawing with save/restore. Include outline.title and outline.subtitle.",
-  "chapterHeaderCode": "JS code for chapter header — use doc.moveDown, doc.fontSize, doc.font, doc.fillColor, doc.text. ch.title is the title, i is 0-based index. Include decorative elements with save/restore.",
-  "dividerCode": "JS code for divider — draw at y position using save/restore. Keep small.",
-  "smallCapsFirstWords": true/false — first few words after drop cap in SMALL CAPS bold (very professional),
-  "runningHeader": true/false — small italic book title + page number at top of every page,
-  "coverStyle": "describe the cover art style in 10-15 words to guide cover image generation"
+  "dropCapSize": 20 to 50,
+  "dropCapColor": "#hex",
+  "smallCapsFirstWords": true/false,
+  "runningHeader": true/false,
+  "runningHeaderStyle": "JS code for running header — draws at top of page using doc.save()/doc.restore(). Vars: doc, W, H, accent, fontItalic, outline, pageNum. Be creative — centered, left/right split, with ornaments, etc.",
+  "titlePageCode": "JS code for title page layout. Vars: doc, W, H, outline, accent, accentLight, headingColor, fontHead, fontBody, fontItalic. Use doc.moveDown + doc.text + decorative save/restore drawing. Be WILDLY creative.",
+  "chapterHeaderCode": "JS code for chapter header. Vars: doc, W, H, ch, i, accent, accentLight, headingColor, fontHead, fontBody. Use doc.moveDown + doc.text + decorative drawing. Each book should have a DIFFERENT chapter header style.",
+  "dividerCode": "JS code for divider at y. Vars: doc, W, y, accent. Creative — dots, lines, shapes, symbols, anything.",
+  "chapterEndCode": "JS code for chapter end decoration. Vars: doc, W, accent. Optional ornament after last paragraph.",
+  "coverStyle": "10-15 word art direction for cover image generation"
 }
 
-Design for "${outline.title}". Follow the MANDATORY design direction above — it is your DNA for this book. Make the body text color dark but NOT pure black (warmer tones are more readable). The design must feel like it could only belong to THIS book and no other.` }],
+Design for "${outline.title}". Follow the MANDATORY design direction above — it is your DNA. Every element must reflect the aesthetic: body text size, spacing, alignment, decorative elements, borders — EVERYTHING. This book must look like no other book ever made.` }],
       ...tokenLimit(8192),
       temperature: 0.9,
     });
@@ -642,7 +652,7 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
     const W = 595.28;
     const H = 841.89;
 
-    // AI-generated design with fallback defaults
+    // AI-generated design — every value is AI-decided
     const d = designCode || {};
     const accent = d.accent || '#8B7D45';
     const accentLight = d.accentLight || '#E8E0D0';
@@ -651,9 +661,17 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
     let fontHead = d.fontHead || 'Helvetica-Bold';
     let fontBody = d.fontBody || 'Helvetica';
     let fontItalic = d.fontItalic || 'Helvetica-Oblique';
+    const bodySize = d.bodySize || 11;
+    const lineGap = d.lineGap || 4;
+    const paragraphSpacing = d.paragraphSpacing || 0.5;
+    const indent = d.indent || 15;
+    const textAlign = d.textAlign || 'justify';
     const showBorder = d.showBorder !== false;
+    const borderWeight = d.borderWeight || 0.4;
+    const borderColor = d.borderColor || accent;
     const showDropCap = d.showDropCap !== false;
     const dropCapSize = d.dropCapSize || 28;
+    const dropCapColor = d.dropCapColor || accent;
     const smallCapsFirstWords = d.smallCapsFirstWords || false;
     const runningHeader = d.runningHeader || false;
 
@@ -720,7 +738,7 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
 
     function border() {
       if (!showBorder) return;
-      doc.save().rect(40, 40, W-80, H-80).lineWidth(0.4).strokeColor(accent).stroke().restore();
+      doc.save().rect(40, 40, W-80, H-80).lineWidth(borderWeight).strokeColor(borderColor).stroke().restore();
     }
 
     // ===== TITLE PAGE (AI-designed) =====
@@ -795,36 +813,37 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
           didDropCap = true;
           const letter = txt[0].toUpperCase();
           const rest = txt.slice(1);
-          doc.fontSize(dropCapSize).font(fontHead).fillColor(accent)
+          doc.fontSize(dropCapSize).font(fontHead).fillColor(dropCapColor)
             .text(letter, { continued: true, baseline: -(dropCapSize / 7) });
           if (smallCapsFirstWords) {
-            // First few words in SMALL CAPS bold, then regular body
             const words = rest.split(' ');
             const capsWords = words.slice(0, 4).join('  ').toUpperCase();
             const remaining = words.slice(4).join(' ');
-            doc.fontSize(11).font(fontHead).fillColor(headingColor)
+            doc.fontSize(bodySize).font(fontHead).fillColor(headingColor)
               .text(capsWords + ' ', { continued: true });
-            doc.fontSize(11).font(fontBody).fillColor(bodyColor)
-              .text(remaining, { align: 'justify', lineGap: 4 });
+            doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
+              .text(remaining, { align: textAlign, lineGap });
           } else {
-            doc.fontSize(11).font(fontBody).fillColor(bodyColor)
-              .text(rest, { align: 'justify', lineGap: 4 });
+            doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
+              .text(rest, { align: textAlign, lineGap });
           }
         } else if (!didDropCap && !showDropCap && txt.length > 10) {
           didDropCap = true;
-          doc.fontSize(11).font(fontHead).fillColor(bodyColor)
-            .text(txt, { align: 'justify', lineGap: 4 });
+          doc.fontSize(bodySize).font(fontHead).fillColor(bodyColor)
+            .text(txt, { align: textAlign, lineGap });
         } else {
-          doc.fontSize(11).font(fontBody).fillColor(bodyColor)
-            .text(txt, { align: 'justify', lineGap: 4, indent: 15 });
+          doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
+            .text(txt, { align: textAlign, lineGap, indent });
         }
-        doc.moveDown(0.5);
+        doc.moveDown(paragraphSpacing);
       });
 
-      // Chapter end divider
+      // Chapter end decoration (AI-designed or fallback divider)
       if (doc.y < H - 140) {
         doc.moveDown(1);
-        divider(doc.y, 35);
+        if (!runDesignCode(d.chapterEndCode)) {
+          divider(doc.y);
+        }
       }
     });
 
@@ -845,12 +864,15 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
 
       // Running header on content pages (skip cover + title)
       if (runningHeader && i > coverOffset + 1) {
-        doc.save();
         const pageNum = i - coverOffset;
-        doc.fontSize(8).font(fontItalic).fillColor(accent);
-        doc.text(outline.title, 80, 30, { width: W - 160, align: 'left', lineBreak: false });
-        doc.text('\u2766 ' + pageNum + ' \u2766', 80, 30, { width: W - 160, align: 'right', lineBreak: false });
-        doc.restore();
+        if (!runDesignCode(d.runningHeaderStyle, { pageNum })) {
+          // Fallback running header
+          doc.save();
+          doc.fontSize(8).font(fontItalic).fillColor(accent);
+          doc.text(outline.title, 80, 30, { width: W - 160, align: 'left', lineBreak: false });
+          doc.text(String(pageNum), 80, 30, { width: W - 160, align: 'right', lineBreak: false });
+          doc.restore();
+        }
       }
     }
 
