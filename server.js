@@ -1192,7 +1192,7 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
 
       // Running header on content pages (skip cover + title)
       if (runningHeader && i > coverOffset + 1) {
-        const pageNum = i - coverOffset;
+        const pageNum = i + 1; // Actual PDF page number (matches PDF viewer)
         // AI decides position but MUST use explicit x,y coordinates (not cursor)
         const pos = d.runningHeaderPosition || 'top'; // AI picks: top, bottom
         const hy = pos === 'bottom' ? H - 35 : 25;
