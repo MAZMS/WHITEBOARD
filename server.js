@@ -329,7 +329,7 @@ async function generateCover(title, subtitle, designTheme) {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           instances: [{ prompt: imagenPrompt }],
-          parameters: { sampleCount: 1, aspectRatio: '2:3', negativePrompt: '3D, mockup, physical book, book spine, shadow, perspective, small text, author name, gibberish, watermark' }
+          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: '3D, mockup, physical book, book spine, shadow, perspective, small text, author name, gibberish, watermark' }
         })
       });
       const imgData = await imgRes.json();
