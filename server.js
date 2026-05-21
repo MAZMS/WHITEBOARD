@@ -952,6 +952,30 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
       }
     }
 
+    // Proxy doc that auto-darkens any fillColor to prevent invisible light text
+    const originalFillColor = doc.fillColor.bind(doc);
+    const safeDoc = new Proxy(doc, {
+      get(target, prop) {
+        if (prop === 'fillColor') {
+          return function(color) {
+            if (typeof color === 'string' && color.startsWith('#') && color.length >= 7) {
+              const r = parseInt(color.slice(1,3), 16) / 255;
+              const g = parseInt(color.slice(3,5), 16) / 255;
+              const b = parseInt(color.slice(5,7), 16) / 255;
+              const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+              if (lum > 0.55) {
+                const scale = 0.55 / lum;
+                color = '#' + [r,g,b].map(c => Math.round(c * scale * 255).toString(16).padStart(2,'0')).join('');
+              }
+            }
+            return originalFillColor(color);
+          };
+        }
+        const val = target[prop];
+        return typeof val === 'function' ? val.bind(target) : val;
+      }
+    });
+
     // Safe code executor for AI-generated design code
     function runDesignCode(code, extraVars = {}) {
       if (!code) return false;
@@ -965,7 +989,7 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode, cov
           .replace(/doc\.addPage\s*\(/g, '/* blocked */ void(')
           .replace(/doc\.addContent\s*\(/g, '/* blocked */ void(');
         const vars = {
-          doc, W, H, outline, accent, accentLight, headingColor, bodyColor,
+          doc: safeDoc, W, H, outline, accent, accentLight, headingColor, bodyColor,
           fontHead, fontBody, fontItalic, bodySize, lineGap, paragraphSpacing,
           indent, textAlign, showBorder, borderWeight, borderColor,
           showDropCap, dropCapSize, dropCapColor, smallCapsFirstWords,
