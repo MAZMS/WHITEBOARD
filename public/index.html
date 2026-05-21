@@ -504,10 +504,13 @@
       font-size: 12px;
       font-style: italic;
       z-index: 10;
-      transition: color 0.5s, bottom 0.8s ease;
+      transition: color 0.5s, bottom 0.8s ease, opacity 0.8s ease;
       pointer-events: none;
     }
     body.phase-sleeping .tomes-counter { opacity: 0.3; transition: opacity 3s; }
+    /* Hidden on the centered greeting (it floats awkwardly in the empty space,
+       especially on mobile); fades in above the input once conversation starts. */
+    body.centered .tomes-counter { opacity: 0; }
     /* In conversation mode the input bar sits at the bottom — lift the counter
        clear of its top divider so it never overlaps. */
     body:not(.centered) .tomes-counter { bottom: 110px; right: 24px; }
@@ -868,6 +871,8 @@
       border-top-color: #2a2020;
       transition: border-color 1.5s;
     }
+    /* No divider line above the input on the centered greeting (matches censored) */
+    body.centered.uncensored .input-area { border-top-color: transparent; }
     body.uncensored .input-area textarea {
       border-color: #2a2020;
       color: #c4a088;
