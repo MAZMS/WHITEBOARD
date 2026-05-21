@@ -347,7 +347,7 @@ async function generateCover(title, subtitle, designTheme, styleSeedText) {
             const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
             fs.writeFileSync(coverPath, imgBuffer);
             console.log(`  Cover generated via ${imageModel} (Vertex AI)`);
-            return coverPath;
+            return { path: coverPath, needsOverlay: false };
           }
           console.warn(`  ${imageModel}: no image`, JSON.stringify(data).slice(0, 200));
         } catch (e) { console.warn(`  ${imageModel} error: ${e.message}`); }
@@ -369,8 +369,8 @@ async function generateCover(title, subtitle, designTheme, styleSeedText) {
         const imgBuffer = Buffer.from(imgData.predictions[0].bytesBase64Encoded, 'base64');
         const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
         fs.writeFileSync(coverPath, imgBuffer);
-        console.log(`  Cover generated via Imagen 3`);
-        return coverPath;
+        console.log(`  Cover generated via Imagen 3 (needs text overlay)`);
+        return { path: coverPath, needsOverlay: true };
       }
       console.warn('Imagen 3 failed:', JSON.stringify(imgData).slice(0, 300));
     }
@@ -740,7 +740,9 @@ Return ONLY a JSON with the FIXED fields (only include fields that needed fixing
 
   // Step 1.7: Generate cover image (using design theme for consistency)
   saveJob(ebookId, { status: 'generating', progress: 1.5 / totalSteps, step: 'cover' });
-  const coverPath = await generateCover(outline.title, outline.subtitle, designCode, styleSeed);
+  const coverResult = await generateCover(outline.title, outline.subtitle, designCode, styleSeed);
+  const coverPath = coverResult?.path || null;
+  const coverNeedsOverlay = coverResult?.needsOverlay || false;
 
   // Step 2: Generate each chapter
   const chapters = [];
@@ -775,7 +777,7 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
   const filename = `${ebookId}.pdf`;
   const filepath = path.join(EBOOKS_DIR, filename);
 
-  await createPDF(filepath, outline, chapters, coverPath, designCode);
+  await createPDF(filepath, outline, chapters, coverPath, designCode, coverNeedsOverlay);
 
   // Clean up cover image
   if (coverPath) try { fs.unlinkSync(coverPath); } catch {}
@@ -790,7 +792,7 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
   console.log(`Ebook "${outline.title}" ready: ${filename}`);
 }
 
-async function createPDF(filepath, outline, chapters, coverPath, designCode) {
+async function createPDF(filepath, outline, chapters, coverPath, designCode, coverNeedsOverlay = false) {
   return new Promise(async (resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
@@ -928,6 +930,23 @@ async function createPDF(filepath, outline, chapters, coverPath, designCode) {
         }
       } catch (err) {
         console.warn('Failed to embed cover image:', err.message);
+      }
+      // Imagen fallback: overlay real title + subtitle since Imagen can't do text
+      if (coverNeedsOverlay) {
+        doc.save();
+        // Dark gradient band for readability
+        doc.rect(0, H * 0.30, W, H * 0.35).fillOpacity(0.6).fill('#000000');
+        doc.fillOpacity(1);
+        // Title
+        doc.fontSize(32).font('Helvetica-Bold').fillColor('#FFFFFF')
+          .text(outline.title, 40, H * 0.36, { align: 'center', width: W - 80 });
+        // Subtitle
+        doc.fontSize(13).font('Helvetica-Oblique').fillColor('#dddddd')
+          .text(outline.subtitle, 40, doc.y + 8, { align: 'center', width: W - 80 });
+        // Branding
+        doc.fontSize(8).font('Helvetica').fillColor('#aaaaaa')
+          .text('greatlibrary.ai', 40, H - 50, { align: 'center', width: W - 80 });
+        doc.restore();
       }
     }
     let tocPage = -1; // Will be set when TOC page is actually added
