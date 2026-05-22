@@ -110,6 +110,58 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    /* --- Wizard container --- */
+    .wl-wizard {
+      position: relative;
+      min-height: 180px;
+    }
+
+    .wl-step {
+      display: none;
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+    .wl-step.active {
+      display: block;
+    }
+    .wl-step.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Step progress dots */
+    .wl-progress {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .wl-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #2a2520;
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+    .wl-dot.filled {
+      background: #5a5038;
+    }
+    .wl-dot.current {
+      background: #c8b88a;
+      box-shadow: 0 0 8px rgba(180, 160, 100, 0.25);
+    }
+
+    /* Step question label */
+    .wl-step-label {
+      color: #8a8070;
+      font-size: 14px;
+      margin-bottom: 14px;
+      display: block;
+      line-height: 1.5;
+    }
+
+    /* Email step */
     .wl-form {
       display: flex;
       gap: 10px;
@@ -168,16 +220,12 @@
       margin-top: 8px;
       min-height: 18px;
     }
-
-    /* Already on list message */
     .wl-existing {
       color: #5a5040;
       font-size: 13px;
       font-style: italic;
       margin-top: 6px;
     }
-
-    /* Early access note */
     .wl-early {
       color: #5a5040;
       font-size: 12px;
@@ -186,43 +234,20 @@
       animation: wl-fade-up 1.2s ease-out 2.2s forwards;
     }
 
-    /* Thank you + Survey */
-    .wl-thankyou { display: none; }
-    .wl-thankyou.visible { display: block; animation: wl-fade-up 0.8s ease-out; }
-    .wl-thankyou-text { color: #c8b88a; font-size: 22px; margin-bottom: 8px; line-height: 1.4; }
-    .wl-thankyou-sub { color: #5a5040; font-size: 14px; margin-bottom: 32px; }
-    .wl-thankyou-pos {
+    /* Confirmation shown after email submit */
+    .wl-confirmed {
+      margin-bottom: 8px;
+    }
+    .wl-confirmed-text { color: #c8b88a; font-size: 20px; margin-bottom: 6px; line-height: 1.4; }
+    .wl-confirmed-sub { color: #5a5040; font-size: 14px; margin-bottom: 4px; }
+    .wl-confirmed-pos {
       color: #7a7060;
       font-size: 14px;
       font-style: italic;
-      margin-bottom: 28px;
+      margin-bottom: 16px;
     }
 
-    .wl-survey-intro {
-      color: #5a5040;
-      font-size: 13px;
-      font-style: italic;
-      text-align: center;
-      margin-bottom: 24px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid #1a1815;
-    }
-
-    .wl-survey {
-      text-align: left;
-      opacity: 0;
-      transform: translateY(16px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
-    }
-    .wl-survey.visible { opacity: 1; transform: translateY(0); }
-    .wl-survey-q { margin-bottom: 24px; }
-    .wl-survey-label {
-      color: #8a8070;
-      font-size: 13px;
-      margin-bottom: 10px;
-      display: block;
-      line-height: 1.5;
-    }
+    /* Survey question styling */
     .wl-survey-input {
       width: 100%;
       background: #141210;
@@ -238,7 +263,7 @@
     .wl-survey-input::placeholder { color: #3a3528; }
     .wl-survey-input:focus { border-color: #4a4030; }
 
-    .wl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .wl-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
     .wl-chip {
       background: #141210;
       border: 1px solid #2a2520;
@@ -255,36 +280,86 @@
     .wl-chip:hover { border-color: #4a4030; color: #c8b88a; }
     .wl-chip.selected { background: rgba(180, 160, 100, 0.12); border-color: #5a5038; color: #c8b88a; }
 
-    .wl-survey-done { text-align: center; margin-top: 24px; }
-    .wl-survey-submit {
+    /* "Other" text input revealed when Other chip is selected */
+    .wl-other-input {
+      width: 100%;
+      margin-top: 10px;
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.3s, opacity 0.35s, max-height 0.35s;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      padding-top: 0;
+      padding-bottom: 0;
+      border-width: 0;
+    }
+    .wl-other-input.visible {
+      max-height: 50px;
+      opacity: 1;
+      padding: 10px 14px;
+      border-width: 1px;
+    }
+    .wl-other-input::placeholder { color: #3a3528; }
+    .wl-other-input:focus { border-color: #4a4030; }
+
+    /* Navigation buttons */
+    .wl-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .wl-nav-btn {
       background: rgba(180, 160, 100, 0.1);
       border: 1px solid #3a3528;
       border-radius: 6px;
       color: #c8b88a;
       font-family: Georgia, serif;
       font-size: 14px;
-      padding: 12px 28px;
+      padding: 10px 22px;
       cursor: pointer;
-      transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+      transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.15s;
     }
-    .wl-survey-submit:hover {
+    .wl-nav-btn:hover {
       background: rgba(180, 160, 100, 0.18);
       border-color: #5a5038;
       box-shadow: 0 0 15px rgba(180, 160, 100, 0.06);
+      transform: translateY(-1px);
     }
-    .wl-skip {
-      background: none; border: none;
+    .wl-nav-btn:active { transform: translateY(0); }
+    .wl-nav-btn.back {
+      background: none;
+      border-color: #2a2520;
+      color: #5a5040;
+    }
+    .wl-nav-btn.back:hover {
+      border-color: #3a3528;
+      color: #8a8070;
+      background: none;
+      box-shadow: none;
+    }
+    .wl-skip-btn {
+      background: none;
+      border: none;
       color: #3a3528;
       font-family: Georgia, serif;
       font-size: 13px;
       font-style: italic;
       cursor: pointer;
-      margin-left: 16px;
       transition: color 0.3s;
       -webkit-tap-highlight-color: transparent;
     }
-    .wl-skip:hover { color: #5a5040; }
+    .wl-skip-btn:hover { color: #5a5040; }
 
+    /* Final done view */
     .wl-final { display: none; text-align: center; }
     .wl-final.visible { display: block; animation: wl-fade-up 0.8s ease-out; }
     .wl-final-text { color: #5a5040; font-size: 14px; font-style: italic; }
@@ -327,8 +402,7 @@
       .wl-submit { padding: 14px; font-size: 16px; }
       .wl-eye { width: 64px; height: 64px; margin-bottom: 24px; }
       .wl-chip { padding: 11px 20px; font-size: 15px; }
-      .wl-survey-done { display: flex; align-items: center; justify-content: center; gap: 12px; }
-      .wl-skip { margin-left: 0; }
+      .wl-nav { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -349,70 +423,104 @@
       <h1 class="wl-headline">Name a topic. Receive a book.</h1>
       <p class="wl-sub">The Guardian, an ancient intelligence, forges complete ebooks on any subject you choose. Chapters, depth, insight. Delivered in minutes.</p>
 
-      <div id="wlSignup">
-        <form class="wl-form" id="wlForm">
-          <input type="email" class="wl-email" id="wlEmail" placeholder="Your email..." autocomplete="email" inputmode="email" required>
-          <button type="submit" class="wl-submit" id="wlBtn">Join the Vigil</button>
-        </form>
-        <div class="wl-error" id="wlError"></div>
-        <div class="wl-count" id="wlCount"></div>
-        <div class="wl-early" id="wlEarly">Early seekers receive access first.</div>
-      </div>
+      <div class="wl-wizard" id="wlWizard">
+        <!-- Progress dots -->
+        <div class="wl-progress" id="wlProgress"></div>
 
-      <div class="wl-thankyou" id="wlThankyou">
-        <div class="wl-thankyou-text">The ledger remembers you.</div>
-        <div class="wl-thankyou-sub">You will be summoned when the doors open.</div>
-        <div class="wl-thankyou-pos" id="wlPosition"></div>
+        <!-- Step 0: Email -->
+        <div class="wl-step" id="step-0" data-step="0">
+          <form class="wl-form" id="wlForm">
+            <input type="email" class="wl-email" id="wlEmail" placeholder="Your email..." autocomplete="email" inputmode="email" required>
+            <button type="submit" class="wl-submit" id="wlBtn">Join the Vigil</button>
+          </form>
+          <div class="wl-error" id="wlError"></div>
+          <div class="wl-count" id="wlCount"></div>
+          <div class="wl-early" id="wlEarly">Early seekers receive access first.</div>
+        </div>
 
-        <div class="wl-survey" id="wlSurvey">
-          <div class="wl-survey-intro">Three questions, if you would indulge the Guardian.</div>
+        <!-- Step 1: Topics (text input) -->
+        <div class="wl-step" id="step-1" data-step="1">
+          <div class="wl-confirmed" id="wlConfirmed">
+            <div class="wl-confirmed-text">The ledger remembers you.</div>
+            <div class="wl-confirmed-sub" id="wlConfirmedSub">You will be summoned when the doors open.</div>
+            <div class="wl-confirmed-pos" id="wlPosition"></div>
+          </div>
+          <label class="wl-step-label">What knowledge would you seek from the Library?</label>
+          <input type="text" class="wl-survey-input" id="surveyTopics" placeholder="Philosophy, coding, history, fitness...">
+          <div class="wl-nav">
+            <button type="button" class="wl-skip-btn" onclick="wizardSkip()">Skip</button>
+            <button type="button" class="wl-nav-btn" onclick="wizardNext()">Next</button>
+          </div>
+        </div>
 
-          <div class="wl-survey-q">
-            <label class="wl-survey-label">What knowledge would you seek from the Library?</label>
-            <input type="text" class="wl-survey-input" id="surveyTopics" placeholder="Philosophy, coding, history, fitness...">
+        <!-- Step 2: Format (chips + other) -->
+        <div class="wl-step" id="step-2" data-step="2">
+          <label class="wl-step-label">How do you consume your tomes?</label>
+          <div class="wl-chips" id="formatChips" data-multi="true">
+            <button type="button" class="wl-chip" data-value="phone">Phone</button>
+            <button type="button" class="wl-chip" data-value="tablet">Tablet</button>
+            <button type="button" class="wl-chip" data-value="desktop">Desktop</button>
+            <button type="button" class="wl-chip" data-value="kindle">Kindle</button>
+            <button type="button" class="wl-chip" data-value="print">Print</button>
+            <button type="button" class="wl-chip" data-value="other" data-other="true">Other</button>
           </div>
-          <div class="wl-survey-q">
-            <label class="wl-survey-label">How do you consume your tomes?</label>
-            <div class="wl-chips" id="formatChips">
-              <button type="button" class="wl-chip" data-value="phone">Phone</button>
-              <button type="button" class="wl-chip" data-value="tablet">Tablet</button>
-              <button type="button" class="wl-chip" data-value="desktop">Desktop</button>
-              <button type="button" class="wl-chip" data-value="kindle">Kindle</button>
-              <button type="button" class="wl-chip" data-value="print">Print</button>
-            </div>
+          <input type="text" class="wl-other-input" id="formatOther" placeholder="How do you read?">
+          <div class="wl-nav">
+            <button type="button" class="wl-nav-btn back" onclick="wizardBack()">Back</button>
+            <button type="button" class="wl-skip-btn" onclick="wizardSkip()">Skip</button>
+            <button type="button" class="wl-nav-btn" onclick="wizardNext()">Next</button>
           </div>
-          <div class="wl-survey-q">
-            <label class="wl-survey-label">What describes you best?</label>
-            <div class="wl-chips" id="roleChips">
-              <button type="button" class="wl-chip" data-value="student">Student</button>
-              <button type="button" class="wl-chip" data-value="professional">Professional</button>
-              <button type="button" class="wl-chip" data-value="creator">Creator</button>
-              <button type="button" class="wl-chip" data-value="hobbyist">Hobbyist</button>
-              <button type="button" class="wl-chip" data-value="researcher">Researcher</button>
-            </div>
+        </div>
+
+        <!-- Step 3: Role (chips + other) -->
+        <div class="wl-step" id="step-3" data-step="3">
+          <label class="wl-step-label">What describes you best?</label>
+          <div class="wl-chips" id="roleChips">
+            <button type="button" class="wl-chip" data-value="student">Student</button>
+            <button type="button" class="wl-chip" data-value="professional">Professional</button>
+            <button type="button" class="wl-chip" data-value="creator">Creator</button>
+            <button type="button" class="wl-chip" data-value="hobbyist">Hobbyist</button>
+            <button type="button" class="wl-chip" data-value="researcher">Researcher</button>
+            <button type="button" class="wl-chip" data-value="other" data-other="true">Other</button>
           </div>
-          <div class="wl-survey-q">
-            <label class="wl-survey-label">Would you pay for premium AI-generated ebooks?</label>
-            <div class="wl-chips" id="payChips">
-              <button type="button" class="wl-chip" data-value="yes-premium">Yes, for quality</button>
-              <button type="button" class="wl-chip" data-value="yes-cheap">If affordable</button>
-              <button type="button" class="wl-chip" data-value="maybe">Maybe</button>
-              <button type="button" class="wl-chip" data-value="free-only">Free only</button>
-            </div>
+          <input type="text" class="wl-other-input" id="roleOther" placeholder="Describe yourself...">
+          <div class="wl-nav">
+            <button type="button" class="wl-nav-btn back" onclick="wizardBack()">Back</button>
+            <button type="button" class="wl-skip-btn" onclick="wizardSkip()">Skip</button>
+            <button type="button" class="wl-nav-btn" onclick="wizardNext()">Next</button>
           </div>
-          <div class="wl-survey-q">
-            <label class="wl-survey-label">How did you discover the Library?</label>
-            <div class="wl-chips" id="sourceChips">
-              <button type="button" class="wl-chip" data-value="social">Social media</button>
-              <button type="button" class="wl-chip" data-value="search">Search</button>
-              <button type="button" class="wl-chip" data-value="friend">A friend</button>
-              <button type="button" class="wl-chip" data-value="reddit">Reddit</button>
-              <button type="button" class="wl-chip" data-value="other">Other</button>
-            </div>
+        </div>
+
+        <!-- Step 4: Would pay (chips, no other needed) -->
+        <div class="wl-step" id="step-4" data-step="4">
+          <label class="wl-step-label">Would you pay for premium AI-generated ebooks?</label>
+          <div class="wl-chips" id="payChips">
+            <button type="button" class="wl-chip" data-value="yes-premium">Yes, for quality</button>
+            <button type="button" class="wl-chip" data-value="yes-cheap">If affordable</button>
+            <button type="button" class="wl-chip" data-value="maybe">Maybe</button>
+            <button type="button" class="wl-chip" data-value="free-only">Free only</button>
           </div>
-          <div class="wl-survey-done">
-            <button type="button" class="wl-survey-submit" id="surveySubmitBtn">Record my preferences</button>
-            <button type="button" class="wl-skip" id="surveySkipBtn">Skip</button>
+          <div class="wl-nav">
+            <button type="button" class="wl-nav-btn back" onclick="wizardBack()">Back</button>
+            <button type="button" class="wl-skip-btn" onclick="wizardSkip()">Skip</button>
+            <button type="button" class="wl-nav-btn" onclick="wizardNext()">Next</button>
+          </div>
+        </div>
+
+        <!-- Step 5: Source (chips + other with text input) -->
+        <div class="wl-step" id="step-5" data-step="5">
+          <label class="wl-step-label">How did you discover the Library?</label>
+          <div class="wl-chips" id="sourceChips">
+            <button type="button" class="wl-chip" data-value="social">Social media</button>
+            <button type="button" class="wl-chip" data-value="search">Search</button>
+            <button type="button" class="wl-chip" data-value="friend">A friend</button>
+            <button type="button" class="wl-chip" data-value="reddit">Reddit</button>
+            <button type="button" class="wl-chip" data-value="other" data-other="true">Other</button>
+          </div>
+          <input type="text" class="wl-other-input" id="sourceOther" placeholder="Tell us where...">
+          <div class="wl-nav">
+            <button type="button" class="wl-nav-btn back" onclick="wizardBack()">Back</button>
+            <button type="button" class="wl-nav-btn" onclick="wizardSubmit()">Record my preferences</button>
           </div>
         </div>
       </div>
@@ -433,31 +541,32 @@
 
   <script>
     let userEmail = null;
-    const signupEl = document.getElementById('wlSignup');
+    let currentStep = 0;
+    const totalSteps = 6; // 0=email, 1=topics, 2=format, 3=role, 4=pay, 5=source
+    let isExistingUser = false;
+
+    // Elements
     const formEl = document.getElementById('wlForm');
     const emailEl = document.getElementById('wlEmail');
     const btnEl = document.getElementById('wlBtn');
     const errorEl = document.getElementById('wlError');
     const countEl = document.getElementById('wlCount');
-    const thankyouEl = document.getElementById('wlThankyou');
-    const surveyEl = document.getElementById('wlSurvey');
+    const progressEl = document.getElementById('wlProgress');
     const finalEl = document.getElementById('wlFinal');
     const posEl = document.getElementById('wlPosition');
 
-    // --- Funnel analytics (lightweight, no external deps) ---
+    // --- Funnel analytics ---
     const funnelEvents = [];
     function trackEvent(name) {
       funnelEvents.push({ event: name, ts: Date.now() });
     }
     trackEvent('page_view');
 
-    // Track form focus (intent signal)
     emailEl.addEventListener('focus', function onFocus() {
       trackEvent('email_focus');
       emailEl.removeEventListener('focus', onFocus);
     });
 
-    // Capture UTM params from URL
     function getUTMParams() {
       const params = new URLSearchParams(window.location.search);
       const utm = {};
@@ -467,7 +576,6 @@
       return Object.keys(utm).length ? utm : null;
     }
 
-    // Detect device category
     function getDeviceType() {
       const ua = navigator.userAgent;
       if (/Mobi|Android.*Mobile|iPhone|iPod/i.test(ua)) return 'mobile';
@@ -475,7 +583,177 @@
       return 'desktop';
     }
 
-    // Fetch waitlist count
+    // --- Progress dots ---
+    function buildProgress() {
+      progressEl.innerHTML = '';
+      for (let i = 0; i < totalSteps; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'wl-dot';
+        progressEl.appendChild(dot);
+      }
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const dots = progressEl.querySelectorAll('.wl-dot');
+      dots.forEach((dot, i) => {
+        dot.classList.remove('filled', 'current');
+        if (i < currentStep) dot.classList.add('filled');
+        if (i === currentStep) dot.classList.add('current');
+      });
+    }
+
+    // --- Wizard navigation ---
+    function showStep(stepIndex, direction) {
+      // direction: 1 = forward, -1 = back
+      const allSteps = document.querySelectorAll('.wl-step');
+      const outgoing = document.querySelector('.wl-step.active.visible');
+      const incoming = document.getElementById('step-' + stepIndex);
+      if (!incoming) return;
+
+      // Hide outgoing
+      if (outgoing && outgoing !== incoming) {
+        outgoing.classList.remove('visible');
+        setTimeout(() => {
+          outgoing.classList.remove('active');
+        }, 300);
+      }
+
+      // Show incoming after brief delay
+      setTimeout(() => {
+        incoming.classList.add('active');
+        // Force reflow
+        incoming.offsetHeight;
+        requestAnimationFrame(() => {
+          incoming.classList.add('visible');
+        });
+
+        // Scroll into view on mobile
+        if (window.innerWidth <= 600 && stepIndex > 0) {
+          setTimeout(() => incoming.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+        }
+      }, outgoing ? 320 : 0);
+
+      currentStep = stepIndex;
+      updateProgress();
+    }
+
+    function wizardNext() {
+      if (currentStep < totalSteps - 1) {
+        showStep(currentStep + 1, 1);
+      }
+    }
+
+    function wizardBack() {
+      if (currentStep > 1) { // Can't go back past step 1 (email is done)
+        showStep(currentStep - 1, -1);
+      }
+    }
+
+    function wizardSkip() {
+      if (currentStep < totalSteps - 1) {
+        showStep(currentStep + 1, 1);
+      } else {
+        wizardSubmit();
+      }
+    }
+
+    async function wizardSubmit() {
+      const data = collectSurveyData();
+      trackEvent('survey_submit');
+      try {
+        await fetch('/api/waitlist/survey', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch {}
+
+      // Hide wizard, show final
+      const wizardEl = document.getElementById('wlWizard');
+      wizardEl.style.opacity = '0';
+      wizardEl.style.transition = 'opacity 0.5s ease';
+      setTimeout(() => {
+        wizardEl.style.display = 'none';
+        finalEl.classList.add('visible');
+      }, 500);
+    }
+
+    // --- Chip selection with "Other" text input support ---
+    document.querySelectorAll('.wl-chips').forEach(group => {
+      group.addEventListener('click', (e) => {
+        const chip = e.target.closest('.wl-chip');
+        if (!chip) return;
+
+        const isMulti = group.dataset.multi === 'true';
+        const isOtherChip = chip.dataset.other === 'true';
+
+        if (!isMulti) {
+          // Single-select: deselect all others, toggle this one
+          const wasSelected = chip.classList.contains('selected');
+          group.querySelectorAll('.wl-chip').forEach(c => c.classList.remove('selected'));
+          if (!wasSelected) chip.classList.add('selected');
+        } else {
+          chip.classList.toggle('selected');
+        }
+
+        // Handle "Other" text input reveal
+        const otherInput = group.parentElement.querySelector('.wl-other-input');
+        if (otherInput) {
+          const otherChip = group.querySelector('[data-other="true"]');
+          if (otherChip && otherChip.classList.contains('selected')) {
+            otherInput.classList.add('visible');
+            setTimeout(() => otherInput.focus(), 100);
+          } else {
+            otherInput.classList.remove('visible');
+            otherInput.value = '';
+          }
+        }
+      });
+    });
+
+    // --- Collect survey data ---
+    function collectSurveyData() {
+      const topics = document.getElementById('surveyTopics').value.trim();
+
+      // Format (multi-select + other)
+      const formatSelected = [...document.querySelectorAll('#formatChips .wl-chip.selected')].map(c => c.dataset.value);
+      const formatOtherVal = document.getElementById('formatOther').value.trim();
+      if (formatOtherVal) {
+        const idx = formatSelected.indexOf('other');
+        if (idx !== -1) formatSelected[idx] = formatOtherVal;
+      }
+
+      // Role (single-select + other)
+      const roleChip = document.querySelector('#roleChips .wl-chip.selected');
+      let roleVal = roleChip ? roleChip.dataset.value : null;
+      if (roleVal === 'other') {
+        const roleOtherVal = document.getElementById('roleOther').value.trim();
+        roleVal = roleOtherVal || 'other';
+      }
+
+      // Pay
+      const payChip = document.querySelector('#payChips .wl-chip.selected');
+
+      // Source (single-select + other)
+      const sourceChip = document.querySelector('#sourceChips .wl-chip.selected');
+      let sourceVal = sourceChip ? sourceChip.dataset.value : null;
+      if (sourceVal === 'other') {
+        const sourceOtherVal = document.getElementById('sourceOther').value.trim();
+        sourceVal = sourceOtherVal || 'other';
+      }
+
+      return {
+        email: userEmail,
+        topics: topics || null,
+        format: formatSelected.length ? formatSelected.join(', ') : null,
+        role: roleVal,
+        wouldPay: payChip ? payChip.dataset.value : null,
+        source: sourceVal
+      };
+    }
+
+    // --- Fetch waitlist count ---
     (async function() {
       try {
         const res = await fetch('/api/waitlist/count');
@@ -486,32 +764,26 @@
       } catch {}
     })();
 
-    // Email signup
+    // --- Email signup (step 0 submit) ---
     formEl.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = emailEl.value.trim();
       if (!email) return;
 
       trackEvent('email_submit');
-
       btnEl.disabled = true;
       btnEl.textContent = '...';
       errorEl.textContent = '';
+
       try {
         const payload = { email };
         const utm = getUTMParams();
         if (utm) payload.utm = utm;
-
-        // Send the actual document referrer (how user arrived at the site)
         const docRef = document.referrer;
         if (docRef && !docRef.includes(window.location.hostname)) {
           payload.sourceReferrer = docRef;
         }
-
-        // Send device type
         payload.device = getDeviceType();
-
-        // Send screen dimensions for analytics
         payload.screen = window.innerWidth + 'x' + window.innerHeight;
 
         const res = await fetch('/api/waitlist/signup', {
@@ -530,34 +802,30 @@
         trackEvent('signup_success');
         userEmail = email;
 
-        // Show position if returned
         if (data.position) {
           posEl.textContent = '#' + data.position + ' in the ledger';
         }
 
-        // If already on the list, show different thank you text
         if (data.existing) {
-          document.querySelector('.wl-thankyou-text').textContent = 'The ledger already holds your name.';
-          document.querySelector('.wl-thankyou-sub').textContent = 'Patience. You will not be forgotten.';
+          isExistingUser = true;
+          document.querySelector('.wl-confirmed-text').textContent = 'The ledger already holds your name.';
+          document.getElementById('wlConfirmedSub').textContent = 'Patience. You will not be forgotten.';
         }
 
-        signupEl.style.opacity = '0';
-        signupEl.style.transition = 'opacity 0.5s ease';
-        setTimeout(() => {
-          signupEl.style.display = 'none';
-          thankyouEl.classList.add('visible');
-          countEl.style.display = 'none';
-          // Only show survey for new signups (not returning visitors)
-          if (!data.existing) {
-            setTimeout(() => {
-              surveyEl.classList.add('visible');
-              // Scroll survey into view on mobile
-              if (window.innerWidth <= 600) {
-                setTimeout(() => surveyEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
-              }
-            }, 800);
-          }
-        }, 500);
+        // Move to step 1 (first survey question) for new users, or show final for existing
+        if (data.existing) {
+          // For existing users, skip survey — go to final
+          const wizardEl = document.getElementById('wlWizard');
+          wizardEl.style.opacity = '0';
+          wizardEl.style.transition = 'opacity 0.5s ease';
+          setTimeout(() => {
+            wizardEl.style.display = 'none';
+            finalEl.querySelector('.wl-final-text').textContent = 'The ledger already holds your name. Patience. You will not be forgotten.';
+            finalEl.classList.add('visible');
+          }, 500);
+        } else {
+          showStep(1, 1);
+        }
       } catch {
         errorEl.textContent = 'The connection falters. Try again.';
         btnEl.disabled = false;
@@ -565,74 +833,24 @@
       }
     });
 
-    // Chip selection -- single-select for role, pay, source; multi-select for format
-    document.querySelectorAll('.wl-chips').forEach(group => {
-      group.addEventListener('click', (e) => {
-        const chip = e.target.closest('.wl-chip');
-        if (!chip) return;
-        const isMultiSelect = group.id === 'formatChips';
-        if (!isMultiSelect) {
-          group.querySelectorAll('.wl-chip').forEach(c => c.classList.remove('selected'));
+    // Prevent Enter in text inputs from doing anything unexpected
+    document.querySelectorAll('.wl-survey-input, .wl-other-input').forEach(input => {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          wizardNext();
         }
-        chip.classList.toggle('selected');
       });
     });
 
-    // Collect all survey data
-    function collectSurveyData() {
-      const topics = document.getElementById('surveyTopics').value.trim();
-      const formats = [...document.querySelectorAll('#formatChips .wl-chip.selected')].map(c => c.dataset.value);
-      const roleChip = document.querySelector('#roleChips .wl-chip.selected');
-      const payChip = document.querySelector('#payChips .wl-chip.selected');
-      const sourceChip = document.querySelector('#sourceChips .wl-chip.selected');
-      return {
-        email: userEmail,
-        topics: topics || null,
-        format: formats.length ? formats.join(', ') : null,
-        role: roleChip ? roleChip.dataset.value : null,
-        wouldPay: payChip ? payChip.dataset.value : null,
-        source: sourceChip ? sourceChip.dataset.value : null
-      };
-    }
+    // --- Initialize ---
+    buildProgress();
+    // Show step 0 (email) immediately
+    const step0 = document.getElementById('step-0');
+    step0.classList.add('active');
+    setTimeout(() => step0.classList.add('visible'), 100);
 
-    function hideSurveyShowFinal() {
-      surveyEl.style.opacity = '0';
-      surveyEl.style.transition = 'opacity 0.5s ease';
-      setTimeout(() => {
-        surveyEl.style.display = 'none';
-        document.querySelector('.wl-thankyou-sub').style.display = 'none';
-        finalEl.classList.add('visible');
-      }, 500);
-    }
-
-    // Survey submit
-    document.getElementById('surveySubmitBtn').addEventListener('click', async () => {
-      const data = collectSurveyData();
-      trackEvent('survey_submit');
-      try {
-        await fetch('/api/waitlist/survey', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-      } catch {}
-      hideSurveyShowFinal();
-    });
-
-    // Survey skip
-    document.getElementById('surveySkipBtn').addEventListener('click', () => {
-      trackEvent('survey_skip');
-      surveyEl.style.opacity = '0';
-      surveyEl.style.transition = 'opacity 0.5s ease';
-      setTimeout(() => { surveyEl.style.display = 'none'; }, 500);
-    });
-
-    // Allow Enter in the topics input to not accidentally submit survey
-    document.getElementById('surveyTopics').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') e.preventDefault();
-    });
-
-    // Auto-focus email on page load (desktop only -- avoids mobile keyboard pop)
+    // Auto-focus email on desktop
     if (window.innerWidth > 600) {
       setTimeout(() => emailEl.focus(), 2200);
     }
