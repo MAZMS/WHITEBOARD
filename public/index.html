@@ -671,6 +671,73 @@
       font-family: Georgia, serif;
     }
 
+    /* Auth buttons */
+    .auth-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: Georgia, serif;
+      cursor: pointer;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .auth-google {
+      background: rgba(66, 133, 244, 0.06);
+      border: 1px solid #2a2520;
+      color: #c8b88a;
+    }
+    .auth-google:hover { border-color: #4285F4; background: rgba(66, 133, 244, 0.1); }
+    .auth-microsoft {
+      background: rgba(0, 164, 239, 0.06);
+      border: 1px solid #2a2520;
+      color: #c8b88a;
+    }
+    .auth-microsoft:hover { border-color: #00a4ef; background: rgba(0, 164, 239, 0.1); }
+    .auth-input {
+      width: 100%;
+      padding: 8px 12px;
+      background: #0a0a0a;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      color: #c8b88a;
+      font-size: 12px;
+      font-family: Georgia, serif;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .auth-input:focus { border-color: #5a5038; }
+    .auth-input::placeholder { color: #3a3528; }
+    #tomeLibraryList::-webkit-scrollbar { display: none; }
+    .tome-history-item {
+      padding: 8px 0;
+      border-bottom: 1px solid #1a1815;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .tome-history-item:last-child { border-bottom: none; }
+    .tome-history-title {
+      color: #c8b88a;
+      font-size: 12px;
+      font-family: Georgia, serif;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      margin-right: 8px;
+      text-decoration: none;
+    }
+    .tome-history-title:hover { color: #e0d0a0; }
+    .tome-history-date {
+      color: #5a5040;
+      font-size: 10px;
+      font-family: Georgia, serif;
+      flex-shrink: 0;
+    }
+
     .support-btn {
       width: 100%;
       padding: 10px 14px;
@@ -788,6 +855,11 @@
     body.light-mode .toggle.on::after { background: #fff; }
     body.light-mode .vol-slider { background: #d0c8b0; }
     body.light-mode .coming-soon { color: #b0a890; }
+    body.light-mode .auth-btn { color: #3a3020; border-color: #d8d0c0; }
+    body.light-mode .auth-google { background: rgba(66, 133, 244, 0.05); }
+    body.light-mode .auth-microsoft { background: rgba(0, 164, 239, 0.05); }
+    body.light-mode .auth-input { background: #faf8f2; border-color: #d8d0c0; color: #3a3020; }
+    body.light-mode .auth-input::placeholder { color: #b0a890; }
     body.light-mode .donate-input {
       background: #FAF6EE;
       border-color: #d0c8b0;
@@ -1041,14 +1113,61 @@
         </div>
       </div>
 
-      <div class="settings-section">
+      <div class="settings-section" id="accountSection">
         <div class="settings-label">Account</div>
-        <span class="coming-soon">Google & Microsoft sign-in — coming soon</span>
+        <!-- Signed-out state -->
+        <div id="authSignedOut">
+          <div id="authButtons" style="display:flex;flex-direction:column;gap:10px;">
+            <button class="auth-btn auth-google" id="googleSignInBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" style="margin-right:8px;flex-shrink:0;"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Sign in with Google
+            </button>
+            <button class="auth-btn auth-microsoft" id="msSignInBtn">
+              <svg width="16" height="16" viewBox="0 0 21 21" style="margin-right:8px;flex-shrink:0;"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+              Sign in with Microsoft
+            </button>
+          </div>
+          <div style="margin-top:12px;text-align:center;">
+            <span style="color:#3a3528;font-size:11px;font-style:italic;">or</span>
+          </div>
+          <div id="emailAuthForm" style="margin-top:10px;">
+            <input type="email" id="authEmail" class="auth-input" placeholder="Email" autocomplete="email">
+            <input type="password" id="authPassword" class="auth-input" placeholder="Password" autocomplete="current-password" style="margin-top:6px;">
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button class="settings-action" id="emailSignInBtn" style="flex:1;">Sign In</button>
+              <button class="settings-action" id="emailSignUpBtn" style="flex:1;">Register</button>
+            </div>
+            <div id="authError" style="color:#a04040;font-size:11px;margin-top:6px;font-style:italic;display:none;"></div>
+          </div>
+        </div>
+        <!-- Signed-in state -->
+        <div id="authSignedIn" style="display:none;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div id="userAvatar" style="width:32px;height:32px;border-radius:50%;background:#2a2520;border:1px solid #3a3528;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+              <span id="userInitial" style="color:#c8b88a;font-size:14px;font-family:Georgia,serif;"></span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div id="userName" style="color:#c8b88a;font-size:13px;font-family:Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+              <div id="userEmail" style="color:#5a5040;font-size:11px;font-family:Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>Tomes (synced)</span>
+            <span id="userTomesCount">0</span>
+          </div>
+          <div class="settings-row">
+            <span id="userMembership" style="font-size:11px;color:#5a5040;font-style:italic;">Free tier</span>
+          </div>
+          <button class="settings-action" id="signOutBtn" style="margin-top:8px;width:100%;">Sign Out</button>
+        </div>
       </div>
 
-      <div class="settings-section">
+      <div class="settings-section" id="tomeLibrarySection">
         <div class="settings-label">Tome Library</div>
-        <span class="coming-soon">Browse all tomes — coming soon</span>
+        <div id="tomeLibraryContent">
+          <div id="tomeLibraryList" style="max-height:200px;overflow-y:auto;scrollbar-width:none;"></div>
+          <span class="coming-soon" id="tomeLibraryEmpty">Sign in to see your tome history</span>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -3307,6 +3426,199 @@
         window.open(url, '_blank');
       }
     });
+    // ===== ACCOUNT / AUTH =====
+    let currentUser = null;
+
+    function renderAuthState() {
+      const signedOut = document.getElementById('authSignedOut');
+      const signedIn = document.getElementById('authSignedIn');
+      if (currentUser) {
+        signedOut.style.display = 'none';
+        signedIn.style.display = 'block';
+        document.getElementById('userName').textContent = currentUser.name || 'Seeker';
+        document.getElementById('userEmail').textContent = currentUser.email;
+        document.getElementById('userTomesCount').textContent = currentUser.tomesCount || 0;
+        document.getElementById('userMembership').textContent = currentUser.membershipStatus === 'member' ? 'Library Member' : 'Free tier';
+        // Avatar
+        const avatarEl = document.getElementById('userAvatar');
+        const initialEl = document.getElementById('userInitial');
+        if (currentUser.avatar) {
+          avatarEl.innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;object-fit:cover;" referrerpolicy="no-referrer">`;
+        } else {
+          initialEl.textContent = (currentUser.name || currentUser.email || '?')[0].toUpperCase();
+        }
+        // Update tomes counter to server value
+        if (currentUser.tomesCount > tomesCount) {
+          tomesCount = currentUser.tomesCount;
+          localStorage.setItem('gl-tomes', tomesCount);
+          updateTomesDisplay();
+        }
+        // Load tome library
+        loadTomeLibrary();
+      } else {
+        signedOut.style.display = 'block';
+        signedIn.style.display = 'none';
+        document.getElementById('tomeLibraryEmpty').style.display = 'block';
+        document.getElementById('tomeLibraryList').innerHTML = '';
+      }
+    }
+
+    async function loadTomeLibrary() {
+      try {
+        const res = await fetch('/api/auth/ebooks');
+        if (!res.ok) return;
+        const { ebooks } = await res.json();
+        const list = document.getElementById('tomeLibraryList');
+        const empty = document.getElementById('tomeLibraryEmpty');
+        if (ebooks && ebooks.length > 0) {
+          empty.style.display = 'none';
+          list.innerHTML = ebooks.map(e => `
+            <div class="tome-history-item">
+              <a href="/api/ebook/${e.id}/download" class="tome-history-title" title="${e.title}">${e.title}</a>
+              <span class="tome-history-date">${new Date(e.generatedAt).toLocaleDateString()}</span>
+            </div>
+          `).join('');
+        } else {
+          empty.textContent = 'No tomes yet. Generate your first.';
+          empty.style.display = 'block';
+        }
+      } catch {}
+    }
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me');
+        const { user } = await res.json();
+        currentUser = user;
+        renderAuthState();
+      } catch {}
+    }
+
+    function showAuthError(msg) {
+      const el = document.getElementById('authError');
+      el.textContent = msg;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    // Email sign-in
+    document.getElementById('emailSignInBtn').addEventListener('click', async () => {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      if (!email || !password) return showAuthError('Email and password required');
+      try {
+        const res = await fetch('/api/auth/email/signin', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return showAuthError(data.error || 'Sign-in failed');
+        currentUser = data.user;
+        renderAuthState();
+      } catch { showAuthError('Connection failed'); }
+    });
+
+    // Email sign-up
+    document.getElementById('emailSignUpBtn').addEventListener('click', async () => {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      if (!email || !password) return showAuthError('Email and password required');
+      if (password.length < 6) return showAuthError('Password must be 6+ characters');
+      try {
+        const res = await fetch('/api/auth/email/signup', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return showAuthError(data.error || 'Registration failed');
+        currentUser = data.user;
+        renderAuthState();
+      } catch { showAuthError('Connection failed'); }
+    });
+
+    // Sign out
+    document.getElementById('signOutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/signout', { method: 'POST' });
+      currentUser = null;
+      renderAuthState();
+    });
+
+    // Auth config (client IDs from server)
+    let authConfig = { googleClientId: null, microsoftClientId: null };
+    fetch('/api/auth/config').then(r => r.json()).then(c => { authConfig = c; }).catch(() => {});
+
+    // Google Sign-In (Google Identity Services)
+    document.getElementById('googleSignInBtn').addEventListener('click', () => {
+      if (!authConfig.googleClientId) return showAuthError('Google sign-in not configured yet');
+      if (!window.google?.accounts?.id) {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.onload = () => initGoogleSignIn();
+        document.head.appendChild(script);
+      } else {
+        window.google.accounts.id.prompt();
+      }
+    });
+
+    function initGoogleSignIn() {
+      if (!authConfig.googleClientId || !window.google?.accounts?.id) return showAuthError('Google sign-in not configured');
+      window.google.accounts.id.initialize({
+        client_id: authConfig.googleClientId,
+        callback: handleGoogleCredential,
+        auto_select: false
+      });
+      window.google.accounts.id.prompt();
+    }
+
+    async function handleGoogleCredential(response) {
+      try {
+        const res = await fetch('/api/auth/google', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential: response.credential })
+        });
+        const data = await res.json();
+        if (!res.ok) return showAuthError(data.error || 'Google sign-in failed');
+        currentUser = data.user;
+        renderAuthState();
+      } catch { showAuthError('Connection failed'); }
+    }
+
+    // Microsoft Sign-In (MSAL popup)
+    document.getElementById('msSignInBtn').addEventListener('click', async () => {
+      if (!window.msal) {
+        const script = document.createElement('script');
+        script.src = 'https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js';
+        script.onload = () => doMicrosoftSignIn();
+        document.head.appendChild(script);
+      } else {
+        doMicrosoftSignIn();
+      }
+    });
+
+    async function doMicrosoftSignIn() {
+      const clientId = authConfig.microsoftClientId;
+      if (!clientId || !window.msal) return showAuthError('Microsoft sign-in not configured');
+      try {
+        const msalInstance = new msal.PublicClientApplication({
+          auth: { clientId, redirectUri: window.location.origin }
+        });
+        await msalInstance.initialize();
+        const loginResponse = await msalInstance.loginPopup({ scopes: ['User.Read'] });
+        const tokenResponse = await msalInstance.acquireTokenSilent({ scopes: ['User.Read'], account: loginResponse.account });
+        const res = await fetch('/api/auth/microsoft', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken: tokenResponse.accessToken })
+        });
+        const data = await res.json();
+        if (!res.ok) return showAuthError(data.error || 'Microsoft sign-in failed');
+        currentUser = data.user;
+        renderAuthState();
+      } catch (e) { showAuthError('Microsoft sign-in failed'); }
+    }
+
+    // Check auth on page load
+    checkAuth();
+
     // ===== START: BORDER UNLOADS + AWAKENING IN PARALLEL =====
     sizeBorderLoader();
     borderCurrent = 0;

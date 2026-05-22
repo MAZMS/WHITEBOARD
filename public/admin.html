@@ -319,18 +319,21 @@
   let metricsData = null;
   let waitlistData = null;
   let ebooksData = null;
+  let accountsData = null;
   let sortState = {}; // table -> { col, asc }
 
   async function fetchAll() {
     try {
-      const [mRes, wRes, eRes] = await Promise.all([
+      const [mRes, wRes, eRes, aRes] = await Promise.all([
         fetch('/api/admin/metrics'),
         fetch('/api/admin/waitlist'),
-        fetch('/api/admin/ebooks')
+        fetch('/api/admin/ebooks'),
+        fetch('/api/admin/accounts')
       ]);
       metricsData = await mRes.json();
       waitlistData = await wRes.json();
       ebooksData = await eRes.json();
+      accountsData = await aRes.json();
       render();
       $('#lastRefresh').textContent = new Date().toLocaleTimeString();
     } catch (err) {
@@ -338,16 +341,41 @@
     }
   }
 
+  function renderAccountsOverview(a) {
+    if (!a || !a.accounts) return '';
+    const members = a.accounts.filter(x => x.membershipStatus === 'member').length;
+    const withGoogle = a.accounts.filter(x => x.providers?.includes('google')).length;
+    const withMs = a.accounts.filter(x => x.providers?.includes('microsoft')).length;
+    const withEmail = a.accounts.filter(x => x.providers?.includes('email')).length;
+    const withWaitlist = a.accounts.filter(x => x.waitlistLinked).length;
+    const totalTomes = a.accounts.reduce((s, x) => s + (x.tomesCount || 0), 0);
+    return `<div class="card">
+      <h3>Accounts</h3>
+      <div class="stat-row"><span>Total accounts</span><span class="stat-val">${a.total}</span></div>
+      <div class="stat-row"><span>Members ($49)</span><span class="stat-val">${members}</span></div>
+      <div class="stat-row"><span>Google sign-in</span><span class="stat-val">${withGoogle}</span></div>
+      <div class="stat-row"><span>Microsoft sign-in</span><span class="stat-val">${withMs}</span></div>
+      <div class="stat-row"><span>Email accounts</span><span class="stat-val">${withEmail}</span></div>
+      <div class="stat-row"><span>Waitlist-linked</span><span class="stat-val">${withWaitlist}</span></div>
+      <div class="stat-row"><span>Total tomes (all users)</span><span class="stat-val">${totalTomes}</span></div>
+      ${a.accounts.length > 0 ? `<table class="data-table" style="margin-top:12px;"><thead><tr><th>Email</th><th>Provider</th><th>Tomes</th><th>Joined</th></tr></thead><tbody>
+      ${a.accounts.slice(0, 50).map(u => `<tr><td>${u.email}</td><td>${(u.providers||[]).join(', ')}</td><td>${u.tomesCount||0}</td><td>${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-'}</td></tr>`).join('')}
+      </tbody></table>` : ''}
+    </div>`;
+  }
+
   function render() {
     if (!metricsData || !waitlistData || !ebooksData) return;
     const d = metricsData;
     const w = waitlistData;
     const e = ebooksData;
+    const a = accountsData;
     const grid = $('#dashboard');
 
     grid.innerHTML = `
       ${renderWaitlistOverview(w, d)}
       ${renderEbookOverview(e)}
+      ${renderAccountsOverview(a)}
       ${renderApiUsage(d)}
       ${renderSystem(d)}
       ${renderTraffic(d)}

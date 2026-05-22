@@ -7,10 +7,12 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "docx": "^9.6.1",
     "dotenv": "^17.4.2",
     "express": "^4.21.0",
     "google-auth-library": "^10.6.2",
+    "jsonwebtoken": "^9.0.3",
     "openai": "^4.80.0",
     "pdf-to-img": "^6.1.0",
     "pdfkit": "^0.18.0"

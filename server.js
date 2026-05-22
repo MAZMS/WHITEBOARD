@@ -407,7 +407,7 @@ function getJob(id) {
 }
 
 // --- Chat endpoint ---
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', optionalAuth, async (req, res) => {
   trackApiCall('chat');
   const { message, sessionId } = req.body;
   if (!message) return res.status(400).json({ error: 'No message provided' });
@@ -446,6 +446,19 @@ app.post('/api/chat', async (req, res) => {
       // Start ebook generation in background
       const ebookId = crypto.randomUUID();
       saveJob(ebookId, { status: 'generating', sessionId: id });
+
+      // Link ebook to user account if signed in
+      if (req.user) {
+        const data = loadAccounts();
+        const acc = data.accounts.find(a => a.email === req.user.email);
+        if (acc) {
+          if (!acc.ebookIds) acc.ebookIds = [];
+          acc.ebookIds.push(ebookId);
+          acc.tomesCount = (acc.tomesCount || 0) + 1;
+          saveAccounts(data);
+        }
+      }
+
       generateEbook(ebookId, trimmed).catch(err => {
         console.error('Ebook generation failed:', err.message, err.stack);
         saveJob(ebookId, { status: 'failed', sessionId: id, error: err.message });
@@ -1220,6 +1233,253 @@ app.post('/api/waitlist/survey', (req, res) => {
   res.json({ success: true });
 });
 
+// --- Account / Auth System ---
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const ACCOUNTS_FILE = path.join(EBOOKS_DIR, 'accounts.json');
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID || '';
+
+function loadAccounts() {
+  try { return JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8')); } catch { return { accounts: [] }; }
+}
+function saveAccounts(data) {
+  try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(data, null, 2)); } catch (err) {
+    console.error('Failed to save accounts:', err.message);
+  }
+}
+
+function findAccountByEmail(email) {
+  const data = loadAccounts();
+  return data.accounts.find(a => a.email === email.toLowerCase().trim());
+}
+
+function createOrUpdateAccount({ email, name, avatar, provider }) {
+  const data = loadAccounts();
+  const normalized = email.toLowerCase().trim();
+  let account = data.accounts.find(a => a.email === normalized);
+
+  if (account) {
+    // Update last sign-in and merge info
+    account.lastSignIn = new Date().toISOString();
+    if (name && !account.name) account.name = name;
+    if (avatar && !account.avatar) account.avatar = avatar;
+    if (provider && !account.providers) account.providers = [provider];
+    if (provider && account.providers && !account.providers.includes(provider)) account.providers.push(provider);
+  } else {
+    account = {
+      id: crypto.randomUUID(),
+      email: normalized,
+      name: name || null,
+      avatar: avatar || null,
+      providers: [provider],
+      passwordHash: null,
+      ebookIds: [],
+      tomesCount: 0,
+      membershipStatus: 'free',
+      createdAt: new Date().toISOString(),
+      lastSignIn: new Date().toISOString()
+    };
+    data.accounts.push(account);
+  }
+
+  // Link to waitlist if exists
+  const waitlist = loadWaitlist();
+  const waitlistEntry = waitlist.signups.find(s => s.email === normalized);
+  if (waitlistEntry && !account.waitlistLinked) {
+    account.waitlistLinked = true;
+    if (waitlistEntry.survey) account.waitlistSurvey = waitlistEntry.survey;
+  }
+
+  saveAccounts(data);
+  return account;
+}
+
+function issueToken(account) {
+  return jwt.sign({ id: account.id, email: account.email }, JWT_SECRET, { expiresIn: '30d' });
+}
+
+function verifyToken(token) {
+  try { return jwt.verify(token, JWT_SECRET); } catch { return null; }
+}
+
+// Cookie-based session middleware
+function optionalAuth(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '') ||
+    (req.headers.cookie || '').split(';').map(c => c.trim()).find(c => c.startsWith('gl_token='))?.split('=')[1];
+  if (token) {
+    const payload = verifyToken(token);
+    if (payload) {
+      req.user = findAccountByEmail(payload.email);
+    }
+  }
+  next();
+}
+
+function setAuthCookie(res, token) {
+  const isProduction = !!process.env.RAILWAY_ENVIRONMENT;
+  res.setHeader('Set-Cookie', `gl_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}${isProduction ? '; Secure' : ''}`);
+}
+
+function clearAuthCookie(res) {
+  const isProduction = !!process.env.RAILWAY_ENVIRONMENT;
+  res.setHeader('Set-Cookie', `gl_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${isProduction ? '; Secure' : ''}`);
+}
+
+// Google token verification
+async function verifyGoogleToken(idToken) {
+  // Verify with Google's tokeninfo endpoint
+  try {
+    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+    if (!res.ok) return null;
+    const payload = await res.json();
+    if (GOOGLE_CLIENT_ID && payload.aud !== GOOGLE_CLIENT_ID) return null;
+    return { email: payload.email, name: payload.name, avatar: payload.picture };
+  } catch { return null; }
+}
+
+// Microsoft token verification (simplified — trusts the token payload after basic checks)
+async function verifyMicrosoftToken(accessToken) {
+  try {
+    const res = await fetch('https://graph.microsoft.com/v1.0/me', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!res.ok) return null;
+    const profile = await res.json();
+    return { email: profile.mail || profile.userPrincipalName, name: profile.displayName, avatar: null };
+  } catch { return null; }
+}
+
+// POST /api/auth/google — Google One Tap / GSI sign-in
+app.post('/api/auth/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) return res.status(400).json({ error: 'No credential provided' });
+
+  const profile = await verifyGoogleToken(credential);
+  if (!profile || !profile.email) return res.status(401).json({ error: 'Invalid token' });
+
+  const account = createOrUpdateAccount({ ...profile, provider: 'google' });
+  const token = issueToken(account);
+  setAuthCookie(res, token);
+  res.json({ success: true, user: { id: account.id, email: account.email, name: account.name, avatar: account.avatar, tomesCount: account.tomesCount, membershipStatus: account.membershipStatus } });
+});
+
+// POST /api/auth/microsoft — MSAL sign-in
+app.post('/api/auth/microsoft', async (req, res) => {
+  const { accessToken } = req.body;
+  if (!accessToken) return res.status(400).json({ error: 'No token provided' });
+
+  const profile = await verifyMicrosoftToken(accessToken);
+  if (!profile || !profile.email) return res.status(401).json({ error: 'Invalid token' });
+
+  const account = createOrUpdateAccount({ ...profile, provider: 'microsoft' });
+  const token = issueToken(account);
+  setAuthCookie(res, token);
+  res.json({ success: true, user: { id: account.id, email: account.email, name: account.name, avatar: account.avatar, tomesCount: account.tomesCount, membershipStatus: account.membershipStatus } });
+});
+
+// POST /api/auth/email/signup — email + password registration
+app.post('/api/auth/email/signup', async (req, res) => {
+  const { email, password, name } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+  const normalized = email.toLowerCase().trim();
+  if (!normalized.match(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/)) {
+    return res.status(400).json({ error: 'Invalid email' });
+  }
+
+  const existing = findAccountByEmail(normalized);
+  if (existing && existing.passwordHash) {
+    return res.status(409).json({ error: 'Account already exists. Sign in instead.' });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  // If account exists (from OAuth) but no password, add email auth
+  if (existing) {
+    const data = loadAccounts();
+    const acc = data.accounts.find(a => a.email === normalized);
+    acc.passwordHash = passwordHash;
+    if (name && !acc.name) acc.name = name;
+    if (!acc.providers.includes('email')) acc.providers.push('email');
+    acc.lastSignIn = new Date().toISOString();
+    saveAccounts(data);
+    const token = issueToken(acc);
+    setAuthCookie(res, token);
+    return res.json({ success: true, user: { id: acc.id, email: acc.email, name: acc.name, avatar: acc.avatar, tomesCount: acc.tomesCount, membershipStatus: acc.membershipStatus } });
+  }
+
+  const account = createOrUpdateAccount({ email: normalized, name: name || null, avatar: null, provider: 'email' });
+  // Set password hash
+  const data = loadAccounts();
+  const acc = data.accounts.find(a => a.email === normalized);
+  acc.passwordHash = passwordHash;
+  saveAccounts(data);
+
+  const token = issueToken(account);
+  setAuthCookie(res, token);
+  res.json({ success: true, user: { id: account.id, email: account.email, name: account.name, avatar: account.avatar, tomesCount: account.tomesCount, membershipStatus: account.membershipStatus } });
+});
+
+// POST /api/auth/email/signin — email + password login
+app.post('/api/auth/email/signin', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+
+  const account = findAccountByEmail(email);
+  if (!account || !account.passwordHash) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  const valid = await bcrypt.compare(password, account.passwordHash);
+  if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+
+  // Update last sign-in
+  const data = loadAccounts();
+  const acc = data.accounts.find(a => a.email === account.email);
+  acc.lastSignIn = new Date().toISOString();
+  saveAccounts(data);
+
+  const token = issueToken(account);
+  setAuthCookie(res, token);
+  res.json({ success: true, user: { id: account.id, email: account.email, name: account.name, avatar: account.avatar, tomesCount: account.tomesCount, membershipStatus: account.membershipStatus } });
+});
+
+// POST /api/auth/signout
+app.post('/api/auth/signout', (req, res) => {
+  clearAuthCookie(res);
+  res.json({ success: true });
+});
+
+// GET /api/auth/me — current user from session
+app.get('/api/auth/me', optionalAuth, (req, res) => {
+  if (!req.user) return res.json({ user: null });
+  res.json({ user: { id: req.user.id, email: req.user.email, name: req.user.name, avatar: req.user.avatar, tomesCount: req.user.tomesCount, membershipStatus: req.user.membershipStatus, ebookIds: req.user.ebookIds || [] } });
+});
+
+// GET /api/auth/ebooks — user's ebook history
+app.get('/api/auth/ebooks', optionalAuth, (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not signed in' });
+  const allJobs = loadJobsFromDisk();
+  const userEbooks = (req.user.ebookIds || []).map(id => {
+    const job = allJobs[id];
+    if (!job || job.status !== 'ready') return null;
+    return { id, title: job.title, generatedAt: job.generatedAt, chapters: job.chapters };
+  }).filter(Boolean);
+  res.json({ ebooks: userEbooks });
+});
+
+// Auth config endpoint (provides client IDs to frontend)
+app.get('/api/auth/config', (req, res) => {
+  res.json({
+    googleClientId: GOOGLE_CLIENT_ID || null,
+    microsoftClientId: MICROSOFT_CLIENT_ID || null
+  });
+});
+
 // --- Admin API endpoints ---
 app.get('/api/admin/metrics', (req, res) => {
   metrics.pageVisits.admin++;
@@ -1338,6 +1598,26 @@ app.get('/api/admin/ebooks', (req, res) => {
     avgDurationSeconds: avgDuration,
     successRate: jobs.length ? Math.round(completed.length / jobs.length * 100) : 0,
     jobs: jobs.sort((a, b) => (b.generatedAt || '').localeCompare(a.generatedAt || ''))
+  });
+});
+
+// Admin: accounts overview
+app.get('/api/admin/accounts', (req, res) => {
+  const data = loadAccounts();
+  const accounts = data.accounts || [];
+  res.json({
+    total: accounts.length,
+    accounts: accounts.map(a => ({
+      id: a.id,
+      email: a.email,
+      name: a.name,
+      providers: a.providers,
+      tomesCount: a.tomesCount || 0,
+      membershipStatus: a.membershipStatus,
+      waitlistLinked: !!a.waitlistLinked,
+      createdAt: a.createdAt,
+      lastSignIn: a.lastSignIn
+    }))
   });
 });
 
