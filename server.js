@@ -2554,30 +2554,43 @@ app.get('/api/tomes/:id/chapters', (req, res) => {
 });
 
 // GET /api/tomes/:id/cover — serve cover image
-app.get('/api/tomes/:id/cover', (req, res) => {
-  const data = loadTomes();
-  const tome = data.tomes.find(t => t.id === req.params.id);
-  if (!tome || !tome.coverUrl) {
-    // Also check job data for cover path
-    const job = getJob(req.params.id);
-    if (job && job.coverPath && fs.existsSync(job.coverPath)) {
-      return res.sendFile(job.coverPath);
-    }
-    return res.status(404).json({ error: 'No cover image' });
-  }
-
-  // The coverUrl is an API path; the actual file path is stored in the job or derived
-  const job = getJob(req.params.id);
-  const coverFile = job && job.coverPath ? job.coverPath : path.join(COVERS_DIR, req.params.id + '.png');
+app.get('/api/tomes/:id/cover', async (req, res) => {
+  // Try filesystem first
+  const coverFilePng = path.join(COVERS_DIR, req.params.id + '.png');
   const coverFileJpg = path.join(COVERS_DIR, req.params.id + '.jpg');
 
-  if (fs.existsSync(coverFile)) {
+  if (fs.existsSync(coverFilePng)) {
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    return res.sendFile(coverFile);
-  } else if (fs.existsSync(coverFileJpg)) {
+    return res.sendFile(coverFilePng);
+  }
+  if (fs.existsSync(coverFileJpg)) {
     res.setHeader('Cache-Control', 'public, max-age=86400');
     return res.sendFile(coverFileJpg);
   }
+
+  // Check job coverPath
+  const job = getJob(req.params.id);
+  if (job && job.coverPath && fs.existsSync(job.coverPath)) {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.sendFile(job.coverPath);
+  }
+
+  // Serve from database if file not on disk
+  if (useDB()) {
+    try {
+      let coverBuf = await db.getTomeCoverData(req.params.id);
+      if (!coverBuf) coverBuf = await db.getJobCoverData(req.params.id);
+      if (coverBuf) {
+        const isPng = coverBuf[0] === 0x89 && coverBuf[1] === 0x50;
+        res.setHeader('Content-Type', isPng ? 'image/png' : 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.send(coverBuf);
+      }
+    } catch (err) {
+      console.warn('[DB] cover serve error:', err.message);
+    }
+  }
+
   res.status(404).json({ error: 'Cover file not found' });
 });
 
@@ -2818,13 +2831,26 @@ app.get('/api/my-tomes/saved', optionalAuth, (req, res) => {
 });
 
 // --- Admin API endpoints ---
-app.get('/api/admin/metrics', requireAdmin, (req, res) => {
+app.get('/api/admin/metrics', requireAdmin, async (req, res) => {
   metrics.pageVisits.admin++;
   metricsDirty = true;
 
   const uptime = Date.now() - SERVER_START_TIME;
   const mem = process.memoryUsage();
-  const uniqueVisitors = Object.keys(metrics.visitors).length;
+  let uniqueVisitors = Object.keys(metrics.visitors).length;
+
+  // Get richer visitor stats from DB if available
+  let dbVisitorStats = null;
+  if (useDB()) {
+    try {
+      dbVisitorStats = await db.getVisitorStats();
+      if (dbVisitorStats.uniqueVisitors > uniqueVisitors) {
+        uniqueVisitors = dbVisitorStats.uniqueVisitors;
+      }
+    } catch (err) {
+      console.warn('[DB] getVisitorStats error:', err.message);
+    }
+  }
 
   // Active ebook jobs (in-progress)
   const allJobs = loadJobsFromDisk();
@@ -2896,7 +2922,12 @@ app.get('/api/admin/metrics', requireAdmin, (req, res) => {
     })(),
     uniqueVisitors,
     activeJobs,
-    serverStartTime: new Date(SERVER_START_TIME).toISOString()
+    serverStartTime: new Date(SERVER_START_TIME).toISOString(),
+    database: {
+      connected: useDB(),
+      type: useDB() ? 'postgresql' : 'json-files',
+      visitorStats: dbVisitorStats
+    }
   });
 });
 
