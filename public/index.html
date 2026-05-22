@@ -629,7 +629,7 @@
       background: #0e0d0b;
       border-right: 1px solid #2a2520;
       z-index: 301;
-      padding: 60px 24px 24px;
+      padding: 50px 24px 24px;
       transition: left 0.4s ease;
       overflow-y: auto;
       scrollbar-width: none;
@@ -645,6 +645,26 @@
       font-weight: normal;
       font-style: italic;
     }
+
+    .settings-close {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: none;
+      border: none;
+      color: #6a6050;
+      cursor: pointer;
+      font-size: 22px;
+      opacity: 0.6;
+      transition: opacity 0.4s, color 0.4s;
+      font-family: Georgia, serif;
+      padding: 4px 8px;
+      line-height: 1;
+    }
+    .settings-close:hover { opacity: 1; color: #c8b88a; }
+    body.light-mode .settings-close { color: #b0a070; }
+    body.light-mode .settings-close:hover { color: #5a4a20; }
+    body.uncensored .settings-close { color: #8a4040; }
 
     .settings-section {
       margin-bottom: 24px;
@@ -1108,49 +1128,8 @@
   <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
   <div class="settings-overlay" id="settingsOverlay">
     <div class="settings-panel">
-      <h2>The Library Archives</h2>
-
-      <div class="settings-section">
-        <div class="settings-label">Sound</div>
-        <div class="settings-row">
-          <span id="soundLabel">Sound Off</span>
-          <div class="toggle" id="soundToggle"></div>
-        </div>
-        <div class="settings-row" style="margin-top:8px;">
-          <span>Volume</span>
-        </div>
-        <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="70">
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-label">Guardian Mode</div>
-        <div class="settings-row">
-          <span id="modeLabel">Uncensored</span>
-          <div class="toggle" id="censorToggle"></div>
-        </div>
-        <div style="margin-top:6px;">
-          <span class="coming-soon" id="modeDesc">Hermes 3 via OpenRouter — unfiltered</span>
-        </div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-label">Progress</div>
-        <div class="settings-row">
-          <span>Tomes Collected</span>
-          <span id="settingsTomes">0</span>
-        </div>
-        <div class="settings-row">
-          <button class="settings-action" id="resetTomesBtn">Reset Count</button>
-        </div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-label">Appearance</div>
-        <div class="settings-row">
-          <span id="themeLabel">Dark Mode</span>
-          <div class="toggle" id="themeToggle"></div>
-        </div>
-      </div>
+      <button class="settings-close" id="settingsClose" title="Close">&times;</button>
+      <h2>Chamber of Secrets</h2>
 
       <div class="settings-section" id="accountSection">
         <div class="settings-label">Account</div>
@@ -1198,6 +1177,48 @@
             <span id="userMembership" style="font-size:11px;color:#5a5040;font-style:italic;">Free tier</span>
           </div>
           <button class="settings-action" id="signOutBtn" style="margin-top:8px;width:100%;">Sign Out</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Appearance</div>
+        <div class="settings-row">
+          <span id="themeLabel">Dark Mode</span>
+          <div class="toggle" id="themeToggle"></div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Guardian Mode</div>
+        <div class="settings-row">
+          <span id="modeLabel">Uncensored</span>
+          <div class="toggle" id="censorToggle"></div>
+        </div>
+        <div style="margin-top:6px;">
+          <span class="coming-soon" id="modeDesc">Hermes 3 via OpenRouter — unfiltered</span>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Sound</div>
+        <div class="settings-row">
+          <span id="soundLabel">Sound Off</span>
+          <div class="toggle" id="soundToggle"></div>
+        </div>
+        <div class="settings-row" style="margin-top:8px;">
+          <span>Volume</span>
+        </div>
+        <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="70">
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Progress</div>
+        <div class="settings-row">
+          <span>Tomes Collected</span>
+          <span id="settingsTomes">0</span>
+        </div>
+        <div class="settings-row">
+          <button class="settings-action" id="resetTomesBtn">Reset Count</button>
         </div>
       </div>
 
@@ -3130,6 +3151,9 @@
     settingsBtn.addEventListener('click', () => {
       settingsOverlay.classList.toggle('open');
       document.getElementById('settingsTomes').textContent = tomesCount;
+    });
+    document.getElementById('settingsClose').addEventListener('click', () => {
+      settingsOverlay.classList.remove('open');
     });
     settingsOverlay.addEventListener('click', (e) => {
       if (e.target === settingsOverlay) settingsOverlay.classList.remove('open');
