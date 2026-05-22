@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const OpenAI = require('openai');
-const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, Header, Footer, PageNumber, PageBreak, HorizontalPositionRelativeFrom, VerticalPositionRelativeFrom, TextWrappingType } = require('docx');
+const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, Header, Footer, PageNumber, PageBreak, HorizontalPositionRelativeFrom, VerticalPositionRelativeFrom, TextWrappingType, Bookmark, InternalHyperlink } = require('docx');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -673,8 +673,13 @@ async function createDocx(docxPath, outline, chapters, coverPath, design) {
     contentChildren.push(new Paragraph({
       spacing: { after: 160 },
       children: [
-        new TextRun({ text: String(i+1).padStart(2,'0') + '   ', bold: true, size: 22, color: accent, font: fontHead }),
-        new TextRun({ text: cleanTitle, size: 22, color: bodyColor, font: fontBody })
+        new InternalHyperlink({
+          anchor: 'ch' + i,
+          children: [
+            new TextRun({ text: String(i+1).padStart(2,'0') + '   ', bold: true, size: 22, color: accent, font: fontHead }),
+            new TextRun({ text: cleanTitle, size: 22, color: bodyColor, font: fontBody })
+          ]
+        })
       ]
     }));
   });
@@ -686,11 +691,15 @@ async function createDocx(docxPath, outline, chapters, coverPath, design) {
     contentChildren.push(new Paragraph({ children: [new PageBreak()] }));
     for (var ci = 0; ci < 3; ci++) contentChildren.push(new Paragraph({ text: '' }));
 
-    // Chapter number
+    // Chapter number (with bookmark for TOC link)
     contentChildren.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 100 },
-      children: [new TextRun({ text: String(i+1).padStart(2,'0'), size: 72, color: accent, font: fontHead })]
+      children: [
+        new Bookmark({ id: 'ch' + i, children: [
+          new TextRun({ text: String(i+1).padStart(2,'0'), size: 72, color: accent, font: fontHead })
+        ]})
+      ]
     }));
 
     // Chapter title
