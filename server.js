@@ -15,7 +15,20 @@ const METRICS_FILE = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks/metrics.json
 const SERVER_START_TIME = Date.now();
 
 function loadMetrics() {
-  try { return JSON.parse(fs.readFileSync(METRICS_FILE, 'utf8')); }
+  try {
+    const loaded = JSON.parse(fs.readFileSync(METRICS_FILE, 'utf8'));
+    // Merge with empty metrics to ensure all fields exist (handles upgrades)
+    const empty = createEmptyMetrics();
+    for (const key of Object.keys(empty)) {
+      if (loaded[key] === undefined) loaded[key] = empty[key];
+      else if (typeof empty[key] === 'object' && !Array.isArray(empty[key]) && empty[key] !== null) {
+        for (const subKey of Object.keys(empty[key])) {
+          if (loaded[key][subKey] === undefined) loaded[key][subKey] = empty[key][subKey];
+        }
+      }
+    }
+    return loaded;
+  }
   catch { return createEmptyMetrics(); }
 }
 
@@ -26,10 +39,21 @@ function createEmptyMetrics() {
     pageVisits: { waitlist: 0, library: 0, admin: 0 },
     ebooks: { generated: 0, failed: 0, totalGenerationMs: 0 },
     covers: { geminiSuccess: 0, imagenFallback: 0, failed: 0 },
-    visitors: {},       // ip -> { first, last, hits, ua }
+    visitors: {},       // ip -> { first, last, hits, ua, country, city, page }
     referrers: {},      // referrer -> count
     devices: { mobile: 0, desktop: 0 },
     dailySignups: {},   // "YYYY-MM-DD" -> count
+    recentVisitors: [], // last 50 visitors [{ip, timestamp, page, country, city, ua}]
+    llmUsage: {         // per-provider API usage tracking
+      daily: {},        // "YYYY-MM-DD" -> { provider -> { calls, inputTokens, outputTokens, tokens, errors, latencyMs } }
+      allTime: {}       // provider -> { calls, inputTokens, outputTokens, tokens, errors, totalLatencyMs }
+    },
+    openRouterCredits: {
+      starting: 8.00,   // $8 starting credits
+      spent: 0,          // total spent (calculated from token usage)
+      lastChecked: null
+    },
+    budgetAlerts: [],   // [{timestamp, provider, message, level}]
     lastUpdated: null
   };
 }
@@ -62,21 +86,41 @@ function trackError(statusCode) {
   metricsDirty = true;
 }
 
-function trackVisitor(req) {
+function trackVisitor(req, page) {
   const ip = getClientIPEarly(req);
   const ua = req.get('user-agent') || '';
   const ref = req.get('referer') || '';
   const now = new Date().toISOString();
 
+  // Geo data from proxy headers (Railway/Cloudflare provide these)
+  const country = req.get('cf-ipcountry') || req.get('x-vercel-ip-country') || req.get('x-country') || null;
+  const city = req.get('cf-ipcity') || req.get('x-vercel-ip-city') || req.get('x-city') || null;
+  const region = req.get('cf-region') || req.get('x-vercel-ip-country-region') || null;
+
   // Visitor tracking (capped at 10k unique IPs to avoid memory bloat)
   if (Object.keys(metrics.visitors).length < 10000) {
     if (!metrics.visitors[ip]) {
-      metrics.visitors[ip] = { first: now, last: now, hits: 1, ua: ua.slice(0, 200) };
+      metrics.visitors[ip] = { first: now, last: now, hits: 1, ua: ua.slice(0, 200), country, city, region };
     } else {
       metrics.visitors[ip].last = now;
       metrics.visitors[ip].hits++;
+      if (country && !metrics.visitors[ip].country) metrics.visitors[ip].country = country;
+      if (city && !metrics.visitors[ip].city) metrics.visitors[ip].city = city;
+      if (region && !metrics.visitors[ip].region) metrics.visitors[ip].region = region;
     }
   }
+
+  // Recent visitors feed (last 50)
+  if (!metrics.recentVisitors) metrics.recentVisitors = [];
+  metrics.recentVisitors.unshift({
+    ip: ip.replace(/\d+$/, 'x'), // partial IP for privacy
+    timestamp: now,
+    page: page || 'unknown',
+    country, city, region,
+    ua: ua.slice(0, 100),
+    isMobile: /mobile|android|iphone|ipad|ipod/i.test(ua)
+  });
+  if (metrics.recentVisitors.length > 50) metrics.recentVisitors = metrics.recentVisitors.slice(0, 50);
 
   // Device detection from user agent
   if (/mobile|android|iphone|ipad|ipod/i.test(ua)) {
@@ -103,19 +147,46 @@ function getClientIPEarly(req) {
   return req.ip || req.connection?.remoteAddress || 'unknown';
 }
 
+// --- Admin access control ---
+function isAdminEmail(email) {
+  if (!email) return false;
+  const e = email.toLowerCase().trim();
+  return e === 'greatlibraryai@gmail.com' || e.endsWith('@greatlibrary.ai');
+}
+
+function requireAdmin(req, res, next) {
+  // Parse auth cookie/header the same way optionalAuth does
+  const token = req.headers.authorization?.replace('Bearer ', '') ||
+    (req.headers.cookie || '').split(';').map(c => c.trim()).find(c => c.startsWith('gl_token='))?.split('=')[1];
+  if (!token) return res.status(403).json({ error: 'Access denied' });
+  const payload = verifyToken(token);
+  if (!payload) return res.status(403).json({ error: 'Access denied' });
+  if (!isAdminEmail(payload.email)) return res.status(403).json({ error: 'Access denied' });
+  req.user = findAccountByEmail(payload.email);
+  next();
+}
+
+function requireAdminPage(req, res, next) {
+  const token = (req.headers.cookie || '').split(';').map(c => c.trim()).find(c => c.startsWith('gl_token='))?.split('=')[1];
+  if (!token) return res.redirect('/');
+  const payload = verifyToken(token);
+  if (!payload || !isAdminEmail(payload.email)) return res.redirect('/');
+  next();
+}
+
 // --- Admin routes (explicit, not from static folder) ---
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/admin', requireAdminPage, (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
 // Serve waitlist as the landing page, Library at /library
 app.get('/', (req, res) => {
   metrics.pageVisits.waitlist++;
-  trackVisitor(req);
+  trackVisitor(req, 'waitlist');
   metricsDirty = true;
   res.sendFile(path.join(__dirname, 'public', 'waitlist.html'));
 });
 app.get('/library', (req, res) => {
   metrics.pageVisits.library++;
-  trackVisitor(req);
+  trackVisitor(req, 'library');
   metricsDirty = true;
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -249,19 +320,128 @@ function tokenLimitFor(provider, n) {
   return (provider === 'openai') ? { max_completion_tokens: n } : { max_tokens: n };
 }
 
+// --- LLM Usage Tracking ---
+function trackLlmUsage(provider, model, tokenInfo, latencyMs, error) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (!metrics.llmUsage) metrics.llmUsage = { daily: {}, allTime: {} };
+  if (!metrics.llmUsage.daily[today]) metrics.llmUsage.daily[today] = {};
+  if (!metrics.llmUsage.daily[today][provider]) metrics.llmUsage.daily[today][provider] = { calls: 0, inputTokens: 0, outputTokens: 0, tokens: 0, errors: 0, latencyMs: 0, models: {} };
+  if (!metrics.llmUsage.allTime[provider]) metrics.llmUsage.allTime[provider] = { calls: 0, inputTokens: 0, outputTokens: 0, tokens: 0, errors: 0, totalLatencyMs: 0 };
+
+  const input = tokenInfo?.input || 0;
+  const output = tokenInfo?.output || 0;
+  const total = tokenInfo?.total || (input + output);
+
+  const daily = metrics.llmUsage.daily[today][provider];
+  const allTime = metrics.llmUsage.allTime[provider];
+
+  daily.calls++;
+  daily.inputTokens += input;
+  daily.outputTokens += output;
+  daily.tokens += total;
+  daily.latencyMs += latencyMs || 0;
+  if (!daily.models[model]) daily.models[model] = 0;
+  daily.models[model]++;
+  if (error) daily.errors++;
+
+  allTime.calls++;
+  allTime.inputTokens += input;
+  allTime.outputTokens += output;
+  allTime.tokens += total;
+  allTime.totalLatencyMs += latencyMs || 0;
+  if (error) allTime.errors++;
+
+  // Track OpenRouter spend
+  if (provider === 'openrouter') {
+    if (!metrics.openRouterCredits) metrics.openRouterCredits = { starting: 8.00, spent: 0, lastChecked: null };
+    // Hermes 405B pricing: $1/1M input, $3/1M output
+    const cost = (input * 1.0 / 1000000) + (output * 3.0 / 1000000);
+    metrics.openRouterCredits.spent += cost;
+    metrics.openRouterCredits.lastChecked = new Date().toISOString();
+  }
+
+  // Prune daily data older than 30 days
+  const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  for (const day of Object.keys(metrics.llmUsage.daily)) {
+    if (day < cutoff) delete metrics.llmUsage.daily[day];
+  }
+
+  metricsDirty = true;
+}
+
+function extractTokensFromResponse(response) {
+  const usage = response?.usage;
+  if (!usage) return { input: 0, output: 0, total: 0 };
+  const input = usage.prompt_tokens || 0;
+  const output = usage.completion_tokens || 0;
+  const total = usage.total_tokens || (input + output);
+  return { input, output, total };
+}
+
+// --- Budget Alert Tracking ---
+function checkBudgetAlerts() {
+  if (!metrics.llmUsage) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const todayUsage = metrics.llmUsage.daily[today] || {};
+  if (!metrics.budgetAlerts) metrics.budgetAlerts = [];
+
+  // OpenAI daily token limits (mini models: 2.5M TPD)
+  const openaiToday = todayUsage.openai;
+  if (openaiToday && openaiToday.tokens > 2000000) {
+    const existing = metrics.budgetAlerts.find(a => a.provider === 'openai' && a.date === today);
+    if (!existing) {
+      metrics.budgetAlerts.push({
+        timestamp: new Date().toISOString(),
+        date: today,
+        provider: 'openai',
+        level: openaiToday.tokens > 2250000 ? 'critical' : 'warning',
+        message: `OpenAI daily token usage at ${Math.round(openaiToday.tokens / 1000)}K / 2,500K limit`
+      });
+      metricsDirty = true;
+    }
+  }
+
+  // OpenRouter credit alerts ($8 starting)
+  if (metrics.openRouterCredits) {
+    const remaining = metrics.openRouterCredits.starting - metrics.openRouterCredits.spent;
+    if (remaining < 2.00) {
+      const existing = metrics.budgetAlerts.find(a => a.provider === 'openrouter' && a.date === today);
+      if (!existing) {
+        metrics.budgetAlerts.push({
+          timestamp: new Date().toISOString(),
+          date: today,
+          provider: 'openrouter',
+          level: remaining < 0.50 ? 'critical' : 'warning',
+          message: `OpenRouter credits: $${remaining.toFixed(2)} remaining of $${metrics.openRouterCredits.starting.toFixed(2)}`
+        });
+        metricsDirty = true;
+      }
+    }
+  }
+
+  // Keep only last 50 alerts
+  if (metrics.budgetAlerts.length > 50) {
+    metrics.budgetAlerts = metrics.budgetAlerts.slice(-50);
+  }
+}
+
 // Always uses Gemini — for design, outline, style seed (never uncensored model)
 async function llmCreateGemini(opts) {
   // Force gemini-2.5-flash model and remove any other model override
   const geminiOpts = { ...opts, model: 'gemini-2.5-flash' };
   delete geminiOpts.max_completion_tokens;
+  const startTime = Date.now();
 
   // 1. Service account first (bills to GCP $300 credits)
   if (USE_VERTEX_AI && vertexAuth) {
     try {
       const token = await getAccessToken();
       const saClient = new OpenAI({ baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/', apiKey: token });
-      return await saClient.chat.completions.create(geminiOpts);
-    } catch (e) { console.warn(`  Gemini SA failed: ${e.message}`); }
+      const result = await saClient.chat.completions.create(geminiOpts);
+      trackLlmUsage('gemini', 'gemini-2.5-flash', extractTokensFromResponse(result), Date.now() - startTime, false);
+      checkBudgetAlerts();
+      return result;
+    } catch (e) { console.warn(`  Gemini SA failed: ${e.message}`); trackLlmUsage('gemini', 'gemini-2.5-flash', 0, Date.now() - startTime, true); }
   }
   // 2. OpenAI fallback
   if (clients.openai) {
@@ -269,13 +449,21 @@ async function llmCreateGemini(opts) {
       const openaiOpts = { ...opts, model: 'gpt-4o-mini' };
       delete openaiOpts.max_tokens;
       openaiOpts.max_completion_tokens = opts.max_tokens || 4096;
-      return await clients.openai.chat.completions.create(openaiOpts);
-    } catch (e) { console.warn(`  OpenAI failed: ${e.message}`); }
+      const result = await clients.openai.chat.completions.create(openaiOpts);
+      trackLlmUsage('openai', 'gpt-4o-mini', extractTokensFromResponse(result), Date.now() - startTime, false);
+      checkBudgetAlerts();
+      return result;
+    } catch (e) { console.warn(`  OpenAI failed: ${e.message}`); trackLlmUsage('openai', 'gpt-4o-mini', 0, Date.now() - startTime, true); }
   }
   // 3. Gemini API key last resort (no credits, will likely 429)
   if (clients.gemini) {
-    try { return await clients.gemini.chat.completions.create(geminiOpts); } catch (e) {
+    try {
+      const result = await clients.gemini.chat.completions.create(geminiOpts);
+      trackLlmUsage('gemini', 'gemini-2.5-flash', extractTokensFromResponse(result), Date.now() - startTime, false);
+      return result;
+    } catch (e) {
       console.warn(`  Gemini client failed: ${e.message}`);
+      trackLlmUsage('gemini', 'gemini-2.5-flash', 0, Date.now() - startTime, true);
     }
   }
   throw new Error('No LLM client available for design');
@@ -283,6 +471,7 @@ async function llmCreateGemini(opts) {
 
 async function llmCreate(opts) {
   const maxRetries = 3;
+  const startTime = Date.now();
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       // Use service account token for text gen — bills to GCP, no free tier limits
@@ -292,27 +481,49 @@ async function llmCreate(opts) {
           baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
           apiKey: token
         });
-        return await saClient.chat.completions.create(opts);
+        const result = await saClient.chat.completions.create(opts);
+        trackLlmUsage('gemini', opts.model || getModel(), extractTokensFromResponse(result), Date.now() - startTime, false);
+        checkBudgetAlerts();
+        return result;
       }
-      return await getClient().chat.completions.create(opts);
+      const result = await getClient().chat.completions.create(opts);
+      trackLlmUsage(activeProvider, opts.model || getModel(), extractTokensFromResponse(result), Date.now() - startTime, false);
+      checkBudgetAlerts();
+      return result;
     } catch (err) {
       if (err.status === 429 && attempt < maxRetries - 1) {
+        trackError(429);
         const delay = (attempt + 1) * 10000;
         console.warn(`Rate limited (429), retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
+      trackLlmUsage(activeProvider, opts.model || getModel(), 0, Date.now() - startTime, true);
       // Fallback chain: try OpenAI, then Gemini
       if (activeProvider !== 'openai' && clients.openai) {
         console.warn(`${activeProvider} failed (${err.message}), falling back to OpenAI`);
         const fallbackOpts = { ...opts, model: getModelFor('openai'), max_completion_tokens: opts.max_tokens || opts.max_completion_tokens };
         delete fallbackOpts.max_tokens;
-        return await clients.openai.chat.completions.create(fallbackOpts);
+        const fallbackStart = Date.now();
+        try {
+          const result = await clients.openai.chat.completions.create(fallbackOpts);
+          trackLlmUsage('openai', getModelFor('openai'), extractTokensFromResponse(result), Date.now() - fallbackStart, false);
+          return result;
+        } catch (e2) {
+          trackLlmUsage('openai', getModelFor('openai'), 0, Date.now() - fallbackStart, true);
+        }
       }
       if (activeProvider !== 'gemini' && clients.gemini) {
         console.warn(`${activeProvider} failed (${err.message}), falling back to Gemini`);
         const fallbackOpts = { ...opts, model: getModelFor('gemini') };
-        return await clients.gemini.chat.completions.create(fallbackOpts);
+        const fallbackStart = Date.now();
+        try {
+          const result = await clients.gemini.chat.completions.create(fallbackOpts);
+          trackLlmUsage('gemini', getModelFor('gemini'), extractTokensFromResponse(result), Date.now() - fallbackStart, false);
+          return result;
+        } catch (e2) {
+          trackLlmUsage('gemini', getModelFor('gemini'), 0, Date.now() - fallbackStart, true);
+        }
       }
       throw err;
     }
@@ -1497,7 +1708,7 @@ app.get('/api/auth/config', (req, res) => {
 });
 
 // --- Admin API endpoints ---
-app.get('/api/admin/metrics', (req, res) => {
+app.get('/api/admin/metrics', requireAdmin, (req, res) => {
   metrics.pageVisits.admin++;
   metricsDirty = true;
 
@@ -1527,13 +1738,59 @@ app.get('/api/admin/metrics', (req, res) => {
       nodeVersion: process.version,
       platform: process.platform
     },
+    providers: {
+      gemini: {
+        configured: !!clients.gemini || (USE_VERTEX_AI && !!vertexAuth),
+        active: activeProvider === 'gemini',
+        model: getModelFor('gemini'),
+        auth: USE_VERTEX_AI && vertexAuth ? 'service-account' : (geminiKey ? 'api-key' : 'none'),
+        limits: { rpm: 1000, tpm: 1000000, rpd: 10000 },
+        budget: '$300 GCP credits'
+      },
+      openai: {
+        configured: !!clients.openai,
+        active: activeProvider === 'openai',
+        model: getModelFor('openai'),
+        auth: process.env.OPENAI_API_KEY ? 'api-key' : 'none',
+        limits: { rpm: 500, tpm: 200000, tpd: 2500000 },
+        budget: 'Free tier (2.5M TPD mini)'
+      },
+      openrouter: {
+        configured: !!clients.openrouter,
+        active: activeProvider === 'openrouter',
+        model: getModelFor('openrouter'),
+        auth: process.env.OPENROUTER_API_KEY ? 'api-key' : 'none',
+        budget: '$8 credits',
+        pricing: { inputPerMillion: 1.00, outputPerMillion: 3.00 },
+        modelInfo: { context: 131072, latency: '~0.27s', throughput: '~27 tps', provider: 'Nebius Token Factory (fp8)' }
+      }
+    },
+    openRouterCosts: (() => {
+      const credits = metrics.openRouterCredits || { starting: 8.00, spent: 0 };
+      const orAllTime = (metrics.llmUsage?.allTime?.openrouter) || { calls: 0, inputTokens: 0, outputTokens: 0, tokens: 0 };
+      const remaining = credits.starting - credits.spent;
+      const avgCostPerRequest = orAllTime.calls > 0 ? credits.spent / orAllTime.calls : 0;
+      const estimatedRequestsRemaining = avgCostPerRequest > 0 ? Math.floor(remaining / avgCostPerRequest) : (remaining > 0 ? Infinity : 0);
+      const today = new Date().toISOString().slice(0, 10);
+      const todayUsage = metrics.llmUsage?.daily?.[today]?.openrouter || { calls: 0, inputTokens: 0, outputTokens: 0, tokens: 0 };
+      const todayCost = (todayUsage.inputTokens * 1.0 / 1000000) + (todayUsage.outputTokens * 3.0 / 1000000);
+      return {
+        creditsStarting: credits.starting,
+        creditsSpent: credits.spent,
+        creditsRemaining: remaining,
+        avgCostPerRequest,
+        estimatedRequestsRemaining: estimatedRequestsRemaining === Infinity ? 'unlimited' : estimatedRequestsRemaining,
+        allTime: { calls: orAllTime.calls, inputTokens: orAllTime.inputTokens, outputTokens: orAllTime.outputTokens, totalTokens: orAllTime.tokens },
+        today: { calls: todayUsage.calls, inputTokens: todayUsage.inputTokens, outputTokens: todayUsage.outputTokens, cost: todayCost }
+      };
+    })(),
     uniqueVisitors,
     activeJobs,
     serverStartTime: new Date(SERVER_START_TIME).toISOString()
   });
 });
 
-app.get('/api/admin/waitlist', (req, res) => {
+app.get('/api/admin/waitlist', requireAdmin, (req, res) => {
   const data = loadWaitlist();
   const signups = data.signups || [];
 
@@ -1586,7 +1843,7 @@ app.get('/api/admin/waitlist', (req, res) => {
   });
 });
 
-app.get('/api/admin/ebooks', (req, res) => {
+app.get('/api/admin/ebooks', requireAdmin, (req, res) => {
   const allJobs = loadJobsFromDisk();
   const jobs = Object.entries(allJobs).map(([id, j]) => ({
     id,
@@ -1618,7 +1875,7 @@ app.get('/api/admin/ebooks', (req, res) => {
 });
 
 // Admin: accounts overview
-app.get('/api/admin/accounts', (req, res) => {
+app.get('/api/admin/accounts', requireAdmin, (req, res) => {
   const data = loadAccounts();
   const accounts = data.accounts || [];
   res.json({
@@ -1637,6 +1894,27 @@ app.get('/api/admin/accounts', (req, res) => {
   });
 });
 
+// Admin: LLM usage data
+app.get('/api/admin/usage', requireAdmin, (req, res) => {
+  const usage = metrics.llmUsage || { daily: {}, allTime: {} };
+  const today = new Date().toISOString().slice(0, 10);
+  const todayUsage = usage.daily[today] || {};
+
+  // Compute daily summaries for last 7 days
+  const last7Days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    last7Days.push({ date: d, usage: usage.daily[d] || {} });
+  }
+
+  res.json({
+    today: todayUsage,
+    allTime: usage.allTime || {},
+    last7Days,
+    alerts: (metrics.budgetAlerts || []).slice(-20)
+  });
+});
+
 function formatUptime(ms) {
   const s = Math.floor(ms / 1000);
   const d = Math.floor(s / 86400);
@@ -1646,6 +1924,10 @@ function formatUptime(ms) {
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m ${s % 60}s`;
 }
+
+// Flush metrics on shutdown to avoid data loss
+process.on('SIGTERM', () => { metricsDirty = true; saveMetrics(); process.exit(0); });
+process.on('SIGINT', () => { metricsDirty = true; saveMetrics(); process.exit(0); });
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {

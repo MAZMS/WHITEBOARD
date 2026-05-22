@@ -377,6 +377,8 @@
       ${renderEbookOverview(e)}
       ${renderAccountsOverview(a)}
       ${renderApiUsage(d)}
+      ${renderOpenRouterCosts(d)}
+      ${renderLlmUsage(d)}
       ${renderSystem(d)}
       ${renderTraffic(d)}
       ${renderCoverStats(d)}
@@ -492,6 +494,155 @@
       </div>
       <div class="bar-group">${bars}</div>
     </div>`;
+  }
+
+  function renderOpenRouterCosts(d) {
+    const or = d.openRouterCosts;
+    if (!or) return '';
+    const prov = d.providers?.openrouter;
+    const remaining = or.creditsRemaining;
+    const pct = or.creditsStarting > 0 ? Math.round(remaining / or.creditsStarting * 100) : 0;
+    const barColor = pct > 50 ? '#5a7a4a' : pct > 20 ? '#8a7d55' : '#7a4a4a';
+    const estReq = or.estimatedRequestsRemaining === 'unlimited' ? '--' : or.estimatedRequestsRemaining.toLocaleString();
+
+    return `
+    <div class="card">
+      <div class="card-title">OpenRouter Credits</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value${pct <= 20 ? ' danger' : ''}">\$${remaining.toFixed(2)}</div>
+          <div class="stat-label">Credits remaining</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value accent small">\$${or.creditsSpent.toFixed(4)}</div>
+          <div class="stat-label">Total spent</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value small">\$${or.creditsStarting.toFixed(2)}</div>
+          <div class="stat-label">Starting credits</div>
+        </div>
+      </div>
+      <div style="margin:12px 0 8px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#5a5038;margin-bottom:4px">
+          <span>Credits used</span><span>${100 - pct}%</span>
+        </div>
+        <div class="bar-track" style="height:12px">
+          <div class="bar-fill" style="width:${pct}%;background:${barColor}"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value small">\$${or.avgCostPerRequest.toFixed(4)}</div>
+          <div class="stat-label">Avg cost / request</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value small">${estReq}</div>
+          <div class="stat-label">Est. requests left</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value small">${formatTokens(or.allTime.inputTokens)}</div>
+          <div class="stat-label">Input tokens (all time)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value small">${formatTokens(or.allTime.outputTokens)}</div>
+          <div class="stat-label">Output tokens (all time)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value small">${or.allTime.calls}</div>
+          <div class="stat-label">Total requests</div>
+        </div>
+      </div>
+      ${or.today.calls > 0 ? `
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1a1814">
+        <div style="color:#5a5038;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Today</div>
+        <div class="stat-row">
+          <div class="stat">
+            <div class="stat-value small">${or.today.calls}</div>
+            <div class="stat-label">Requests</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value small">\$${or.today.cost.toFixed(4)}</div>
+            <div class="stat-label">Cost</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value small">${formatTokens(or.today.inputTokens)} / ${formatTokens(or.today.outputTokens)}</div>
+            <div class="stat-label">In / Out tokens</div>
+          </div>
+        </div>
+      </div>` : ''}
+      ${prov?.modelInfo ? `
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1a1814">
+        <div class="sys-row"><span class="sys-label">Model</span><span class="sys-value">${prov.model}</span></div>
+        <div class="sys-row"><span class="sys-label">Provider</span><span class="sys-value">${prov.modelInfo.provider}</span></div>
+        <div class="sys-row"><span class="sys-label">Context</span><span class="sys-value">${(prov.modelInfo.context / 1024).toFixed(0)}K</span></div>
+        <div class="sys-row"><span class="sys-label">Pricing</span><span class="sys-value">\$${prov.pricing.inputPerMillion}/M in, \$${prov.pricing.outputPerMillion}/M out</span></div>
+        <div class="sys-row"><span class="sys-label">Latency</span><span class="sys-value">${prov.modelInfo.latency}</span></div>
+        <div class="sys-row"><span class="sys-label">Throughput</span><span class="sys-value">${prov.modelInfo.throughput}</span></div>
+      </div>` : ''}
+    </div>`;
+  }
+
+  function renderLlmUsage(d) {
+    const usage = d.llmUsage;
+    if (!usage || !usage.allTime || Object.keys(usage.allTime).length === 0) {
+      return `
+      <div class="card">
+        <div class="card-title">LLM Usage (All Providers)</div>
+        <div class="empty-state">No LLM calls tracked yet.</div>
+      </div>`;
+    }
+
+    const providers = Object.entries(usage.allTime).sort((a, b) => b[1].calls - a[1].calls);
+    const maxCalls = providers.length > 0 ? providers[0][1].calls : 1;
+
+    const providerRows = providers.map(([name, data]) => {
+      const avgLatency = data.calls > 0 ? Math.round(data.totalLatencyMs / data.calls) : 0;
+      const errorRate = data.calls > 0 ? Math.round(data.errors / data.calls * 100) : 0;
+      return `
+      <div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #0f0e0c">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="color:#c8b88a;font-size:14px">${name}</span>
+          <span style="color:#5a5038;font-size:12px">${data.calls} calls</span>
+        </div>
+        <div class="bar-track" style="height:8px;margin-bottom:8px">
+          <div class="bar-fill" style="width:${Math.round(data.calls / maxCalls * 100)}%"></div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <span style="font-size:11px;color:#4a4030">In: <span style="color:#6a6050">${formatTokens(data.inputTokens || 0)}</span></span>
+          <span style="font-size:11px;color:#4a4030">Out: <span style="color:#6a6050">${formatTokens(data.outputTokens || 0)}</span></span>
+          <span style="font-size:11px;color:#4a4030">Total: <span style="color:#6a6050">${formatTokens(data.tokens || 0)}</span></span>
+          <span style="font-size:11px;color:#4a4030">Avg latency: <span style="color:#6a6050">${avgLatency}ms</span></span>
+          <span style="font-size:11px;color:${errorRate > 10 ? '#7a4a4a' : '#4a4030'}">Errors: <span style="color:${errorRate > 10 ? '#9a5a5a' : '#6a6050'}">${data.errors} (${errorRate}%)</span></span>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Budget alerts
+    const alerts = (d.budgetAlerts || []).slice(-5).reverse();
+    const alertHtml = alerts.length > 0 ? `
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1a1814">
+        <div style="color:#5a5038;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Recent Alerts</div>
+        ${alerts.map(a => `
+          <div style="font-size:12px;padding:4px 0;color:${a.level === 'critical' ? '#9a5a5a' : '#8a7d55'}">
+            ${formatTime(a.timestamp)} -- ${escHtml(a.message)}
+          </div>`).join('')}
+      </div>` : '';
+
+    return `
+    <div class="card">
+      <div class="card-title">LLM Usage (All Providers)</div>
+      ${providerRows}
+      ${alertHtml}
+    </div>`;
+  }
+
+  function formatTokens(n) {
+    if (!n || n === 0) return '0';
+    if (n >= 1000000) return (n / 1000000).toFixed(2) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return n.toString();
   }
 
   function renderSystem(d) {
