@@ -519,14 +519,14 @@
       left: 16px;
       background: none;
       border: none;
-      color: #3a3528;
+      color: #6a6050;
       cursor: pointer;
       z-index: 200;
-      font-size: 18px;
-      opacity: 0.4;
-      transition: opacity 0.3s;
+      font-size: 26px;
+      opacity: 0.6;
+      transition: opacity 0.4s, color 0.4s, text-shadow 0.4s;
     }
-    .settings-btn:hover { opacity: 1; }
+    .settings-btn:hover { opacity: 1; color: #c8b88a; text-shadow: 0 0 12px rgba(200,184,138,0.3); }
 
     .settings-overlay {
       position: fixed;
@@ -881,6 +881,7 @@
       color: #4a2820;
     }
     body.light-mode.uncensored .settings-panel { background: #EAE2DE; }
+    body.light-mode.uncensored .settings-btn { color: #a06050; }
 
     /* ===== UNCENSORED MODE — The Forbidden Wing ===== */
     body.uncensored {
@@ -945,7 +946,7 @@
       border-color: #2a2020;
     }
     body.uncensored .settings-btn {
-      color: #5a2828;
+      color: #8a4040;
     }
     body.uncensored .download-link {
       border-color: #5a2828;
