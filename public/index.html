@@ -1062,72 +1062,6 @@
       }
     }
 
-    /* ===== LIBRARY GATE (access denied overlay) ===== */
-    .library-gate {
-      position: fixed;
-      inset: 0;
-      z-index: 9000;
-      background: #0a0a0a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 1.2s ease;
-    }
-    .library-gate.visible {
-      opacity: 1;
-      pointer-events: all;
-    }
-    .library-gate.fade-out {
-      opacity: 0;
-      pointer-events: none;
-    }
-    .gate-content {
-      text-align: center;
-      max-width: 400px;
-      padding: 2rem;
-    }
-    .gate-symbol {
-      font-size: 3rem;
-      color: #3a3528;
-      margin-bottom: 2rem;
-      opacity: 0.6;
-    }
-    .gate-message {
-      font-family: Georgia, serif;
-      font-size: 1.4rem;
-      color: #c8b88a;
-      line-height: 1.6;
-      margin-bottom: 1.5rem;
-      font-style: italic;
-    }
-    .gate-note {
-      font-family: Georgia, serif;
-      font-size: 0.85rem;
-      color: #5a5038;
-      margin-bottom: 2rem;
-      letter-spacing: 0.05em;
-    }
-    .gate-links {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1rem;
-    }
-    .gate-link {
-      font-family: Georgia, serif;
-      font-size: 0.9rem;
-      color: #8b7d45;
-      text-decoration: none;
-      transition: color 0.3s ease;
-    }
-    .gate-link:hover {
-      color: #c8b88a;
-    }
-    .gate-divider {
-      color: #3a3528;
-    }
   </style>
   
   <script src="https://app.lemonsqueezy.com/js/lemon.js" defer></script>
@@ -1265,18 +1199,6 @@
   <svg class="border-loader" id="borderLoader" preserveAspectRatio="none">
     <path id="borderPath" fill="none" />
   </svg>
-  <div class="library-gate" id="libraryGate">
-    <div class="gate-content">
-      <div class="gate-symbol">&#9653;</div>
-      <div class="gate-message" id="gateMessage">The halls are sealed... for now.</div>
-      <div class="gate-note">The doors open soon.</div>
-      <div class="gate-links">
-        <a href="/" class="gate-link">Join the Vigil</a>
-        <span class="gate-divider">&middot;</span>
-        <a href="#" class="gate-link" id="gateSignIn">Sign In</a>
-      </div>
-    </div>
-  </div>
   <div class="main">
     <div class="particles" id="particles"></div>
     <div class="eye-container">
@@ -3706,57 +3628,8 @@
     // Check auth on page load
     checkAuth();
 
-    // ===== LIBRARY ACCESS GATE =====
-    const libraryGate = document.getElementById('libraryGate');
-    const gateSignIn = document.getElementById('gateSignIn');
-    let libraryAccessGranted = false;
-
-    gateSignIn.addEventListener('click', (e) => {
-      e.preventDefault();
-      settingsOverlay.classList.add('open');
-    });
-
-    async function checkLibraryAccess() {
-      try {
-        const res = await fetch('/api/auth/access');
-        const data = await res.json();
-        if (data.access) {
-          grantLibraryAccess();
-        } else {
-          showLibraryGate();
-        }
-      } catch {
-        showLibraryGate();
-      }
-    }
-
-    function showLibraryGate() {
-      libraryGate.classList.add('visible');
-      libraryGate.classList.remove('fade-out');
-      document.querySelector('.input-area').style.display = 'none';
-    }
-
-    function grantLibraryAccess() {
-      if (libraryAccessGranted) return;
-      libraryAccessGranted = true;
-      libraryGate.classList.add('fade-out');
-      libraryGate.classList.remove('visible');
-      document.querySelector('.input-area').style.display = '';
-      // Start the Guardian awakening
-      setTimeout(() => enterPhase('awakening'), 600);
-    }
-
-    // After any successful sign-in, re-check access
-    const origRenderAuth = renderAuthState;
-    renderAuthState = function() {
-      origRenderAuth();
-      if (currentUser && !libraryAccessGranted) {
-        checkLibraryAccess();
-      }
-    };
-
-    // Initial access check on page load
-    checkLibraryAccess();
+    // Start the Guardian awakening on page load
+    setTimeout(() => enterPhase('awakening'), 600);
 
     // ===== START: BORDER SIZING =====
     sizeBorderLoader();
