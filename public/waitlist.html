@@ -1210,7 +1210,8 @@
       }
     }
 
-    // Google Sign-In
+    // Google Sign-In — uses popup OAuth flow as fallback when One Tap is suppressed
+    let wlGoogleInited = false;
     document.getElementById('wlGoogleBtn').addEventListener('click', () => {
       if (!authConfig.googleClientId) {
         errorEl.textContent = 'Google sign-in not configured yet.';
@@ -1220,10 +1221,11 @@
       if (!window.google?.accounts?.id) {
         const script = document.createElement('script');
         script.src = 'https://accounts.google.com/gsi/client';
-        script.onload = () => initWlGoogleSignIn();
+        script.onload = () => { initWlGoogleSignIn(); triggerWlGoogleSignIn(); };
         document.head.appendChild(script);
       } else {
-        window.google.accounts.id.prompt();
+        if (!wlGoogleInited) initWlGoogleSignIn();
+        triggerWlGoogleSignIn();
       }
     });
 
@@ -1235,9 +1237,55 @@
       window.google.accounts.id.initialize({
         client_id: authConfig.googleClientId,
         callback: handleWlGoogleCredential,
-        auto_select: false
+        auto_select: false,
+        ux_mode: 'popup'
       });
-      window.google.accounts.id.prompt();
+      wlGoogleInited = true;
+    }
+
+    function triggerWlGoogleSignIn() {
+      // Try One Tap first with notification callback to detect suppression
+      let handled = false;
+      window.google.accounts.id.prompt((notification) => {
+        if (handled) return;
+        if (notification.isDisplayed()) { handled = true; return; }
+        // One Tap suppressed (dismissed, blocked, etc.) — fall back to popup OAuth
+        handled = true;
+        openGoogleOAuthPopup();
+      });
+      // Safety net: if prompt callback never fires at all, fall back after a short delay
+      setTimeout(() => {
+        if (!handled) { handled = true; openGoogleOAuthPopup(); }
+      }, 1000);
+    }
+
+    function openGoogleOAuthPopup() {
+      // Use Google OAuth 2.0 popup flow as reliable fallback
+      const clientId = authConfig.googleClientId;
+      const redirectUri = window.location.origin + '/api/auth/google/callback';
+      const scope = 'openid email profile';
+      const state = 'waitlist_' + Math.random().toString(36).slice(2);
+      sessionStorage.setItem('google_oauth_state', state);
+      const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+        client_id: clientId, redirect_uri: redirectUri, response_type: 'code',
+        scope, state, prompt: 'select_account'
+      }).toString();
+      const w = 500, h = 600;
+      const left = (screen.width - w) / 2, top = (screen.height - h) / 2;
+      const popup = window.open(authUrl, 'google_signin', `width=${w},height=${h},left=${left},top=${top}`);
+      if (!popup) { errorEl.textContent = 'Please allow popups for Google sign-in.'; return; }
+      // Listen for the callback to post a message back
+      window.addEventListener('message', function onMsg(e) {
+        if (e.origin !== window.location.origin) return;
+        if (e.data?.type === 'google-oauth-callback') {
+          window.removeEventListener('message', onMsg);
+          if (e.data.error) { errorEl.textContent = e.data.error; return; }
+          if (e.data.user) {
+            trackEvent('oauth_google');
+            signupViaOAuth(e.data.user.email);
+          }
+        }
+      });
     }
 
     async function handleWlGoogleCredential(response) {
@@ -1283,7 +1331,7 @@
       }
       try {
         const msalInstance = new msal.PublicClientApplication({
-          auth: { clientId, redirectUri: window.location.origin }
+          auth: { clientId, authority: 'https://login.microsoftonline.com/consumers', redirectUri: window.location.origin }
         });
         await msalInstance.initialize();
         const loginResponse = await msalInstance.loginPopup({ scopes: ['User.Read'] });

@@ -3702,7 +3702,7 @@
       if (!clientId || !window.msal) return showAuthError('Microsoft sign-in not configured');
       try {
         const msalInstance = new msal.PublicClientApplication({
-          auth: { clientId, redirectUri: window.location.origin }
+          auth: { clientId, authority: 'https://login.microsoftonline.com/consumers', redirectUri: window.location.origin }
         });
         await msalInstance.initialize();
         const loginResponse = await msalInstance.loginPopup({ scopes: ['User.Read'] });
