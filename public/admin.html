@@ -22,24 +22,23 @@
       padding: 40px 20px 20px;
       border-bottom: 1px solid #1a1814;
     }
-    .admin-title {
-      font-size: 28px;
-      font-weight: normal;
-      color: #c8b88a;
-      letter-spacing: 2px;
-    }
-    .admin-subtitle {
-      font-size: 13px;
-      color: #4a4030;
-      margin-top: 8px;
-      font-style: italic;
-    }
-    .admin-refresh-info {
-      font-size: 11px;
-      color: #3a3528;
-      margin-top: 12px;
-    }
+    .admin-title { font-size: 28px; font-weight: normal; color: #c8b88a; letter-spacing: 2px; }
+    .admin-subtitle { font-size: 13px; color: #4a4030; margin-top: 8px; font-style: italic; }
+    .admin-refresh-info { font-size: 11px; color: #3a3528; margin-top: 12px; }
     .admin-refresh-info span { color: #5a5038; }
+
+    /* Budget alert banner */
+    .alert-banner {
+      background: rgba(122, 74, 74, 0.15);
+      border: 1px solid rgba(154, 90, 90, 0.3);
+      color: #c87a7a;
+      padding: 12px 20px;
+      font-size: 13px;
+      text-align: center;
+      display: none;
+    }
+    .alert-banner.active { display: block; }
+    .alert-banner.warning { background: rgba(138, 125, 85, 0.15); border-color: rgba(184, 168, 106, 0.3); color: #c8b06a; }
 
     .admin-grid {
       max-width: 1200px;
@@ -56,6 +55,7 @@
       border-radius: 8px;
       padding: 24px;
       transition: border-color 0.3s;
+      overflow: hidden;
     }
     .card:hover { border-color: #2a2520; }
     .card-full { grid-column: 1 / -1; }
@@ -70,98 +70,75 @@
       border-bottom: 1px solid #1a1814;
     }
 
-    .stat-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 24px;
-      margin-bottom: 16px;
-    }
+    .stat-row { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 16px; }
     .stat-row:last-child { margin-bottom: 0; }
-
-    .stat {
-      flex: 1;
-      min-width: 100px;
-    }
-    .stat-value {
-      font-size: 32px;
-      color: #c8b88a;
-      line-height: 1.2;
-    }
+    .stat { flex: 1; min-width: 100px; }
+    .stat-value { font-size: 32px; color: #c8b88a; line-height: 1.2; }
     .stat-value.accent { color: #8a7d55; }
     .stat-value.success { color: #5a7a4a; }
     .stat-value.danger { color: #7a4a4a; }
     .stat-value.small { font-size: 20px; }
-    .stat-label {
-      font-size: 12px;
-      color: #4a4030;
-      margin-top: 4px;
-    }
+    .stat-label { font-size: 12px; color: #4a4030; margin-top: 4px; }
 
-    /* CSS-only bar chart */
     .bar-group { margin-top: 16px; }
-    .bar-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-    .bar-label {
-      font-size: 12px;
-      color: #6a6050;
-      min-width: 80px;
-      text-align: right;
-    }
-    .bar-track {
-      flex: 1;
-      height: 18px;
-      background: #141210;
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #3a3528, #5a5038);
-      border-radius: 3px;
-      transition: width 0.6s ease;
-      min-width: 2px;
-    }
-    .bar-count {
-      font-size: 12px;
-      color: #5a5038;
-      min-width: 36px;
-    }
+    .bar-item { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .bar-label { font-size: 12px; color: #6a6050; min-width: 80px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-track { flex: 1; height: 18px; background: #141210; border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; background: linear-gradient(90deg, #3a3528, #5a5038); border-radius: 3px; transition: width 0.6s ease; min-width: 2px; }
+    .bar-count { font-size: 12px; color: #5a5038; min-width: 36px; }
 
-    /* Progress ring for success rates */
-    .rate-ring {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .rate-ring-circle {
-      width: 48px; height: 48px;
-      border-radius: 50%;
-      border: 3px solid #1a1814;
+    /* Provider cards */
+    .provider-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+    .provider-card {
+      background: #121110;
+      border: 1px solid #1a1814;
+      border-radius: 6px;
+      padding: 14px;
       position: relative;
-      overflow: hidden;
     }
-    .rate-ring-fill {
+    .provider-card.active-provider { border-color: #5a7a4a; }
+    .provider-card.not-configured { opacity: 0.4; }
+    .provider-name { font-size: 14px; color: #c8b88a; margin-bottom: 6px; font-weight: bold; }
+    .provider-badge {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: #3a3528;
-      transition: height 0.6s ease;
+      top: 8px; right: 8px;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 2px 6px;
+      border-radius: 3px;
     }
-    .rate-ring-text {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .provider-badge.active { background: rgba(90, 122, 74, 0.3); color: #6a9a5a; }
+    .provider-badge.configured { background: rgba(138, 125, 85, 0.2); color: #8a7d55; }
+    .provider-badge.off { background: rgba(80, 70, 60, 0.2); color: #4a4030; }
+    .provider-detail { font-size: 11px; color: #5a5038; margin-top: 3px; }
+
+    /* Visitor feed */
+    .visitor-feed { max-height: 400px; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none; }
+    .visitor-feed::-webkit-scrollbar { display: none; }
+    .visitor-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid #0f0e0c;
       font-size: 12px;
-      color: #c8b88a;
-      z-index: 1;
     }
+    .visitor-item:last-child { border-bottom: none; }
+    .visitor-dot { width: 6px; height: 6px; border-radius: 50%; background: #3a3528; flex-shrink: 0; }
+    .visitor-dot.recent { background: #5a7a4a; animation: pulse-anim 2s ease-in-out infinite; }
+    .visitor-page { color: #8a7d55; min-width: 60px; }
+    .visitor-geo { color: #5a5038; flex: 1; }
+    .visitor-time { color: #3a3528; white-space: nowrap; }
+    .visitor-device { color: #4a4030; font-size: 11px; }
+
+    /* Usage progress bars */
+    .usage-bar-wrap { margin-bottom: 12px; }
+    .usage-bar-header { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+    .usage-bar-label { color: #6a6050; }
+    .usage-bar-value { color: #8a8070; }
+    .usage-bar-track { height: 10px; background: #141210; border-radius: 5px; overflow: hidden; }
+    .usage-bar-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
+    .usage-bar-fill.green { background: linear-gradient(90deg, #2a4a28, #3a6a3a); }
+    .usage-bar-fill.yellow { background: linear-gradient(90deg, #5a4a28, #7a6a3a); }
+    .usage-bar-fill.red { background: linear-gradient(90deg, #5a2828, #7a3a3a); }
 
     /* Data table */
     .data-table-wrap {
@@ -171,124 +148,54 @@
       scrollbar-width: none;
     }
     .data-table-wrap::-webkit-scrollbar { display: none; }
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
     .data-table th {
-      text-align: left;
-      padding: 8px 12px;
-      color: #5a5038;
-      font-weight: normal;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      border-bottom: 1px solid #1a1814;
-      cursor: pointer;
-      user-select: none;
-      white-space: nowrap;
+      text-align: left; padding: 8px 12px; color: #5a5038; font-weight: normal;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+      border-bottom: 1px solid #1a1814; cursor: pointer; user-select: none; white-space: nowrap;
     }
     .data-table th:hover { color: #8a7d55; }
     .data-table td {
-      padding: 8px 12px;
-      border-bottom: 1px solid #0f0e0c;
-      color: #8a8070;
-      white-space: nowrap;
+      padding: 8px 12px; border-bottom: 1px solid #0f0e0c; color: #8a8070;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .data-table tr:hover td { background: #121110; }
 
-    .tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 11px;
-    }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
     .tag-ready { background: rgba(90, 122, 74, 0.2); color: #6a9a5a; }
     .tag-generating { background: rgba(138, 125, 85, 0.2); color: #b8a86a; }
     .tag-failed { background: rgba(122, 74, 74, 0.2); color: #9a5a5a; }
     .tag-yes { background: rgba(90, 122, 74, 0.15); color: #6a9a5a; }
     .tag-no { background: rgba(122, 74, 74, 0.15); color: #7a5a5a; }
 
-    /* Search input */
     .search-input {
-      width: 100%;
-      background: #141210;
-      border: 1px solid #1a1814;
-      border-radius: 4px;
-      padding: 8px 12px;
-      color: #c8b88a;
-      font-family: Georgia, serif;
-      font-size: 13px;
-      outline: none;
-      margin-bottom: 12px;
-      transition: border-color 0.3s;
+      width: 100%; background: #141210; border: 1px solid #1a1814; border-radius: 4px;
+      padding: 8px 12px; color: #c8b88a; font-family: Georgia, serif; font-size: 13px;
+      outline: none; margin-bottom: 12px; transition: border-color 0.3s;
     }
     .search-input::placeholder { color: #3a3528; }
     .search-input:focus { border-color: #3a3528; }
 
-    /* Export button */
     .btn-export {
-      background: rgba(180, 160, 100, 0.06);
-      border: 1px solid #1a1814;
-      border-radius: 4px;
-      color: #5a5038;
-      font-family: Georgia, serif;
-      font-size: 12px;
-      padding: 6px 14px;
-      cursor: pointer;
-      transition: background 0.3s, border-color 0.3s, color 0.3s;
-      float: right;
-      margin-top: -6px;
+      background: rgba(180, 160, 100, 0.06); border: 1px solid #1a1814; border-radius: 4px;
+      color: #5a5038; font-family: Georgia, serif; font-size: 12px; padding: 6px 14px;
+      cursor: pointer; transition: background 0.3s, border-color 0.3s, color 0.3s;
+      float: right; margin-top: -6px;
     }
-    .btn-export:hover {
-      background: rgba(180, 160, 100, 0.12);
-      border-color: #2a2520;
-      color: #8a7d55;
-    }
+    .btn-export:hover { background: rgba(180, 160, 100, 0.12); border-color: #2a2520; color: #8a7d55; }
 
-    /* System info inline */
-    .sys-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 0;
-      border-bottom: 1px solid #0f0e0c;
-    }
+    .sys-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #0f0e0c; }
     .sys-row:last-child { border-bottom: none; }
     .sys-label { font-size: 13px; color: #5a5038; }
     .sys-value { font-size: 13px; color: #8a8070; }
 
-    /* Pulse dot for "live" indicators */
-    .pulse {
-      display: inline-block;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #5a7a4a;
-      margin-right: 6px;
-      animation: pulse-anim 2s ease-in-out infinite;
-    }
+    .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #5a7a4a; margin-right: 6px; animation: pulse-anim 2s ease-in-out infinite; }
     .pulse.warn { background: #8a7d55; }
-    @keyframes pulse-anim {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
+    .pulse.danger { background: #7a4a4a; }
+    @keyframes pulse-anim { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-    /* Loading state */
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: #3a3528;
-      font-style: italic;
-    }
-
-    /* Empty state */
-    .empty-state {
-      text-align: center;
-      padding: 20px;
-      color: #2a2520;
-      font-style: italic;
-      font-size: 13px;
-    }
+    .loading { text-align: center; padding: 40px; color: #3a3528; font-style: italic; }
+    .empty-state { text-align: center; padding: 20px; color: #2a2520; font-style: italic; font-size: 13px; }
 
     @media (max-width: 720px) {
       .admin-grid { grid-template-columns: 1fr; padding: 16px 12px 40px; }
@@ -296,10 +203,13 @@
       .stat-value { font-size: 24px; }
       .stat-row { gap: 16px; }
       .card-full { grid-column: 1; }
+      .provider-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
+
+  <div id="alertBanner" class="alert-banner"></div>
 
   <div class="admin-header">
     <div class="admin-title">The Great Library -- Admin</div>
@@ -320,48 +230,33 @@
   let waitlistData = null;
   let ebooksData = null;
   let accountsData = null;
-  let sortState = {}; // table -> { col, asc }
+  let usageData = null;
+  let sortState = {};
 
   async function fetchAll() {
     try {
-      const [mRes, wRes, eRes, aRes] = await Promise.all([
+      const [mRes, wRes, eRes, aRes, uRes] = await Promise.all([
         fetch('/api/admin/metrics'),
         fetch('/api/admin/waitlist'),
         fetch('/api/admin/ebooks'),
-        fetch('/api/admin/accounts')
+        fetch('/api/admin/accounts'),
+        fetch('/api/admin/usage')
       ]);
+      // If any returns 403, redirect to home
+      if (mRes.status === 403 || wRes.status === 403) {
+        window.location.href = '/';
+        return;
+      }
       metricsData = await mRes.json();
       waitlistData = await wRes.json();
       ebooksData = await eRes.json();
       accountsData = await aRes.json();
+      usageData = await uRes.json();
       render();
       $('#lastRefresh').textContent = new Date().toLocaleTimeString();
     } catch (err) {
       console.error('Dashboard fetch failed:', err);
     }
-  }
-
-  function renderAccountsOverview(a) {
-    if (!a || !a.accounts) return '';
-    const members = a.accounts.filter(x => x.membershipStatus === 'member').length;
-    const withGoogle = a.accounts.filter(x => x.providers?.includes('google')).length;
-    const withMs = a.accounts.filter(x => x.providers?.includes('microsoft')).length;
-    const withEmail = a.accounts.filter(x => x.providers?.includes('email')).length;
-    const withWaitlist = a.accounts.filter(x => x.waitlistLinked).length;
-    const totalTomes = a.accounts.reduce((s, x) => s + (x.tomesCount || 0), 0);
-    return `<div class="card">
-      <h3>Accounts</h3>
-      <div class="stat-row"><span>Total accounts</span><span class="stat-val">${a.total}</span></div>
-      <div class="stat-row"><span>Members ($49)</span><span class="stat-val">${members}</span></div>
-      <div class="stat-row"><span>Google sign-in</span><span class="stat-val">${withGoogle}</span></div>
-      <div class="stat-row"><span>Microsoft sign-in</span><span class="stat-val">${withMs}</span></div>
-      <div class="stat-row"><span>Email accounts</span><span class="stat-val">${withEmail}</span></div>
-      <div class="stat-row"><span>Waitlist-linked</span><span class="stat-val">${withWaitlist}</span></div>
-      <div class="stat-row"><span>Total tomes (all users)</span><span class="stat-val">${totalTomes}</span></div>
-      ${a.accounts.length > 0 ? `<table class="data-table" style="margin-top:12px;"><thead><tr><th>Email</th><th>Provider</th><th>Tomes</th><th>Joined</th></tr></thead><tbody>
-      ${a.accounts.slice(0, 50).map(u => `<tr><td>${u.email}</td><td>${(u.providers||[]).join(', ')}</td><td>${u.tomesCount||0}</td><td>${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-'}</td></tr>`).join('')}
-      </tbody></table>` : ''}
-    </div>`;
   }
 
   function render() {
@@ -370,17 +265,21 @@
     const w = waitlistData;
     const e = ebooksData;
     const a = accountsData;
+    const u = usageData;
     const grid = $('#dashboard');
+
+    renderAlertBanner(u);
 
     grid.innerHTML = `
       ${renderWaitlistOverview(w, d)}
       ${renderEbookOverview(e)}
       ${renderAccountsOverview(a)}
-      ${renderApiUsage(d)}
-      ${renderOpenRouterCosts(d)}
-      ${renderLlmUsage(d)}
+      ${renderProviders(d)}
+      ${renderLlmUsage(u, d)}
       ${renderSystem(d)}
       ${renderTraffic(d)}
+      ${renderVisitorFeed(d)}
+      ${renderApiUsage(d)}
       ${renderCoverStats(d)}
       ${renderSurveyInsights(w)}
       ${renderWaitlistTable(w)}
@@ -392,43 +291,37 @@
     bindExport();
   }
 
+  // --- Alert Banner ---
+
+  function renderAlertBanner(u) {
+    const banner = $('#alertBanner');
+    if (!u || !u.alerts || u.alerts.length === 0) {
+      banner.classList.remove('active');
+      return;
+    }
+    const latest = u.alerts[u.alerts.length - 1];
+    banner.textContent = latest.message;
+    banner.className = 'alert-banner active ' + (latest.level === 'critical' ? '' : 'warning');
+  }
+
   // --- Card renderers ---
 
   function renderWaitlistOverview(w, d) {
     const convRate = d.pageVisits.waitlist > 0
       ? Math.round(w.total / d.pageVisits.waitlist * 100) : 0;
     const surveyRate = w.surveyStats.completionRate;
-
     return `
     <div class="card">
       <div class="card-title">Waitlist</div>
       <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value">${w.total}</div>
-          <div class="stat-label">Total signups</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value accent">${w.rate.today}</div>
-          <div class="stat-label">Today</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value accent">${w.rate.thisWeek}</div>
-          <div class="stat-label">This week</div>
-        </div>
+        <div class="stat"><div class="stat-value">${w.total}</div><div class="stat-label">Total signups</div></div>
+        <div class="stat"><div class="stat-value accent">${w.rate.today}</div><div class="stat-label">Today</div></div>
+        <div class="stat"><div class="stat-value accent">${w.rate.thisWeek}</div><div class="stat-label">This week</div></div>
       </div>
       <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value small">${convRate}%</div>
-          <div class="stat-label">Visit-to-signup rate</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value small">${surveyRate}%</div>
-          <div class="stat-label">Survey completion</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value small">${w.surveyStats.completed}</div>
-          <div class="stat-label">Surveys done</div>
-        </div>
+        <div class="stat"><div class="stat-value small">${convRate}%</div><div class="stat-label">Visit-to-signup rate</div></div>
+        <div class="stat"><div class="stat-value small">${surveyRate}%</div><div class="stat-label">Survey completion</div></div>
+        <div class="stat"><div class="stat-value small">${w.surveyStats.completed}</div><div class="stat-label">Surveys done</div></div>
       </div>
     </div>`;
   }
@@ -438,33 +331,178 @@
     <div class="card">
       <div class="card-title">Ebook Generation</div>
       <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value">${e.completed}</div>
-          <div class="stat-label">Completed</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value${e.active > 0 ? ' accent' : ''}">${e.active}</div>
-          <div class="stat-label">${e.active > 0 ? '<span class="pulse warn"></span>' : ''}In progress</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value danger">${e.failed}</div>
-          <div class="stat-label">Failed</div>
-        </div>
+        <div class="stat"><div class="stat-value">${e.completed}</div><div class="stat-label">Completed</div></div>
+        <div class="stat"><div class="stat-value${e.active > 0 ? ' accent' : ''}">${e.active}</div><div class="stat-label">${e.active > 0 ? '<span class="pulse warn"></span>' : ''}In progress</div></div>
+        <div class="stat"><div class="stat-value danger">${e.failed}</div><div class="stat-label">Failed</div></div>
       </div>
       <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value small">${e.avgDurationSeconds}s</div>
-          <div class="stat-label">Avg generation time</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value small">${e.successRate}%</div>
-          <div class="stat-label">Success rate</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value small">${e.total}</div>
-          <div class="stat-label">Total attempts</div>
-        </div>
+        <div class="stat"><div class="stat-value small">${e.avgDurationSeconds}s</div><div class="stat-label">Avg generation time</div></div>
+        <div class="stat"><div class="stat-value small">${e.successRate}%</div><div class="stat-label">Success rate</div></div>
+        <div class="stat"><div class="stat-value small">${e.total}</div><div class="stat-label">Total attempts</div></div>
       </div>
+    </div>`;
+  }
+
+  function renderAccountsOverview(a) {
+    if (!a || !a.accounts) return '';
+    const members = a.accounts.filter(x => x.membershipStatus === 'member').length;
+    const withGoogle = a.accounts.filter(x => x.providers?.includes('google')).length;
+    const withMs = a.accounts.filter(x => x.providers?.includes('microsoft')).length;
+    const withEmail = a.accounts.filter(x => x.providers?.includes('email')).length;
+    const withWaitlist = a.accounts.filter(x => x.waitlistLinked).length;
+    const totalTomes = a.accounts.reduce((s, x) => s + (x.tomesCount || 0), 0);
+    const rows = a.accounts.slice(0, 50).map(u => `<tr>
+      <td title="${escHtml(u.email)}">${escHtml(u.email)}</td>
+      <td>${(u.providers||[]).join(', ')}</td>
+      <td>${u.tomesCount||0}</td>
+      <td>${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-'}</td>
+    </tr>`).join('');
+    return `<div class="card card-full">
+      <div class="card-title">Accounts (${a.total})</div>
+      <div class="stat-row">
+        <div class="stat"><div class="stat-value">${a.total}</div><div class="stat-label">Total</div></div>
+        <div class="stat"><div class="stat-value accent">${members}</div><div class="stat-label">Members ($49)</div></div>
+        <div class="stat"><div class="stat-value small">${withGoogle}</div><div class="stat-label">Google</div></div>
+        <div class="stat"><div class="stat-value small">${withMs}</div><div class="stat-label">Microsoft</div></div>
+        <div class="stat"><div class="stat-value small">${withEmail}</div><div class="stat-label">Email</div></div>
+        <div class="stat"><div class="stat-value small">${withWaitlist}</div><div class="stat-label">Waitlist-linked</div></div>
+        <div class="stat"><div class="stat-value small">${totalTomes}</div><div class="stat-label">Total tomes</div></div>
+      </div>
+      ${a.accounts.length > 0 ? `<div class="data-table-wrap"><table class="data-table" style="table-layout:fixed;">
+        <colgroup><col style="width:40%"><col style="width:20%"><col style="width:15%"><col style="width:25%"></colgroup>
+        <thead><tr><th>Email</th><th>Provider</th><th>Tomes</th><th>Joined</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>` : ''}
+    </div>`;
+  }
+
+  // --- Providers ---
+
+  function renderProviders(d) {
+    const p = d.providers || {};
+    function providerCard(name, label, info) {
+      if (!info) return '';
+      const statusClass = info.active ? 'active-provider' : (info.configured ? '' : 'not-configured');
+      const badge = info.active ? '<span class="provider-badge active">ACTIVE</span>' :
+                    info.configured ? '<span class="provider-badge configured">Ready</span>' :
+                    '<span class="provider-badge off">Not configured</span>';
+      return `<div class="provider-card ${statusClass}">
+        ${badge}
+        <div class="provider-name">${label}</div>
+        <div class="provider-detail">Model: ${escHtml(info.model)}</div>
+        <div class="provider-detail">Auth: ${info.auth}</div>
+        ${info.budget ? `<div class="provider-detail">Budget: ${info.budget}</div>` : ''}
+        ${info.limits ? `<div class="provider-detail">${info.limits.rpm ? info.limits.rpm + ' RPM' : ''}${info.limits.tpm ? ' / ' + fmtNum(info.limits.tpm) + ' TPM' : ''}${info.limits.tpd ? ' / ' + fmtNum(info.limits.tpd) + ' TPD' : ''}</div>` : ''}
+      </div>`;
+    }
+    return `
+    <div class="card card-full">
+      <div class="card-title"><span class="pulse"></span>LLM Providers</div>
+      <div class="provider-grid">
+        ${providerCard('gemini', 'Gemini', p.gemini)}
+        ${providerCard('openai', 'OpenAI', p.openai)}
+        ${providerCard('openrouter', 'OpenRouter', p.openrouter)}
+      </div>
+    </div>`;
+  }
+
+  // --- LLM Usage ---
+
+  function renderLlmUsage(u, d) {
+    if (!u) return '';
+    const today = u.today || {};
+    const allTime = u.allTime || {};
+
+    let todayBars = '';
+    const providerConfigs = {
+      gemini: { label: 'Gemini', tokenLimit: 1000000 },
+      openai: { label: 'OpenAI', tokenLimit: 2500000 },
+      openrouter: { label: 'OpenRouter', tokenLimit: null }
+    };
+
+    for (const [prov, config] of Object.entries(providerConfigs)) {
+      const usage = today[prov];
+      if (!usage && !allTime[prov]) continue;
+      const calls = usage ? usage.calls : 0;
+      const tokens = usage ? usage.tokens : 0;
+      const errors = usage ? usage.errors : 0;
+      const avgLatency = usage && usage.calls > 0 ? Math.round(usage.latencyMs / usage.calls) : 0;
+      const atCalls = allTime[prov] ? allTime[prov].calls : 0;
+      const atTokens = allTime[prov] ? allTime[prov].tokens : 0;
+      const atErrors = allTime[prov] ? allTime[prov].errors : 0;
+
+      let tokenBar = '';
+      if (config.tokenLimit) {
+        const pct = Math.min(100, Math.round(tokens / config.tokenLimit * 100));
+        const barColor = pct > 90 ? 'red' : pct > 70 ? 'yellow' : 'green';
+        tokenBar = `
+          <div class="usage-bar-wrap">
+            <div class="usage-bar-header">
+              <span class="usage-bar-label">Tokens today</span>
+              <span class="usage-bar-value">${fmtNum(tokens)} / ${fmtNum(config.tokenLimit)}</span>
+            </div>
+            <div class="usage-bar-track"><div class="usage-bar-fill ${barColor}" style="width:${pct}%"></div></div>
+          </div>`;
+      }
+
+      todayBars += `
+        <div style="margin-bottom:16px;">
+          <div style="color:#8a7d55;font-size:13px;font-weight:bold;margin-bottom:8px;">${config.label}</div>
+          <div class="stat-row" style="margin-bottom:8px;">
+            <div class="stat"><div class="stat-value small">${calls}</div><div class="stat-label">Calls today</div></div>
+            <div class="stat"><div class="stat-value small">${fmtNum(tokens)}</div><div class="stat-label">Tokens today</div></div>
+            <div class="stat"><div class="stat-value small${errors > 0 ? ' danger' : ''}">${errors}</div><div class="stat-label">Errors today</div></div>
+            <div class="stat"><div class="stat-value small">${avgLatency}ms</div><div class="stat-label">Avg latency</div></div>
+          </div>
+          ${tokenBar}
+          <div style="font-size:11px;color:#3a3528;margin-top:4px;">All time: ${fmtNum(atCalls)} calls, ${fmtNum(atTokens)} tokens, ${atErrors} errors</div>
+        </div>`;
+    }
+
+    // 7-day chart
+    const last7 = (u.last7Days || []).reverse();
+    let chartHtml = '';
+    if (last7.length > 0) {
+      const maxCalls = Math.max(...last7.map(dy => {
+        let total = 0;
+        for (const p of Object.values(dy.usage || {})) total += p.calls || 0;
+        return total;
+      }), 1);
+      chartHtml = `<div style="margin-top:16px;">
+        <div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Last 7 Days (API Calls)</div>
+        ${last7.map(day => {
+          let total = 0;
+          for (const p of Object.values(day.usage || {})) total += p.calls || 0;
+          const pct = Math.round(total / maxCalls * 100);
+          const label = day.date.slice(5);
+          return `<div class="bar-item">
+            <div class="bar-label" style="min-width:50px">${label}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+            <div class="bar-count">${total}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    // Budget alerts
+    let alertsHtml = '';
+    if (u.alerts && u.alerts.length > 0) {
+      alertsHtml = `<div style="margin-top:16px;">
+        <div style="color:#7a4a4a;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Budget Alerts</div>
+        ${u.alerts.slice(-5).reverse().map(a => `
+          <div style="font-size:12px;color:${a.level === 'critical' ? '#9a5a5a' : '#b8a86a'};padding:4px 0;border-bottom:1px solid #0f0e0c;">
+            ${formatTime(a.timestamp)} -- ${escHtml(a.message)}
+          </div>
+        `).join('')}
+      </div>`;
+    }
+
+    return `
+    <div class="card card-full">
+      <div class="card-title">LLM Usage & Budget</div>
+      ${todayBars || '<div class="empty-state">No LLM calls tracked yet.</div>'}
+      ${chartHtml}
+      ${alertsHtml}
     </div>`;
   }
 
@@ -472,189 +510,30 @@
     const calls = d.apiCalls;
     const total = Object.values(calls).reduce((s, v) => s + v, 0);
     const maxCall = Math.max(...Object.values(calls), 1);
-
-    const bars = Object.entries(calls)
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, count]) => `
-        <div class="bar-item">
-          <div class="bar-label">${name}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / maxCall * 100)}%"></div></div>
-          <div class="bar-count">${count}</div>
-        </div>
-      `).join('');
-
+    const bars = Object.entries(calls).sort((a, b) => b[1] - a[1]).map(([name, count]) => `
+      <div class="bar-item">
+        <div class="bar-label">${name}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / maxCall * 100)}%"></div></div>
+        <div class="bar-count">${count}</div>
+      </div>
+    `).join('');
     return `
     <div class="card">
       <div class="card-title">API Calls</div>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value">${total}</div>
-          <div class="stat-label">Total API calls</div>
-        </div>
-      </div>
+      <div class="stat-row"><div class="stat"><div class="stat-value">${total}</div><div class="stat-label">Total API calls</div></div></div>
       <div class="bar-group">${bars}</div>
     </div>`;
-  }
-
-  function renderOpenRouterCosts(d) {
-    const or = d.openRouterCosts;
-    if (!or) return '';
-    const prov = d.providers?.openrouter;
-    const remaining = or.creditsRemaining;
-    const pct = or.creditsStarting > 0 ? Math.round(remaining / or.creditsStarting * 100) : 0;
-    const barColor = pct > 50 ? '#5a7a4a' : pct > 20 ? '#8a7d55' : '#7a4a4a';
-    const estReq = or.estimatedRequestsRemaining === 'unlimited' ? '--' : or.estimatedRequestsRemaining.toLocaleString();
-
-    return `
-    <div class="card">
-      <div class="card-title">OpenRouter Credits</div>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value${pct <= 20 ? ' danger' : ''}">\$${remaining.toFixed(2)}</div>
-          <div class="stat-label">Credits remaining</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value accent small">\$${or.creditsSpent.toFixed(4)}</div>
-          <div class="stat-label">Total spent</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value small">\$${or.creditsStarting.toFixed(2)}</div>
-          <div class="stat-label">Starting credits</div>
-        </div>
-      </div>
-      <div style="margin:12px 0 8px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#5a5038;margin-bottom:4px">
-          <span>Credits used</span><span>${100 - pct}%</span>
-        </div>
-        <div class="bar-track" style="height:12px">
-          <div class="bar-fill" style="width:${pct}%;background:${barColor}"></div>
-        </div>
-      </div>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value small">\$${or.avgCostPerRequest.toFixed(4)}</div>
-          <div class="stat-label">Avg cost / request</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value small">${estReq}</div>
-          <div class="stat-label">Est. requests left</div>
-        </div>
-      </div>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value small">${formatTokens(or.allTime.inputTokens)}</div>
-          <div class="stat-label">Input tokens (all time)</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value small">${formatTokens(or.allTime.outputTokens)}</div>
-          <div class="stat-label">Output tokens (all time)</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value small">${or.allTime.calls}</div>
-          <div class="stat-label">Total requests</div>
-        </div>
-      </div>
-      ${or.today.calls > 0 ? `
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1a1814">
-        <div style="color:#5a5038;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Today</div>
-        <div class="stat-row">
-          <div class="stat">
-            <div class="stat-value small">${or.today.calls}</div>
-            <div class="stat-label">Requests</div>
-          </div>
-          <div class="stat">
-            <div class="stat-value small">\$${or.today.cost.toFixed(4)}</div>
-            <div class="stat-label">Cost</div>
-          </div>
-          <div class="stat">
-            <div class="stat-value small">${formatTokens(or.today.inputTokens)} / ${formatTokens(or.today.outputTokens)}</div>
-            <div class="stat-label">In / Out tokens</div>
-          </div>
-        </div>
-      </div>` : ''}
-      ${prov?.modelInfo ? `
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1a1814">
-        <div class="sys-row"><span class="sys-label">Model</span><span class="sys-value">${prov.model}</span></div>
-        <div class="sys-row"><span class="sys-label">Provider</span><span class="sys-value">${prov.modelInfo.provider}</span></div>
-        <div class="sys-row"><span class="sys-label">Context</span><span class="sys-value">${(prov.modelInfo.context / 1024).toFixed(0)}K</span></div>
-        <div class="sys-row"><span class="sys-label">Pricing</span><span class="sys-value">\$${prov.pricing.inputPerMillion}/M in, \$${prov.pricing.outputPerMillion}/M out</span></div>
-        <div class="sys-row"><span class="sys-label">Latency</span><span class="sys-value">${prov.modelInfo.latency}</span></div>
-        <div class="sys-row"><span class="sys-label">Throughput</span><span class="sys-value">${prov.modelInfo.throughput}</span></div>
-      </div>` : ''}
-    </div>`;
-  }
-
-  function renderLlmUsage(d) {
-    const usage = d.llmUsage;
-    if (!usage || !usage.allTime || Object.keys(usage.allTime).length === 0) {
-      return `
-      <div class="card">
-        <div class="card-title">LLM Usage (All Providers)</div>
-        <div class="empty-state">No LLM calls tracked yet.</div>
-      </div>`;
-    }
-
-    const providers = Object.entries(usage.allTime).sort((a, b) => b[1].calls - a[1].calls);
-    const maxCalls = providers.length > 0 ? providers[0][1].calls : 1;
-
-    const providerRows = providers.map(([name, data]) => {
-      const avgLatency = data.calls > 0 ? Math.round(data.totalLatencyMs / data.calls) : 0;
-      const errorRate = data.calls > 0 ? Math.round(data.errors / data.calls * 100) : 0;
-      return `
-      <div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #0f0e0c">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="color:#c8b88a;font-size:14px">${name}</span>
-          <span style="color:#5a5038;font-size:12px">${data.calls} calls</span>
-        </div>
-        <div class="bar-track" style="height:8px;margin-bottom:8px">
-          <div class="bar-fill" style="width:${Math.round(data.calls / maxCalls * 100)}%"></div>
-        </div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap">
-          <span style="font-size:11px;color:#4a4030">In: <span style="color:#6a6050">${formatTokens(data.inputTokens || 0)}</span></span>
-          <span style="font-size:11px;color:#4a4030">Out: <span style="color:#6a6050">${formatTokens(data.outputTokens || 0)}</span></span>
-          <span style="font-size:11px;color:#4a4030">Total: <span style="color:#6a6050">${formatTokens(data.tokens || 0)}</span></span>
-          <span style="font-size:11px;color:#4a4030">Avg latency: <span style="color:#6a6050">${avgLatency}ms</span></span>
-          <span style="font-size:11px;color:${errorRate > 10 ? '#7a4a4a' : '#4a4030'}">Errors: <span style="color:${errorRate > 10 ? '#9a5a5a' : '#6a6050'}">${data.errors} (${errorRate}%)</span></span>
-        </div>
-      </div>`;
-    }).join('');
-
-    // Budget alerts
-    const alerts = (d.budgetAlerts || []).slice(-5).reverse();
-    const alertHtml = alerts.length > 0 ? `
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1a1814">
-        <div style="color:#5a5038;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Recent Alerts</div>
-        ${alerts.map(a => `
-          <div style="font-size:12px;padding:4px 0;color:${a.level === 'critical' ? '#9a5a5a' : '#8a7d55'}">
-            ${formatTime(a.timestamp)} -- ${escHtml(a.message)}
-          </div>`).join('')}
-      </div>` : '';
-
-    return `
-    <div class="card">
-      <div class="card-title">LLM Usage (All Providers)</div>
-      ${providerRows}
-      ${alertHtml}
-    </div>`;
-  }
-
-  function formatTokens(n) {
-    if (!n || n === 0) return '0';
-    if (n >= 1000000) return (n / 1000000).toFixed(2) + 'M';
-    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-    return n.toString();
   }
 
   function renderSystem(d) {
     const sys = d.system;
     const mem = sys.memoryMB;
-
     return `
     <div class="card">
       <div class="card-title"><span class="pulse"></span>System</div>
       <div class="sys-row"><span class="sys-label">Uptime</span><span class="sys-value">${sys.uptimeHuman}</span></div>
-      <div class="sys-row"><span class="sys-label">Provider</span><span class="sys-value">${sys.activeProvider}</span></div>
-      <div class="sys-row"><span class="sys-label">Model</span><span class="sys-value">${sys.activeModel}</span></div>
+      <div class="sys-row"><span class="sys-label">Active provider</span><span class="sys-value">${sys.activeProvider}</span></div>
+      <div class="sys-row"><span class="sys-label">Active model</span><span class="sys-value">${sys.activeModel}</span></div>
       <div class="sys-row"><span class="sys-label">Active sessions</span><span class="sys-value">${sys.activeSessions}</span></div>
       <div class="sys-row"><span class="sys-label">Memory (RSS)</span><span class="sys-value">${mem.rss} MB</span></div>
       <div class="sys-row"><span class="sys-label">Heap</span><span class="sys-value">${mem.heapUsed} / ${mem.heapTotal} MB</span></div>
@@ -670,42 +549,72 @@
     <div class="card">
       <div class="card-title">Traffic & Errors</div>
       <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value">${d.pageVisits.waitlist}</div>
-          <div class="stat-label">Waitlist visits</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value">${d.pageVisits.library}</div>
-          <div class="stat-label">Library visits</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value">${d.uniqueVisitors}</div>
-          <div class="stat-label">Unique IPs</div>
-        </div>
+        <div class="stat"><div class="stat-value">${d.pageVisits.waitlist}</div><div class="stat-label">Waitlist visits</div></div>
+        <div class="stat"><div class="stat-value">${d.pageVisits.library}</div><div class="stat-label">Library visits</div></div>
+        <div class="stat"><div class="stat-value">${d.uniqueVisitors}</div><div class="stat-label">Unique IPs</div></div>
       </div>
       <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value small">${d.devices.mobile}</div>
-          <div class="stat-label">Mobile hits</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value small">${d.devices.desktop}</div>
-          <div class="stat-label">Desktop hits</div>
-        </div>
+        <div class="stat"><div class="stat-value small">${d.devices.mobile}</div><div class="stat-label">Mobile hits</div></div>
+        <div class="stat"><div class="stat-value small">${d.devices.desktop}</div><div class="stat-label">Desktop hits</div></div>
       </div>
       <div class="stat-row" style="margin-top:12px;">
-        <div class="stat">
-          <div class="stat-value${errors.total > 0 ? ' danger' : ''} small">${errors.total}</div>
-          <div class="stat-label">Total errors</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value danger small">${errors.e500}</div>
-          <div class="stat-label">500s</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value danger small">${errors.e429}</div>
-          <div class="stat-label">429s (rate limited)</div>
-        </div>
+        <div class="stat"><div class="stat-value${errors.total > 0 ? ' danger' : ''} small">${errors.total}</div><div class="stat-label">Total errors</div></div>
+        <div class="stat"><div class="stat-value danger small">${errors.e500}</div><div class="stat-label">500s</div></div>
+        <div class="stat"><div class="stat-value danger small">${errors.e429}</div><div class="stat-label">429s (rate limited)</div></div>
+      </div>
+    </div>`;
+  }
+
+  // --- Visitor Feed ---
+
+  function renderVisitorFeed(d) {
+    const visitors = d.recentVisitors || [];
+    const countryStats = {};
+    for (const v of Object.values(d.visitors || {})) {
+      const c = v.country || 'Unknown';
+      if (!countryStats[c]) countryStats[c] = { count: 0, hits: 0 };
+      countryStats[c].count++;
+      countryStats[c].hits += v.hits || 1;
+    }
+    const topCountries = Object.entries(countryStats).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
+    const maxCountryCount = topCountries.length > 0 ? topCountries[0][1].count : 1;
+
+    let countryBars = '';
+    if (topCountries.length > 0 && !(topCountries.length === 1 && topCountries[0][0] === 'Unknown')) {
+      countryBars = `<div style="margin-bottom:20px;">
+        <div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Visitors by Country</div>
+        ${topCountries.filter(([c]) => c !== 'Unknown').map(([country, data]) => `
+          <div class="bar-item">
+            <div class="bar-label" style="min-width:60px">${countryFlag(country)} ${country}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.round(data.count / maxCountryCount * 100)}%"></div></div>
+            <div class="bar-count">${data.count}</div>
+          </div>
+        `).join('')}
+      </div>`;
+    }
+
+    const now = Date.now();
+    const feedItems = visitors.slice(0, 30).map(v => {
+      const ago = now - new Date(v.timestamp).getTime();
+      const isRecent = ago < 300000;
+      const timeAgo = ago < 60000 ? 'just now' : ago < 3600000 ? Math.floor(ago/60000) + 'm ago' : ago < 86400000 ? Math.floor(ago/3600000) + 'h ago' : Math.floor(ago/86400000) + 'd ago';
+      const geo = [v.city, v.region, v.country].filter(Boolean).join(', ') || v.ip;
+      return `<div class="visitor-item">
+        <div class="visitor-dot${isRecent ? ' recent' : ''}"></div>
+        <div class="visitor-page">${escHtml(v.page)}</div>
+        <div class="visitor-geo">${v.country ? countryFlag(v.country) + ' ' : ''}${escHtml(geo)}</div>
+        <div class="visitor-device">${v.isMobile ? 'Mobile' : 'Desktop'}</div>
+        <div class="visitor-time">${timeAgo}</div>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="card card-full">
+      <div class="card-title"><span class="pulse"></span>Live Visitors</div>
+      ${countryBars}
+      <div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Recent Activity</div>
+      <div class="visitor-feed">
+        ${feedItems || '<div class="empty-state">No visitor data yet.</div>'}
       </div>
     </div>`;
   }
@@ -714,49 +623,27 @@
     const c = d.covers;
     const total = c.geminiSuccess + c.imagenFallback + c.failed;
     if (total === 0) {
-      return `
-      <div class="card">
-        <div class="card-title">Cover Generation</div>
-        <div class="empty-state">No covers generated yet.</div>
-      </div>`;
+      return `<div class="card"><div class="card-title">Cover Generation</div><div class="empty-state">No covers generated yet.</div></div>`;
     }
-    const fallbackRate = total > 0 ? Math.round(c.imagenFallback / total * 100) : 0;
-    const failRate = total > 0 ? Math.round(c.failed / total * 100) : 0;
-
+    const fallbackRate = Math.round(c.imagenFallback / total * 100);
+    const failRate = Math.round(c.failed / total * 100);
     return `
     <div class="card">
       <div class="card-title">Cover Generation</div>
       <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value success small">${c.geminiSuccess}</div>
-          <div class="stat-label">Gemini (direct)</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value accent small">${c.imagenFallback}</div>
-          <div class="stat-label">Imagen fallback</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value danger small">${c.failed}</div>
-          <div class="stat-label">Failed</div>
-        </div>
+        <div class="stat"><div class="stat-value success small">${c.geminiSuccess}</div><div class="stat-label">Gemini (direct)</div></div>
+        <div class="stat"><div class="stat-value accent small">${c.imagenFallback}</div><div class="stat-label">Imagen fallback</div></div>
+        <div class="stat"><div class="stat-value danger small">${c.failed}</div><div class="stat-label">Failed</div></div>
       </div>
       <div class="stat-row">
-        <div class="stat">
-          <div class="stat-value small">${fallbackRate}%</div>
-          <div class="stat-label">Fallback rate</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value small">${failRate}%</div>
-          <div class="stat-label">Failure rate</div>
-        </div>
+        <div class="stat"><div class="stat-value small">${fallbackRate}%</div><div class="stat-label">Fallback rate</div></div>
+        <div class="stat"><div class="stat-value small">${failRate}%</div><div class="stat-label">Failure rate</div></div>
       </div>
     </div>`;
   }
 
   function renderSurveyInsights(w) {
     const stats = w.surveyStats;
-
-    // Top topics bar chart
     const topics = stats.topTopics || [];
     const maxTopicCount = topics.length > 0 ? topics[0][1] : 1;
     const topicBars = topics.slice(0, 10).map(([name, count]) => `
@@ -766,8 +653,6 @@
         <div class="bar-count">${count}</div>
       </div>
     `).join('');
-
-    // Would-pay breakdown
     const payEntries = Object.entries(stats.wouldPay || {});
     const payBars = payEntries.map(([answer, count]) => `
       <div class="bar-item">
@@ -776,8 +661,6 @@
         <div class="bar-count">${count}</div>
       </div>
     `).join('');
-
-    // Format breakdown
     const fmtEntries = Object.entries(stats.formats || {});
     const fmtBars = fmtEntries.map(([fmt, count]) => `
       <div class="bar-item">
@@ -786,27 +669,14 @@
         <div class="bar-count">${count}</div>
       </div>
     `).join('');
-
     return `
     <div class="card card-full">
       <div class="card-title">Survey Insights</div>
       ${topics.length === 0 && payEntries.length === 0 ? '<div class="empty-state">No survey data yet.</div>' : ''}
-      ${topics.length > 0 ? `
-        <div style="margin-bottom:20px">
-          <div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Top Topics</div>
-          <div class="bar-group">${topicBars}</div>
-        </div>` : ''}
+      ${topics.length > 0 ? `<div style="margin-bottom:20px"><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Top Topics</div><div class="bar-group">${topicBars}</div></div>` : ''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
-        ${payEntries.length > 0 ? `
-        <div>
-          <div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Would Pay?</div>
-          <div class="bar-group">${payBars}</div>
-        </div>` : ''}
-        ${fmtEntries.length > 0 ? `
-        <div>
-          <div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Preferred Format</div>
-          <div class="bar-group">${fmtBars}</div>
-        </div>` : ''}
+        ${payEntries.length > 0 ? `<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Would Pay?</div><div class="bar-group">${payBars}</div></div>` : ''}
+        ${fmtEntries.length > 0 ? `<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Preferred Format</div><div class="bar-group">${fmtBars}</div></div>` : ''}
       </div>
     </div>`;
   }
@@ -814,43 +684,29 @@
   function renderWaitlistTable(w) {
     const signups = w.signups || [];
     if (signups.length === 0) {
-      return `
-      <div class="card card-full">
-        <div class="card-title">Waitlist Signups</div>
-        <div class="empty-state">The ledger is empty.</div>
-      </div>`;
+      return `<div class="card card-full"><div class="card-title">Waitlist Signups</div><div class="empty-state">The ledger is empty.</div></div>`;
     }
-
     const rows = signups.map(s => `
       <tr>
-        <td>${escHtml(s.email)}</td>
+        <td title="${escHtml(s.email)}">${escHtml(s.email)}</td>
         <td>${formatTime(s.timestamp)}</td>
         <td>${s.referrer ? escHtml(tryHostname(s.referrer)) : '--'}</td>
         <td>${s.hasSurvey ? '<span class="tag tag-yes">yes</span>' : '<span class="tag tag-no">no</span>'}</td>
-        <td>${s.survey ? escHtml(s.survey.topics || '--') : '--'}</td>
+        <td title="${s.survey ? escHtml(s.survey.topics || '') : ''}">${s.survey ? escHtml(s.survey.topics || '--') : '--'}</td>
         <td>${s.survey ? escHtml(s.survey.wouldPay || '--') : '--'}</td>
       </tr>
     `).join('');
-
     return `
     <div class="card card-full">
-      <div class="card-title">
-        Waitlist Signups (${signups.length})
-        <button class="btn-export" data-export="waitlist">Export JSON</button>
-      </div>
+      <div class="card-title">Waitlist Signups (${signups.length})<button class="btn-export" data-export="waitlist">Export JSON</button></div>
       <input class="search-input" type="text" placeholder="Search emails..." data-search="waitlist-table">
       <div class="data-table-wrap">
-        <table class="data-table" id="waitlist-table">
-          <thead>
-            <tr>
-              <th data-sort="0">Email</th>
-              <th data-sort="1">Date</th>
-              <th data-sort="2">Referrer</th>
-              <th data-sort="3">Survey</th>
-              <th data-sort="4">Topics</th>
-              <th data-sort="5">Would Pay</th>
-            </tr>
-          </thead>
+        <table class="data-table" id="waitlist-table" style="table-layout:fixed;">
+          <colgroup><col style="width:25%"><col style="width:15%"><col style="width:15%"><col style="width:10%"><col style="width:20%"><col style="width:15%"></colgroup>
+          <thead><tr>
+            <th data-sort="0">Email</th><th data-sort="1">Date</th><th data-sort="2">Referrer</th>
+            <th data-sort="3">Survey</th><th data-sort="4">Topics</th><th data-sort="5">Would Pay</th>
+          </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -860,45 +716,30 @@
   function renderEbookTable(e) {
     const jobs = e.jobs || [];
     if (jobs.length === 0) {
-      return `
-      <div class="card card-full">
-        <div class="card-title">Ebook History</div>
-        <div class="empty-state">No tomes forged yet.</div>
-      </div>`;
+      return `<div class="card card-full"><div class="card-title">Ebook History</div><div class="empty-state">No tomes forged yet.</div></div>`;
     }
-
     const rows = jobs.map(j => {
       const statusClass = j.status === 'ready' ? 'tag-ready' : j.status === 'generating' ? 'tag-generating' : 'tag-failed';
-      return `
-      <tr>
-        <td>${escHtml(j.title || '--')}</td>
+      return `<tr>
+        <td title="${escHtml(j.title || '')}">${escHtml(j.title || '--')}</td>
         <td><span class="tag ${statusClass}">${j.status}</span></td>
         <td>${j.chapters || '--'}</td>
         <td>${j.durationHuman || '--'}</td>
         <td>${formatTime(j.generatedAt)}</td>
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${j.error ? escHtml(j.error) : '--'}</td>
+        <td title="${j.error ? escHtml(j.error) : ''}">${j.error ? escHtml(j.error) : '--'}</td>
       </tr>`;
     }).join('');
-
     return `
     <div class="card card-full">
-      <div class="card-title">
-        Ebook History (${jobs.length})
-        <button class="btn-export" data-export="ebooks">Export JSON</button>
-      </div>
+      <div class="card-title">Ebook History (${jobs.length})<button class="btn-export" data-export="ebooks">Export JSON</button></div>
       <input class="search-input" type="text" placeholder="Search titles..." data-search="ebook-table">
       <div class="data-table-wrap">
-        <table class="data-table" id="ebook-table">
-          <thead>
-            <tr>
-              <th data-sort="0">Title</th>
-              <th data-sort="1">Status</th>
-              <th data-sort="2">Chapters</th>
-              <th data-sort="3">Duration</th>
-              <th data-sort="4">Date</th>
-              <th data-sort="5">Error</th>
-            </tr>
-          </thead>
+        <table class="data-table" id="ebook-table" style="table-layout:fixed;">
+          <colgroup><col style="width:30%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:20%"><col style="width:20%"></colgroup>
+          <thead><tr>
+            <th data-sort="0">Title</th><th data-sort="1">Status</th><th data-sort="2">Chapters</th>
+            <th data-sort="3">Duration</th><th data-sort="4">Date</th><th data-sort="5">Error</th>
+          </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -908,11 +749,7 @@
   function renderReferrers(d) {
     const refs = Object.entries(d.referrers || {}).sort((a, b) => b[1] - a[1]);
     if (refs.length === 0) {
-      return `
-      <div class="card">
-        <div class="card-title">Referrers</div>
-        <div class="empty-state">No external referrers yet.</div>
-      </div>`;
+      return `<div class="card"><div class="card-title">Referrers</div><div class="empty-state">No external referrers yet.</div></div>`;
     }
     const maxRef = refs[0][1];
     const bars = refs.slice(0, 15).map(([host, count]) => `
@@ -922,12 +759,7 @@
         <div class="bar-count">${count}</div>
       </div>
     `).join('');
-
-    return `
-    <div class="card">
-      <div class="card-title">Referrers</div>
-      <div class="bar-group">${bars}</div>
-    </div>`;
+    return `<div class="card"><div class="card-title">Referrers</div><div class="bar-group">${bars}</div></div>`;
   }
 
   // --- Helpers ---
@@ -950,8 +782,19 @@
     try { return new URL(url).hostname; } catch { return url; }
   }
 
-  // --- Table sorting ---
+  function fmtNum(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return String(n);
+  }
 
+  function countryFlag(code) {
+    if (!code || code.length !== 2) return '';
+    const offset = 127397;
+    return String.fromCodePoint(...[...code.toUpperCase()].map(c => c.charCodeAt(0) + offset));
+  }
+
+  // --- Table sorting ---
   function bindTableSort() {
     $$('.data-table th[data-sort]').forEach(th => {
       th.addEventListener('click', function() {
@@ -962,53 +805,38 @@
         state.asc = state.col === colIdx ? !state.asc : true;
         state.col = colIdx;
         sortState[tableId] = state;
-
         const tbody = table.querySelector('tbody');
         const rows = [...tbody.querySelectorAll('tr')];
         rows.sort((a, b) => {
           const aText = a.children[colIdx]?.textContent || '';
           const bText = b.children[colIdx]?.textContent || '';
-          const cmp = aText.localeCompare(bText, undefined, { numeric: true });
-          return state.asc ? cmp : -cmp;
+          return (state.asc ? 1 : -1) * aText.localeCompare(bText, undefined, { numeric: true });
         });
         rows.forEach(r => tbody.appendChild(r));
       });
     });
   }
 
-  // --- Search ---
-
   function bindSearch() {
     $$('.search-input[data-search]').forEach(input => {
       input.addEventListener('input', function() {
         const tableId = this.dataset.search;
         const query = this.value.toLowerCase();
-        const rows = $$(`#${tableId} tbody tr`);
-        rows.forEach(r => {
-          const text = r.textContent.toLowerCase();
-          r.style.display = text.includes(query) ? '' : 'none';
+        $$(`#${tableId} tbody tr`).forEach(r => {
+          r.style.display = r.textContent.toLowerCase().includes(query) ? '' : 'none';
         });
       });
     });
   }
-
-  // --- Export ---
 
   function bindExport() {
     $$('.btn-export[data-export]').forEach(btn => {
       btn.addEventListener('click', function() {
         const type = this.dataset.export;
         let data, filename;
-        if (type === 'waitlist') {
-          data = waitlistData;
-          filename = 'waitlist-export.json';
-        } else if (type === 'ebooks') {
-          data = ebooksData;
-          filename = 'ebooks-export.json';
-        } else {
-          data = metricsData;
-          filename = 'metrics-export.json';
-        }
+        if (type === 'waitlist') { data = waitlistData; filename = 'waitlist-export.json'; }
+        else if (type === 'ebooks') { data = ebooksData; filename = 'ebooks-export.json'; }
+        else { data = metricsData; filename = 'metrics-export.json'; }
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
