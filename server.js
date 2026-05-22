@@ -1,7 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const OpenAI = require('openai');
-const PDFDocument = require('pdfkit');
+const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, Header, Footer, PageNumber, PageBreak } = require('docx');
+const libre = require('libreoffice-convert');
+const libreConvert = require('util').promisify(libre.convert);
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -14,6 +16,46 @@ app.use(express.static(path.join(__dirname, 'public')));
 const EBOOKS_DIR = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks' : path.join(__dirname, 'ebooks');
 if (!fs.existsSync(EBOOKS_DIR)) fs.mkdirSync(EBOOKS_DIR, { recursive: true });
 console.log('Ebooks directory:', EBOOKS_DIR);
+
+// --- Font + color helpers ---
+const FONTS_DIR = path.join(__dirname, 'fonts');
+if (!fs.existsSync(FONTS_DIR)) fs.mkdirSync(FONTS_DIR, { recursive: true });
+const downloadedFonts = new Set(fs.readdirSync(FONTS_DIR).filter(f => f.endsWith('.ttf')).map(f => f.replace('.ttf', '')));
+
+function ensureDark(hex, maxLum) {
+  if (maxLum === undefined) maxLum = 0.5;
+  if (!hex || !hex.startsWith('#') || hex.length < 7) return hex;
+  const r = parseInt(hex.slice(1,3), 16) / 255;
+  const g = parseInt(hex.slice(3,5), 16) / 255;
+  const b = parseInt(hex.slice(5,7), 16) / 255;
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+  if (lum > maxLum) {
+    const scale = maxLum / lum;
+    return '#' + [r,g,b].map(function(c) { return Math.round(c * scale * 255).toString(16).padStart(2,'0'); }).join('');
+  }
+  return hex;
+}
+
+async function ensureFont(fontName) {
+  if (downloadedFonts.has(fontName)) return true;
+  try {
+    const cssRes = await fetch('https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontName), {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    const css = await cssRes.text();
+    const urlMatch = css.match(/src:\s*url\(([^)]+\.ttf)\)/);
+    if (!urlMatch) return false;
+    const ttfRes = await fetch(urlMatch[1]);
+    const buf = Buffer.from(await ttfRes.arrayBuffer());
+    fs.writeFileSync(path.join(FONTS_DIR, fontName + '.ttf'), buf);
+    downloadedFonts.add(fontName);
+    console.log('  Font downloaded: ' + fontName);
+    return true;
+  } catch (err) {
+    console.warn('  Font download failed for ' + fontName + ':', err.message);
+    return false;
+  }
+}
 
 // --- Vertex AI ---
 const USE_VERTEX_AI = process.env.USE_VERTEX_AI === 'true';
@@ -429,386 +471,55 @@ Respond in this exact JSON format only, no other text:
   saveJob(ebookId, { status: 'generating', progress: 1 / totalSteps, step: 'outline' });
   console.log(`Ebook outline: "${outline.title}" with ${outline.chapters.length} chapters`);
 
-  // Step 1.5: AI generates the PDF design code
+  // Step 1.5: Generate design config (simple style — no executable code)
   saveJob(ebookId, { status: 'generating', progress: 1.5 / totalSteps, step: 'designing' });
 
-  // AI generates a unique style seed — like DNA, never the same twice
-  let styleSeed = '';
-  try {
-    const seedRes = await llmCreateGemini({
-      messages: [{ role: 'user', content: `Invent a UNIQUE visual design aesthetic for a book titled "${outline.title}" (${outline.subtitle}).
-
-In ONE sentence, describe: 3 specific hex colors, a SPECIFIC Google Font name for headings (pick something unexpected — NOT Playfair Display, NOT Source Serif, NOT Lora, NOT Merriweather — explore the full Google Fonts library), a SPECIFIC Google Font for body, the decorative style, and the overall mood.
-
-Draw inspiration from: architecture, nature, music genres, fashion decades, world cultures, art movements, materials, weather, emotions, dreams, film genres, or anything unexpected.
-
-Examples of FORMAT only (NEVER copy these — invent your own):
-- "Burnt sienna (#A0522D) and bone white (#F5F0E1) on slate (#3D3D3D), headings in Cormorant Garamond, body in Crimson Text, thick horizontal rules, the weight of an old courthouse ledger"
-- "Electric cyan (#00E5FF) on void black (#050505), headings in Space Grotesk, body in DM Sans, pixel-grid dividers, a hacker's manifesto printed on thermal paper"
-- "Sage green (#87A878) with cream (#FFFDD0) and bark brown (#6B4226), headings in Vollkorn, body in Spectral, leaf-vein line ornaments, a field guide found in a cabin"
-- "Coral (#FF6B6B) and midnight navy (#1A1A40), headings in Josefin Sans, body in Nunito, circular chapter markers, a surf magazine from the 80s"
-
-Your response must be ONLY the one sentence. Be specific and NEVER repeat fonts or color combos you've used before.` }],
-      ...tokenLimit(200),
-      temperature: 1.3,
-    });
-    styleSeed = seedRes.choices[0].message.content.trim().replace(/^["']|["']$/g, '');
-    console.log(`  Design seed: ${styleSeed.slice(0, 80)}...`);
-  } catch (err) {
-    console.warn('  Style seed generation failed:', err.message);
-    styleSeed = 'Clean modern design with teal (#2A9D8F) accents on white, sans-serif typography';
-  }
-
-  let designCode = null;
+  let designConfig = null;
   try {
     const designRes = await llmCreateGemini({
-      messages: [{ role: 'user', content: `You are a PDF book designer writing PDFKit JavaScript code. Design a unique ebook interior for "${outline.title}" (${outline.subtitle}).
-
-=== DESIGN INTENT — READ FIRST ===
-This must be an INTENTIONAL design, not a random pile of styles. Before choosing anything, commit to ONE clear design concept for THIS book — a mood and visual direction that fits its subject and tone. Then make EVERY choice serve that one concept:
-- Fonts must pair deliberately and share a personality — not three unrelated faces.
-- Colors must form a coherent palette built from the concept — accent, headings, body clearly belong together.
-- The drop cap, small-caps lead-in, dividers, border, and running header must all reinforce the SAME concept. If a flourish doesn't serve it, leave it off — restraint is a design choice.
-- Vary wildly between books, but within ONE book every detail must look like a single designer made deliberate, consistent decisions. Never random or clashing.
-
-=== PDF DOCUMENT SPECS (you have FULL control over this canvas) ===
-Page size: A4 (595.28 x 841.89 points = 210 x 297 mm)
-W = 595.28 (full page width in points)
-H = 841.89 (full page height in points)
-Margins: 80pt on all sides
-Content area: x: 80 to 515.28 (435.28pt wide), y: 80 to 761.89 (681.89pt tall)
-Center X: 297.64, Center Y: 420.945
-1 point = 1/72 inch = 0.353mm
-Total content width: 435.28pt = 153.6mm = 6.05 inches
-Total content height: 681.89pt = 240.7mm = 9.47 inches
-${outline.chapters.length} chapters will be generated
-
-=== PDFKIT API (your toolbox) ===
-TEXT:
-- doc.text(str, {align, indent, lineGap, continued, characterSpacing}) — flows at cursor, advances down
-- doc.fontSize(n) — set font size in points
-- doc.font(name) — set font family
-- doc.fillColor(hex) — set text/fill color
-- doc.moveDown(n) — add n lines of vertical space
-- doc.y — current cursor Y position (read/write)
-- doc.x — current cursor X position
-
-DRAWING (always wrap in doc.save()/doc.restore() to not break cursor):
-- doc.rect(x, y, w, h).fill(color) — filled rectangle
-- doc.rect(x, y, w, h).stroke() — outlined rectangle
-- doc.circle(x, y, r).fill(color) — filled circle
-- doc.ellipse(cx, cy, rx, ry).fill(color) — ellipse
-- doc.moveTo(x,y).lineTo(x2,y2).lineWidth(w).strokeColor(c).stroke() — line
-- doc.polygon([x1,y1], [x2,y2], [x3,y3]).fill(color) — polygon
-- doc.path('M0 0 L100 100').fill(color) — SVG path
-- doc.roundedRect(x, y, w, h, radius).fill(color) — rounded rectangle
-- doc.opacity(n) / doc.fillOpacity(n) — transparency 0-1
-- doc.linearGradient(x1,y1,x2,y2) — gradient fills
-
-STYLE:
-- doc.lineWidth(n) — stroke width
-- doc.strokeColor(hex) — stroke color
-- doc.fillColor(hex) — fill color
-- doc.dash(length, {space}) — dashed lines
-- doc.undash() — solid lines
-- doc.lineJoin('round'/'bevel'/'miter') — line join style
-- doc.lineCap('round'/'butt'/'square') — line cap style
-
-STATE:
-- doc.save() — save graphics state (MUST use before decorative drawing)
-- doc.restore() — restore graphics state (MUST use after decorative drawing)
-
-RULES:
-1. NEVER EVER use doc.text(str, x, y) with x,y coordinates — it DESTROYS the cursor and makes text upside down or overlapping. ALWAYS use doc.text(str, {align: 'center'}) or doc.text(str, {align: 'left'}) — let PDFKit handle positioning
-2. ALWAYS wrap decorative drawing in doc.save()/doc.restore()
-3. NEVER call doc.addPage()
-4. doc.y tracks cursor position — use it to know where you are on the page
-5. NEVER use doc.transform() — it flips/distorts text and makes it upside down
-6. NEVER draw rectangles larger than 300x300 — no full-page background fills
-7. NEVER use doc.rotate() — it makes text unreadable
-8. Keep decorative elements SMALL (lines, dots, small shapes) — not page-filling
-9. Background tints: ONLY use doc.rect().fillOpacity(0.05-0.1).fill() for VERY subtle tints, then doc.fillOpacity(1) to reset
-
-=== AVAILABLE FONTS ===
-Any Google Font by name: 'Playfair Display', 'Lora', 'Merriweather', 'Montserrat', 'Crimson Text', 'EB Garamond', 'Raleway', 'Source Serif 4', 'Open Sans', 'Roboto', 'Poppins', 'Cormorant Garamond', 'Libre Baskerville', 'Josefin Sans', 'Bitter', 'Nunito', 'Oswald', 'PT Serif', 'Spectral', 'Vollkorn', 'Alegreya', 'Libre Caslon Text', 'DM Sans', 'Space Grotesk', etc.
-Plus built-ins: 'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Courier', 'Courier-Bold'.
-
-=== YOUR MANDATORY DESIGN DIRECTION ===
-${styleSeed}
-
-You MUST follow this aesthetic direction. Extract the colors, mood, and style from it. Do NOT default to brown/beige/gold classic styles. Every design must be as unique as DNA — never the same twice.
-
-=== CODE SAFETY REMINDERS ===
-- Title page: use doc.moveDown() + doc.text() for flowing content. Decorative shapes with doc.save()/doc.restore().
-- Chapter header: use doc.moveDown() + doc.text(). Include chapter number and ch.title.
-- Divider: small decorative element at y position with doc.save()/doc.restore().
-- ALL code must include outline.title, outline.subtitle (title page) and ch.title, i (chapter header).
-
-Return ONLY valid JSON:
-{
-  "accent": "#hex (must be visible on white — no pastels lighter than #888)",
-  "accentLight": "#hex lighter version (for background elements only, not text)",
-  "headingColor": "#hex (must be dark enough to read — darker than #555)",
-  "bodyColor": "#hex (MUST be dark enough to read on white background — darker than #555. Good examples: #2c1e12, #1a2a1a, #333, #2D3748. NEVER use light colors for body text)",
-  "fontHead": "Google Font name",
-  "fontBody": "Google Font name",
-  "fontItalic": "Google Font name",
-  "bodySize": 9.5 to 12,
-  "lineGap": 2 to 7,
-  "paragraphSpacing": 0.3 to 1.0,
-  "indent": 0 to 25,
-  "textAlign": "justify" or "left",
-  "showBorder": true/false,
-  "borderWeight": 0.2 to 2.0,
-  "borderColor": "#hex or same as accent",
-  "showDropCap": true/false,
-  "dropCapSize": 20 to 50,
-  "dropCapColor": "#hex",
-  "smallCapsFirstWords": true/false — opening words after the drop cap set in small caps (uppercased + lightly tracked),
-  "leadInWordCount": 1-6 — how many opening words to set in small caps (default 3),
-  "leadInFont": "body" | "head" | "italic" — lead-in font. Default "body" is subtle/classic; use "head" only as a DELIBERATE choice for a bolder opening, never accidentally,
-  "leadInColor": "body" | "accent" | "heading" — lead-in color. Default "body" blends in; "accent"/"heading" make a stronger statement. Match it to your overall design,
-  "runningHeader": true/false,
-  "runningHeaderPosition": "top" or "bottom",
-  "runningHeaderAlign": "split" or "center" or "left" or "right",
-  "runningHeaderStyle": "JS code for running header — draws at top of page using doc.save()/doc.restore(). Vars: doc, W, H, accent, fontItalic, outline, pageNum. Be creative — centered, left/right split, with ornaments, etc.",
-  "titlePageCode": "JS code for title page. Vars: doc, W, H, outline, accent, accentLight, headingColor, fontHead, fontBody, fontItalic. MUST display outline.title and outline.subtitle. Use doc.moveDown + doc.text({align}) for text. Decorative elements with doc.save()/doc.restore(). Keep it clean — no overlapping elements. End with 'greatlibrary.ai' at bottom.",
-  "chapterHeaderCode": "JS code for chapter header. Vars: doc, W, H, ch, i, accent, accentLight, headingColor, fontHead, fontBody. ch.title = chapter title (already clean, no number prefix). i = 0-based index (use i+1 for display). Show the chapter number ONCE and the title ONCE — never repeat. Example: either '01' + title, or 'Chapter 1' + title, NOT both. Keep doc.y under 400.",
-  "dividerCode": "JS code for divider at y. Vars: doc, W, y, accent. Creative — dots, lines, shapes, symbols, anything.",
-  "chapterEndCode": "JS code for chapter end decoration. Vars: doc, W, accent. Optional ornament after last paragraph.",
-  "coverStyle": "10-15 word art direction for cover image generation",
-  "coverOverlayCode": "JS code to overlay title + subtitle on a cover IMAGE. The background is a photo/artwork, not white. Vars: doc, W, H, outline, accent, fontHead, fontItalic. Use semi-transparent bands, contrasting text colors (white or light on dark overlay, dark on light overlay), creative positioning. Must show outline.title and outline.subtitle readably over the artwork."
-}
-
-Design for "${outline.title}". Follow the MANDATORY design direction above — it is your DNA.
-
-CRITICAL: The PDF background is WHITE. ALL text and decorative elements must be dark enough to read on white. NEVER use light grey, pastel, or any color lighter than #666 for text. NEVER use white or near-white for any text. In your JS code, NEVER use fillColor with any light color (#999, #aaa, #bbb, #ccc, #ddd, #eee, #fff, etc.) for text. Body text should be #333 or darker. Headings should be #444 or darker. If you want light elements, use them ONLY for backgrounds with fillOpacity, not for text.
-
-This book must look like no other book ever made — but as ONE coherent, intentional design, never a random mix.` }],
-      ...tokenLimit(8192),
+      messages: [{ role: 'user', content: 'Pick a unique visual style for a book titled "' + outline.title + '" (' + outline.subtitle + ').\n' +
+        'Choose colors and fonts that match the book\'s mood and topic. Be creative \u2014 draw from architecture, art movements, nature, music, fashion.\n\n' +
+        'Return ONLY valid JSON:\n' +
+        '{\n' +
+        '  "accent": "#hex (distinctive accent color, visible on white)",\n' +
+        '  "headingColor": "#hex (dark, readable on white \u2014 darker than #555)",\n' +
+        '  "bodyColor": "#hex (dark body text \u2014 darker than #444)",\n' +
+        '  "fontHead": "Google Font name for headings (e.g. Playfair Display, Cormorant Garamond, Josefin Sans)",\n' +
+        '  "fontBody": "Google Font name for body text (e.g. Lora, Crimson Text, DM Sans)",\n' +
+        '  "bodySize": 22,\n' +
+        '  "lineSpacing": 276,\n' +
+        '  "indent": 360,\n' +
+        '  "textAlign": "justify",\n' +
+        '  "divider": "decorative divider chars like \u2014\u2014\u2014, \u2726 \u2726 \u2726, \u25c6, \u2022  \u2022  \u2022",\n' +
+        '  "endMark": "end-of-chapter mark like ~ ~ ~, \u2726, \u25c6",\n' +
+        '  "coverStyle": "10-15 word art direction for cover image"\n' +
+        '}' }],
+      max_tokens: 1024,
       temperature: 0.9,
     });
-    let designRaw = designRes.choices[0].message.content;
-    designRaw = designRaw.replace(/```json?\s*/g, '').replace(/```\s*/g, '');
-    const designMatch = designRaw.match(/\{[\s\S]*\}/);
-    designCode = JSON.parse(designMatch[0]);
-    console.log(`  Design generated: accent=${designCode.accent} fontBody=${designCode.fontBody} fontHead=${designCode.fontHead}`);
+    let raw = designRes.choices[0].message.content;
+    raw = raw.replace(/```json?\s*/g, '').replace(/```\s*/g, '');
+    const match = raw.match(/\{[\s\S]*\}/);
+    designConfig = JSON.parse(match[0]);
+    designConfig.headingColor = ensureDark(designConfig.headingColor, 0.35);
+    designConfig.bodyColor = ensureDark(designConfig.bodyColor, 0.30);
+    designConfig.accent = ensureDark(designConfig.accent, 0.55);
+    console.log('  Design: accent=' + designConfig.accent + ' fonts=' + designConfig.fontHead + '/' + designConfig.fontBody);
   } catch (err) {
     console.warn('  Design generation failed, using defaults:', err.message);
   }
 
-  // Step 1.6: Validate design code — test render + AI self-correct loop
-  if (designCode) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const issues = [];
-      const d = designCode;
-      try {
-        // Test on a throwaway PDF doc
-        const testDoc = new PDFDocument({ size: 'A4', autoFirstPage: true });
-        const { Writable } = require('stream');
-        testDoc.pipe(new Writable({ write(c, e, cb) { cb(); } }));
-
-        const testVars = {
-          doc: testDoc, W: 595.28, H: 841.89, outline,
-          accent: d.accent || '#888', accentLight: d.accentLight || '#ddd',
-          headingColor: d.headingColor || '#1a1a1a', bodyColor: d.bodyColor || '#333',
-          fontHead: 'Helvetica-Bold', fontBody: 'Helvetica', fontItalic: 'Helvetica-Oblique',
-          bodySize: d.bodySize || 11, lineGap: d.lineGap || 4,
-          paragraphSpacing: d.paragraphSpacing || 0.5, indent: d.indent || 15,
-          textAlign: d.textAlign || 'justify', showBorder: d.showBorder,
-          borderWeight: d.borderWeight || 0.4, borderColor: d.borderColor || d.accent,
-          showDropCap: d.showDropCap, dropCapSize: d.dropCapSize || 28,
-          dropCapColor: d.dropCapColor || d.accent, smallCapsFirstWords: d.smallCapsFirstWords,
-        };
-
-        // Test title page code
-        if (d.titlePageCode) {
-          try {
-            const fn = new Function(...Object.keys(testVars), d.titlePageCode);
-            fn(...Object.values(testVars));
-            if (testDoc.y > 780) issues.push(`titlePageCode overflow: doc.y=${Math.round(testDoc.y)} exceeds page`);
-          } catch (e) { issues.push(`titlePageCode error: ${e.message}`); }
-        }
-
-        // Test chapter header code
-        if (d.chapterHeaderCode) {
-          testDoc.addPage();
-          try {
-            const chVars = { ...testVars, doc: testDoc, ch: { title: 'Test Chapter Title' }, i: 0 };
-            const fn = new Function(...Object.keys(chVars), d.chapterHeaderCode);
-            fn(...Object.values(chVars));
-            if (testDoc.y > 550) issues.push(`chapterHeaderCode overflow: doc.y=${Math.round(testDoc.y)} leaves no room for body text`);
-          } catch (e) { issues.push(`chapterHeaderCode error: ${e.message}`); }
-        }
-
-        // Test divider code
-        if (d.dividerCode) {
-          try {
-            const divVars = { ...testVars, doc: testDoc, y: 400 };
-            const fn = new Function(...Object.keys(divVars), d.dividerCode);
-            fn(...Object.values(divVars));
-          } catch (e) { issues.push(`dividerCode error: ${e.message}`); }
-        }
-
-        testDoc.end();
-      } catch (e) {
-        issues.push(`validation crash: ${e.message}`);
-      }
-
-      // Code-level check passed — now do visual AI review
-      if (issues.length === 0) {
-        try {
-          // Render a test PDF with title page + chapter header
-          const testPdfPath = path.join(EBOOKS_DIR, `test-design-${Date.now()}.pdf`);
-          await new Promise((res, rej) => {
-            const td = new PDFDocument({ size: 'A4', autoFirstPage: true, margins: { top: 80, bottom: 80, left: 80, right: 80 } });
-            const ts = fs.createWriteStream(testPdfPath);
-            td.pipe(ts);
-            // Register fonts for test doc
-            const fontsDir = path.join(__dirname, 'fonts');
-            if (fs.existsSync(fontsDir)) {
-              for (const file of fs.readdirSync(fontsDir).filter(f => f.endsWith('.ttf'))) {
-                try { td.registerFont(file.replace('.ttf', ''), path.join(fontsDir, file)); } catch {}
-              }
-            }
-            const tv = { doc: td, W: 595.28, H: 841.89, outline, accent: d.accent||'#888', accentLight: d.accentLight||'#ddd', headingColor: d.headingColor||'#1a1a1a', bodyColor: d.bodyColor||'#333', fontHead: d.fontHead||'Helvetica-Bold', fontBody: d.fontBody||'Helvetica', fontItalic: d.fontItalic||'Helvetica-Oblique', bodySize: d.bodySize||11, lineGap: d.lineGap||4, paragraphSpacing: d.paragraphSpacing||0.5, indent: d.indent||15, textAlign: d.textAlign||'justify', showBorder: d.showBorder, borderWeight: d.borderWeight||0.4, borderColor: d.borderColor||d.accent, showDropCap: d.showDropCap, dropCapSize: d.dropCapSize||28, dropCapColor: d.dropCapColor||d.accent, smallCapsFirstWords: d.smallCapsFirstWords };
-            try { const fn = new Function(...Object.keys(tv), d.titlePageCode); fn(...Object.values(tv)); } catch {}
-            td.addPage();
-            try { const cv = { ...tv, doc: td, ch: { title: 'Sample Chapter' }, i: 0 }; const fn = new Function(...Object.keys(cv), d.chapterHeaderCode); fn(...Object.values(cv)); } catch {}
-            td.fontSize(tv.bodySize).font(tv.fontBody||'Helvetica').fillColor(tv.bodyColor).text('Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.', { align: tv.textAlign, lineGap: tv.lineGap });
-            td.end();
-            ts.on('finish', res);
-            ts.on('error', rej);
-          });
-
-          // Send test PDF to Gemini vision for quality review
-          const { GoogleAuth: GA } = require('google-auth-library');
-          const saRaw = process.env.VERTEX_SERVICE_ACCOUNT_JSON_B64;
-          let saJ; try { saJ = JSON.parse(saRaw); } catch { saJ = JSON.parse(Buffer.from(saRaw, 'base64').toString()); }
-          const gAuth = new GA({ credentials: saJ, scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
-          const gClient = await gAuth.getClient();
-          const { token: vToken } = await gClient.getAccessToken();
-
-          const pdfBase64 = fs.readFileSync(testPdfPath).toString('base64');
-          const reviewRes = await fetch('https://us-central1-aiplatform.googleapis.com/v1beta1/projects/steady-datum-492117-f9/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${vToken}` },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: [
-                { inlineData: { mimeType: 'application/pdf', data: pdfBase64 } },
-                { text: 'Review this PDF ebook design. Answer ONLY "PASS" if the design is clean and professional. Answer "FAIL:" followed by a short list of issues if there are problems like: overlapping elements, text on top of shapes, elements outside page bounds, unreadable text (bad contrast), cluttered layout, broken alignment. Be strict.' }
-              ]}]
-            })
-          });
-          const reviewData = await reviewRes.json();
-          const review = reviewData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || 'PASS';
-          fs.unlinkSync(testPdfPath);
-
-          if (review.startsWith('PASS')) {
-            console.log(`  Visual QA passed (attempt ${attempt + 1})`);
-            break;
-          } else {
-            issues.push(...review.replace('FAIL:', '').trim().split('\n').map(l => l.trim()).filter(Boolean));
-            console.warn(`  Visual QA failed (attempt ${attempt + 1}): ${review.slice(0, 200)}`);
-          }
-        } catch (qaErr) {
-          console.warn(`  Visual QA skipped: ${qaErr.message}`);
-          break; // Code-level passed, visual QA errored — use it
-        }
-      }
-
-      if (issues.length === 0) break;
-
-      console.warn(`  Design issues (attempt ${attempt + 1}): ${issues.join('; ')}`);
-      if (attempt >= 2) { console.warn('  Max retries — using design as-is'); break; }
-
-      // Send issues back to AI for self-correction
-      try {
-        const fixRes = await llmCreateGemini({
-          messages: [{ role: 'user', content: `Your PDFKit design code has these problems:
-${issues.map(i => '- ' + i).join('\n')}
-
-Here is the broken code:
-${d.titlePageCode ? 'titlePageCode: ' + d.titlePageCode : ''}
-${d.chapterHeaderCode ? 'chapterHeaderCode: ' + d.chapterHeaderCode : ''}
-${d.dividerCode ? 'dividerCode: ' + d.dividerCode : ''}
-
-FIX the broken code. Rules:
-- doc.y must stay under 762 for title page, under 450 for chapter header
-- Use doc.moveDown() not absolute y positioning for text
-- Wrap ALL drawing in doc.save()/doc.restore()
-- Never call doc.addPage()
-
-Return ONLY a JSON with the FIXED fields (only include fields that needed fixing):
-{"titlePageCode": "...", "chapterHeaderCode": "...", "dividerCode": "..."}` }],
-          ...tokenLimit(4096),
-          temperature: 0.7,
-        });
-        let fixRaw = fixRes.choices[0].message.content;
-        fixRaw = fixRaw.replace(/```json?\s*/g, '').replace(/```\s*/g, '');
-        const fixMatch = fixRaw.match(/\{[\s\S]*\}/);
-        const fixes = JSON.parse(fixMatch[0]);
-        if (fixes.titlePageCode) designCode.titlePageCode = fixes.titlePageCode;
-        if (fixes.chapterHeaderCode) designCode.chapterHeaderCode = fixes.chapterHeaderCode;
-        if (fixes.dividerCode) designCode.dividerCode = fixes.dividerCode;
-        console.log(`  Design self-corrected (attempt ${attempt + 1})`);
-      } catch (fixErr) {
-        console.warn(`  Self-correction failed: ${fixErr.message}`);
-      }
+  // Download any requested Google Fonts
+  if (designConfig) {
+    for (const fontName of [designConfig.fontHead, designConfig.fontBody].filter(Boolean)) {
+      await ensureFont(fontName);
     }
   }
 
-  // Step 1.7: Generate cover image (using design theme for consistency)
-  saveJob(ebookId, { status: 'generating', progress: 1.5 / totalSteps, step: 'cover' });
-  const coverResult = await generateCover(outline.title, outline.subtitle, designCode, styleSeed);
-  const coverPath = coverResult?.path || null;
-  const coverNeedsOverlay = coverResult?.needsOverlay || false;
-
-  // Step 1.8: If Imagen cover, let AI SEE the artwork and design the overlay
-  if (coverNeedsOverlay && coverPath && designCode) {
-    try {
-      const coverBase64 = fs.readFileSync(coverPath).toString('base64');
-      const { GoogleAuth: GA } = require('google-auth-library');
-      const saRaw = process.env.VERTEX_SERVICE_ACCOUNT_JSON_B64;
-      let saJ; try { saJ = JSON.parse(saRaw); } catch { saJ = JSON.parse(Buffer.from(saRaw, 'base64').toString()); }
-      const gAuth = new GA({ credentials: saJ, scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
-      const gClient = await gAuth.getClient();
-      const { token: vToken } = await gClient.getAccessToken();
-
-      const overlayRes = await fetch('https://us-central1-aiplatform.googleapis.com/v1beta1/projects/steady-datum-492117-f9/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${vToken}` },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [
-            { inlineData: { mimeType: 'image/png', data: coverBase64 } },
-            { text: `This is a book cover artwork. I need to overlay the title "${outline.title}" and subtitle "${outline.subtitle}" on top of it using PDFKit.
-
-Look at the image — analyze where the bright/dark areas are, what colors dominate.
-
-Write PDFKit JavaScript code that overlays the title and subtitle READABLY on this specific artwork. Choose:
-- Where to place text (top, center, bottom — based on where the image has space)
-- What background band to use (dark semi-transparent if image is bright, light if dark, or none if there's a clear area)
-- Text color that CONTRASTS with the image (white on dark areas, dark on light areas)
-- Font size and style that fits the mood
-
-Vars available: doc, W (595.28), H (841.89), outline, accent (${designCode.accent}), fontHead, fontItalic.
-RULES: Use doc.save()/doc.restore() for all drawing. Use doc.fillOpacity() for transparency. No doc.transform/rotate.
-
-Return ONLY the JavaScript code, no markdown, no explanation.` }
-          ]}]
-        })
-      });
-      const overlayData = await overlayRes.json();
-      const overlayText = overlayData.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
-      const cleanCode = overlayText.replace(/```javascript?\s*/g, '').replace(/```\s*/g, '').trim();
-      if (cleanCode) {
-        designCode.coverOverlayCode = cleanCode;
-        console.log('  Cover overlay designed from image analysis');
-      }
-    } catch (err) {
-      console.warn('  Cover image analysis failed:', err.message);
-    }
-  }
+  // Step 1.7: Generate cover image
+  saveJob(ebookId, { status: 'generating', progress: 2 / totalSteps, step: 'cover' });
+  const coverResult = await generateCover(outline.title, outline.subtitle, designConfig, '');
+  const coverPath = coverResult ? coverResult.path : null;
 
   // Step 2: Generate each chapter
   const chapters = [];
@@ -838,432 +549,218 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
     console.log(`  Chapter "${ch.title}" generated (${chapterIndex}/${outline.chapters.length})`);
   }
 
-  // Step 3: Generate PDF
+
+  // Step 3: Generate DOCX and convert to PDF
   saveJob(ebookId, { status: 'generating', progress: (totalSteps - 1) / totalSteps, step: 'binding' });
-  const filename = `${ebookId}.pdf`;
-  const filepath = path.join(EBOOKS_DIR, filename);
+  const docxFilepath = path.join(EBOOKS_DIR, ebookId + '.docx');
+  const pdfFilepath = path.join(EBOOKS_DIR, ebookId + '.pdf');
 
-  await createPDF(filepath, outline, chapters, coverPath, designCode, coverNeedsOverlay);
+  await createDocxAndConvert(docxFilepath, pdfFilepath, outline, chapters, coverPath, designConfig);
 
-  // Clean up cover image
-  if (coverPath) try { fs.unlinkSync(coverPath); } catch {}
+  // Clean up cover image and intermediate DOCX
+  if (coverPath) try { fs.unlinkSync(coverPath); } catch (e) {}
+  try { fs.unlinkSync(docxFilepath); } catch (e) {}
 
   saveJob(ebookId, {
     status: 'ready',
     title: outline.title,
-    filename,
-    path: filepath
+    filename: ebookId + '.pdf',
+    path: pdfFilepath
   });
 
-  console.log(`Ebook "${outline.title}" ready: ${filename}`);
+  console.log('Ebook "' + outline.title + '" ready: ' + ebookId + '.pdf');
 }
 
-async function createPDF(filepath, outline, chapters, coverPath, designCode, coverNeedsOverlay = false) {
-  return new Promise(async (resolve, reject) => {
-    const doc = new PDFDocument({
-      size: 'A4',
-      margins: { top: 80, bottom: 80, left: 80, right: 80 },
-      bufferPages: true,
-      autoFirstPage: false,
-      info: {
-        Title: outline.title,
-        Author: 'The Great Library',
-        Subject: outline.subtitle,
-        Creator: 'greatlibrary.ai'
-      }
+async function createDocxAndConvert(docxPath, pdfPath, outline, chapters, coverPath, design) {
+  const d = design || {};
+  const accent = (d.accent || '#8B7D45').replace('#', '');
+  const headingColor = (d.headingColor || '#1a1a1a').replace('#', '');
+  const bodyColor = (d.bodyColor || '#333333').replace('#', '');
+  const fontHead = d.fontHead || 'Liberation Serif';
+  const fontBody = d.fontBody || 'Liberation Serif';
+  const bodySize = d.bodySize || 22;
+  const lineSpacing = d.lineSpacing || 276;
+  const indent = d.indent || 360;
+  const textAlign = d.textAlign === 'left' ? AlignmentType.LEFT : AlignmentType.JUSTIFIED;
+  const dividerText = d.divider || '\u2014\u2014\u2014';
+  const endMark = d.endMark || '~ ~ ~';
+
+  const sections = [];
+
+  // --- COVER PAGE ---
+  if (coverPath && fs.existsSync(coverPath)) {
+    const coverData = fs.readFileSync(coverPath);
+    sections.push({
+      properties: {
+        page: {
+          margin: { top: 0, bottom: 0, left: 0, right: 0 },
+          size: { width: 11906, height: 16838 }
+        }
+      },
+      children: [
+        new Paragraph({
+          children: [
+            new ImageRun({
+              data: coverData,
+              transformation: { width: 794, height: 1123 }
+            })
+          ]
+        })
+      ]
     });
+  }
 
-    // Register bundled fonts + on-demand Google Font loader
-    const fontsDir = path.join(__dirname, 'fonts');
-    if (!fs.existsSync(fontsDir)) fs.mkdirSync(fontsDir, { recursive: true });
-    // Register any already-downloaded fonts
-    for (const file of fs.readdirSync(fontsDir).filter(f => f.endsWith('.ttf'))) {
-      const name = file.replace('.ttf', '');
-      doc.registerFont(name, path.join(fontsDir, file));
-    }
-    // Dynamic font loader — downloads from Google Fonts on demand
-    const registeredFonts = new Set(fs.readdirSync(fontsDir).filter(f => f.endsWith('.ttf')).map(f => f.replace('.ttf', '')));
-    const builtinFonts = new Set(['Helvetica','Helvetica-Bold','Helvetica-Oblique','Times-Roman','Times-Bold','Times-Italic','Courier','Courier-Bold','Courier-Oblique']);
-    async function ensureFont(fontName) {
-      if (builtinFonts.has(fontName) || registeredFonts.has(fontName)) return true;
-      try {
-        // Fetch CSS from Google Fonts to get the TTF URL
-        const cssRes = await fetch(`https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName.replace(/-/g, ' '))}`, {
-          headers: { 'User-Agent': 'Mozilla/5.0' } // Google Fonts needs this to return TTF
-        });
-        const css = await cssRes.text();
-        const urlMatch = css.match(/src:\s*url\(([^)]+\.ttf)\)/);
-        if (!urlMatch) return false;
-        const ttfRes = await fetch(urlMatch[1]);
-        const buf = Buffer.from(await ttfRes.arrayBuffer());
-        const fp = path.join(fontsDir, `${fontName}.ttf`);
-        fs.writeFileSync(fp, buf);
-        doc.registerFont(fontName, fp);
-        registeredFonts.add(fontName);
-        console.log(`  Font downloaded: ${fontName}`);
-        return true;
-      } catch (err) {
-        console.warn(`  Font download failed for ${fontName}:`, err.message);
-        return false;
+  // --- TITLE PAGE ---
+  var titleChildren = [];
+  for (var ti = 0; ti < 12; ti++) titleChildren.push(new Paragraph({ text: '' }));
+  titleChildren.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 200 },
+    children: [new TextRun({ text: outline.title, bold: true, size: 56, color: headingColor, font: fontHead })]
+  }));
+  titleChildren.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 200 },
+    children: [new TextRun({ text: dividerText, size: 24, color: accent })]
+  }));
+  titleChildren.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 200 },
+    children: [new TextRun({ text: outline.subtitle, italics: true, size: 26, color: accent, font: fontBody })]
+  }));
+  for (var ti2 = 0; ti2 < 18; ti2++) titleChildren.push(new Paragraph({ text: '' }));
+  titleChildren.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    children: [new TextRun({ text: 'greatlibrary.ai', size: 18, color: accent, font: fontBody })]
+  }));
+
+  sections.push({
+    properties: {
+      page: {
+        margin: { top: 1584, bottom: 1584, left: 1584, right: 1584 },
+        size: { width: 11906, height: 16838 }
       }
-    }
-
-    const stream = fs.createWriteStream(filepath);
-    doc.pipe(stream);
-
-    // A4 dimensions in points (autoFirstPage is off, so doc.page is null)
-    const W = 595.28;
-    const H = 841.89;
-
-    // AI-generated design — every value is AI-decided
-    const d = designCode || {};
-    // Ensure colors are dark enough to read on white (uses perceived luminance)
-    function ensureDark(hex, maxLum = 0.5) {
-      if (!hex || !hex.startsWith('#') || hex.length < 7) return hex;
-      const r = parseInt(hex.slice(1,3), 16) / 255;
-      const g = parseInt(hex.slice(3,5), 16) / 255;
-      const b = parseInt(hex.slice(5,7), 16) / 255;
-      // Perceived luminance (human eye is most sensitive to green, then red, then blue)
-      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-      if (lum > maxLum) {
-        const scale = maxLum / lum;
-        return '#' + [r,g,b].map(c => Math.round(c * scale * 255).toString(16).padStart(2,'0')).join('');
-      }
-      return hex;
-    }
-    const accent = ensureDark(d.accent, 0.55) || '#8B7D45';
-    const accentLight = d.accentLight || '#E8E0D0';
-    const headingColor = ensureDark(d.headingColor, 0.35) || '#1a1a1a';
-    const bodyColor = ensureDark(d.bodyColor, 0.30) || '#333';
-    let fontHead = d.fontHead || 'Helvetica-Bold';
-    let fontBody = d.fontBody || 'Helvetica';
-    let fontItalic = d.fontItalic || 'Helvetica-Oblique';
-    const bodySize = d.bodySize || 11;
-    const lineGap = d.lineGap || 4;
-    const paragraphSpacing = d.paragraphSpacing || 0.5;
-    const indent = d.indent || 15;
-    const textAlign = d.textAlign || 'justify';
-    const showBorder = d.showBorder !== false;
-    const borderWeight = d.borderWeight || 0.4;
-    const borderColor = ensureDark(d.borderColor, 0.60) || accent;
-    const showDropCap = d.showDropCap !== false;
-    const dropCapSize = d.dropCapSize || 28;
-    const dropCapColor = ensureDark(d.dropCapColor, 0.55) || accent;
-    const smallCapsFirstWords = d.smallCapsFirstWords || false;
-    // Small-caps lead-in styling — an intentional design choice the AI controls.
-    const leadInWordCount = Math.max(1, Math.min(6, d.leadInWordCount || 3));
-    const leadInFont = ['head', 'italic', 'body'].includes(d.leadInFont) ? d.leadInFont : 'body';
-    const leadInColor = ['accent', 'heading', 'body'].includes(d.leadInColor) ? d.leadInColor : 'body';
-    const runningHeader = d.runningHeader || false;
-
-    // Download any Google Fonts the AI requested
-    for (const f of [fontHead, fontBody, fontItalic]) {
-      if (!await ensureFont(f)) {
-        console.warn(`  Font "${f}" unavailable, falling back`);
-        if (f === fontHead) fontHead = 'Helvetica-Bold';
-        if (f === fontBody) fontBody = 'Helvetica';
-        if (f === fontItalic) fontItalic = 'Helvetica-Oblique';
-      }
-    }
-
-    // Proxy doc — intercepts fillColor (darken light colors) and text (block x,y positioning)
-    const originalFillColor = doc.fillColor.bind(doc);
-    const originalText = doc.text.bind(doc);
-    const safeDoc = new Proxy(doc, {
-      get(target, prop) {
-        if (prop === 'fillColor') {
-          return function(color) {
-            if (typeof color === 'string' && color.startsWith('#') && color.length >= 7) {
-              const r = parseInt(color.slice(1,3), 16) / 255;
-              const g = parseInt(color.slice(3,5), 16) / 255;
-              const b = parseInt(color.slice(5,7), 16) / 255;
-              const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-              if (lum > 0.55) {
-                const scale = 0.55 / lum;
-                color = '#' + [r,g,b].map(c => Math.round(c * scale * 255).toString(16).padStart(2,'0')).join('');
-              }
-            }
-            return originalFillColor(color);
-          };
-        }
-        if (prop === 'text') {
-          return function(str, ...args) {
-            // Block: doc.text(str, x, y) or doc.text(str, x, y, opts)
-            // Allow: doc.text(str) or doc.text(str, opts)
-            if (args.length >= 2 && typeof args[0] === 'number' && typeof args[1] === 'number') {
-              // Strip x,y — just pass str and opts (if any)
-              const opts = args[2] || {};
-              return originalText(str, opts);
-            }
-            return originalText(str, ...args);
-          };
-        }
-        const val = target[prop];
-        return typeof val === 'function' ? val.bind(target) : val;
-      }
-    });
-
-    // Safe code executor for AI-generated design code
-    function runDesignCode(code, extraVars = {}) {
-      if (!code) return false;
-      try {
-        // Safety: strip dangerous calls that break layouts
-        // Replace doc.text(str, x, y, ...) with doc.text(str, {...}) to prevent cursor corruption
-        // Match: doc.text("...", NUMBER, NUMBER  → replace with doc.text("...", {
-        let safeCode = code
-          .replace(/doc\.text\s*\(\s*([^,]+),\s*(\d+[\d.]*)\s*,\s*(\d+[\d.]*)\s*,/g, 'doc.text($1, {')
-          .replace(/doc\.text\s*\(\s*([^,]+),\s*(\d+[\d.]*)\s*,\s*(\d+[\d.]*)\s*\)/g, 'doc.text($1)')
-          .replace(/doc\.transform\s*\(/g, '/* blocked */ void(')
-          .replace(/doc\.rotate\s*\(/g, '/* blocked */ void(')
-          .replace(/doc\.scale\s*\(/g, '/* blocked */ void(')
-          .replace(/doc\.translate\s*\(/g, '/* blocked */ void(')
-          .replace(/doc\.addPage\s*\(/g, '/* blocked */ void(')
-          .replace(/doc\.addContent\s*\(/g, '/* blocked */ void(');
-        const vars = {
-          doc: safeDoc, W, H, outline, accent, accentLight, headingColor, bodyColor,
-          fontHead, fontBody, fontItalic, bodySize, lineGap, paragraphSpacing,
-          indent, textAlign, showBorder, borderWeight, borderColor,
-          showDropCap, dropCapSize, dropCapColor, smallCapsFirstWords,
-          ...extraVars
-        };
-        const keys = Object.keys(vars);
-        const fn = new Function(...keys, safeCode);
-        fn(...keys.map(k => vars[k]));
-        return true;
-      } catch (err) {
-        console.warn('  Design code failed:', err.message);
-        return false;
-      }
-    }
-
-    // ===== PAGE 0: COVER IMAGE (fully AI-generated, edge-to-edge) =====
-    const hasCover = coverPath && fs.existsSync(coverPath);
-    if (hasCover) {
-      // Zero-margin page for full bleed cover
-      doc.addPage({ size: [W, H], margins: { top: 0, bottom: 0, left: 0, right: 0 } });
-      try {
-        const img = doc.openImage(coverPath);
-        // 3% overscale to guarantee zero gaps
-        const overscale = 1.15; // 15% overscale — edges will be cropped, text must have margins
-        const scaledH = (W * overscale / img.width) * img.height;
-        const scaledW = W * overscale;
-        if (scaledH >= H) {
-          // Width-fit: image fills width + extra, tall enough
-          doc.image(img, -(scaledW - W) / 2, 0, { width: scaledW });
-        } else {
-          // Height-fit: image fills height + extra, wide enough
-          const hScale = H * overscale;
-          const wFromH = (hScale / img.height) * img.width;
-          doc.image(img, -(wFromH - W) / 2, -(hScale - H) / 2, { height: hScale });
-        }
-      } catch (err) {
-        console.warn('Failed to embed cover image:', err.message);
-      }
-      // Imagen fallback: overlay title on artwork (AI designs the overlay)
-      if (coverNeedsOverlay) {
-        if (!runDesignCode(d.coverOverlayCode)) {
-          // Fallback overlay
-          doc.save();
-          doc.rect(0, H * 0.30, W, H * 0.35).fillOpacity(0.55).fill('#000000');
-          doc.fillOpacity(1);
-          doc.fontSize(32).font(fontHead).fillColor('#FFFFFF')
-            .text(outline.title, 40, H * 0.36, { align: 'center', width: W - 80 });
-          doc.fontSize(13).font(fontItalic).fillColor('#dddddd')
-            .text(outline.subtitle, 40, doc.y + 8, { align: 'center', width: W - 80 });
-          doc.restore();
-        }
-      }
-    }
-    let tocPage = -1; // Will be set when TOC page is actually added
-    // Drawing helpers (no text = no ghost pages)
-    function divider(y) {
-      if (!runDesignCode(d.dividerCode, { y })) {
-        // Fallback divider
-        const cx = W / 2;
-        doc.save().moveTo(cx - 70, y).lineTo(cx + 70, y)
-          .lineWidth(0.5).strokeColor(accent).stroke().restore();
-      }
-    }
-
-    function border() {
-      if (!showBorder) return;
-      doc.save().rect(40, 40, W-80, H-80).lineWidth(borderWeight).strokeColor(borderColor).stroke().restore();
-    }
-
-    // ===== TITLE PAGE (AI-designed) =====
-    doc.addPage({ size: 'A4', margins: { top: 80, bottom: 80, left: 80, right: 80 } });
-    const titlePageIdx = doc.bufferedPageRange().count - 1;
-    border();
-    if (!runDesignCode(d.titlePageCode)) {
-      // Fallback title page
-      doc.moveDown(7);
-      divider(doc.y);
-      doc.moveDown(2);
-      doc.fontSize(30).font(fontHead).fillColor(headingColor)
-        .text(outline.title, { align: 'center' });
-      doc.moveDown(1);
-      doc.fontSize(13).font(fontItalic).fillColor('#666')
-        .text(outline.subtitle, { align: 'center' });
-      doc.moveDown(7);
-      doc.fontSize(9).font(fontItalic).fillColor(accent)
-        .text('greatlibrary.ai', { align: 'center' });
-    }
-
-    // ===== TABLE OF CONTENTS =====
-    doc.addPage();
-    tocPage = doc.bufferedPageRange().count - 1; // Record actual TOC page index
-    border();
-    doc.moveDown(3);
-    doc.fontSize(20).font(fontHead).fillColor(headingColor)
-      .text('Contents', { align: 'center' });
-    doc.moveDown(0.5);
-    divider(doc.y, 100);
-    doc.moveDown(2);
-
-    const tocY = [];
-    chapters.forEach((ch, i) => {
-      tocY.push(doc.y);
-      const tocTitle = ch.title.replace(/^(Chapter\s+)?\d+[\.\:\)\-\s]*/i, '').trim() || ch.title;
-      doc.fontSize(11).font(fontHead).fillColor(accent)
-        .text(`${String(i+1).padStart(2,'0')}   `, { continued: true });
-      doc.font(fontBody).fillColor(bodyColor)
-        .text(tocTitle);
-      doc.moveDown(0.7);
-    });
-
-    // ===== CHAPTERS =====
-    const chapterPageIndex = [];
-
-    chapters.forEach((ch, i) => {
-      doc.addPage();
-      border();
-      chapterPageIndex.push(doc.bufferedPageRange().count - 1);
-
-      // Strip number prefixes from chapter title (e.g. "1. Title" → "Title", "Chapter 1: Title" → "Title")
-      const cleanCh = { ...ch, title: ch.title.replace(/^(Chapter\s+)?\d+[\.\:\)\-\s]*/i, '').trim() || ch.title };
-
-      // Chapter header (AI-designed)
-      if (!runDesignCode(d.chapterHeaderCode, { ch: cleanCh, i })) {
-        // Fallback chapter header
-        doc.moveDown(3);
-        doc.fontSize(42).font(fontHead).fillColor(accentLight)
-          .text(`${String(i+1).padStart(2,'0')}`, { align: 'center' });
-        doc.moveDown(0.2);
-        doc.fontSize(20).font(fontHead).fillColor(headingColor)
-          .text(cleanCh.title, { align: 'center' });
-        doc.moveDown(0.5);
-        divider(doc.y);
-        doc.moveDown(1.5);
-      }
-
-      // Chapter body
-      const paragraphs = ch.content.split(/\n\n+/);
-      let didDropCap = false;
-
-      paragraphs.forEach(p => {
-        const txt = p.trim();
-        if (!txt) return;
-
-        if (!didDropCap && showDropCap && txt.length > 10) {
-          didDropCap = true;
-          const letter = txt[0].toUpperCase();
-          const rest = txt.slice(1);
-          doc.fontSize(dropCapSize).font(fontHead).fillColor(dropCapColor)
-            .text(letter, { continued: true, baseline: -(dropCapSize / 7) });
-          if (smallCapsFirstWords) {
-            // Small-caps lead-in: opening words uppercased + lightly tracked.
-            // Font/color follow the AI's design choice, defaulting to the
-            // subtle body version — never the heavy heading font by default.
-            const leadFont = leadInFont === 'head' ? fontHead : leadInFont === 'italic' ? fontItalic : fontBody;
-            const leadColor = leadInColor === 'accent' ? accent : leadInColor === 'heading' ? headingColor : bodyColor;
-            const words = rest.replace(/^\s+/, '').split(/\s+/);
-            const leadCount = Math.min(leadInWordCount, Math.max(1, words.length - 1));
-            const capsWords = words.slice(0, leadCount).join(' ').toUpperCase();
-            const remaining = words.slice(leadCount).join(' ');
-            doc.fontSize(Math.max(9, bodySize - 1)).font(leadFont).fillColor(leadColor)
-              .text(capsWords + ' ', { continued: true, characterSpacing: 0.5 });
-            doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
-              .text(remaining, { align: textAlign, lineGap, characterSpacing: 0 });
-          } else {
-            doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
-              .text(rest, { align: textAlign, lineGap });
-          }
-        } else if (!didDropCap && !showDropCap && txt.length > 10) {
-          didDropCap = true;
-          doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
-            .text(txt, { align: textAlign, lineGap });
-        } else {
-          doc.fontSize(bodySize).font(fontBody).fillColor(bodyColor)
-            .text(txt, { align: textAlign, lineGap, indent });
-        }
-        doc.moveDown(paragraphSpacing);
-      });
-
-      // Chapter end decoration (AI-designed or fallback divider)
-      if (doc.y < H - 140) {
-        doc.moveDown(1);
-        if (!runDesignCode(d.chapterEndCode)) {
-          divider(doc.y);
-        }
-      }
-    });
-
-    // ===== POST-PROCESSING: borders, TOC links, named destinations =====
-    const totalPages = doc.bufferedPageRange().count;
-
-    const coverOffset = hasCover ? 1 : 0;
-    for (let i = 0; i < totalPages; i++) {
-      doc.switchToPage(i);
-
-      // Skip cover page for borders/headers
-      if (i < coverOffset) continue;
-
-      // Add border to overflow pages
-      if (i > coverOffset && !chapterPageIndex.includes(i)) {
-        border();
-      }
-
-      // Running header on content pages (skip cover + title)
-      if (runningHeader && i > coverOffset + 1) {
-        const pageNum = i + 1; // Actual PDF page number (matches PDF viewer)
-        // AI decides position but MUST use explicit x,y coordinates (not cursor)
-        const pos = d.runningHeaderPosition || 'top'; // AI picks: top, bottom
-        const hy = pos === 'bottom' ? H - 35 : 25;
-        const halign = d.runningHeaderAlign || 'split'; // AI picks: split, center, left, right
-        doc.save();
-        doc.fontSize(8).font(fontItalic).fillColor(accent);
-        if (halign === 'center') {
-          doc.text(`${outline.title}  \u2022  ${pageNum}`, 80, hy, { width: W - 160, align: 'center', lineBreak: false });
-        } else if (halign === 'left') {
-          doc.text(`${outline.title} \u2014 ${pageNum}`, 80, hy, { width: W - 160, align: 'left', lineBreak: false });
-        } else if (halign === 'right') {
-          doc.text(`${pageNum} \u2014 ${outline.title}`, 80, hy, { width: W - 160, align: 'right', lineBreak: false });
-        } else {
-          doc.text(outline.title, 80, hy, { width: W - 160, align: 'left', lineBreak: false });
-          doc.text(String(pageNum), 80, hy, { width: W - 160, align: 'right', lineBreak: false });
-        }
-        doc.restore();
-      }
-    }
-
-    // Add named destination on each chapter's first page
-    chapters.forEach((ch, i) => {
-      if (chapterPageIndex[i] !== undefined) {
-        doc.switchToPage(chapterPageIndex[i]);
-        doc.addNamedDestination(`ch${i}`);
-      }
-    });
-
-    // Add clickable links on the TOC page
-    doc.switchToPage(tocPage);
-    tocY.forEach((y, i) => {
-      doc.goTo(80, y - 2, W - 160, 18, `ch${i}`);
-    });
-
-    doc.end();
-    stream.on('finish', resolve);
-    stream.on('error', reject);
+    },
+    children: titleChildren
   });
+
+  // --- CONTENT (TOC + CHAPTERS) ---
+  var contentChildren = [];
+
+  // Table of Contents
+  for (var si = 0; si < 4; si++) contentChildren.push(new Paragraph({ text: '' }));
+  contentChildren.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 300 },
+    children: [new TextRun({ text: 'Contents', bold: true, size: 40, color: headingColor, font: fontHead })]
+  }));
+  contentChildren.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 400 },
+    children: [new TextRun({ text: dividerText, size: 20, color: accent })]
+  }));
+
+  chapters.forEach(function(ch, i) {
+    var cleanTitle = ch.title.replace(/^(Chapter\s+)?\d+[\.\:\)\-\s]*/i, '').trim() || ch.title;
+    contentChildren.push(new Paragraph({
+      spacing: { after: 160 },
+      children: [
+        new TextRun({ text: String(i+1).padStart(2,'0') + '   ', bold: true, size: 22, color: accent, font: fontHead }),
+        new TextRun({ text: cleanTitle, size: 22, color: bodyColor, font: fontBody })
+      ]
+    }));
+  });
+
+  // Chapters
+  chapters.forEach(function(ch, i) {
+    var cleanTitle = ch.title.replace(/^(Chapter\s+)?\d+[\.\:\)\-\s]*/i, '').trim() || ch.title;
+
+    contentChildren.push(new Paragraph({ children: [new PageBreak()] }));
+    for (var ci = 0; ci < 3; ci++) contentChildren.push(new Paragraph({ text: '' }));
+
+    // Chapter number
+    contentChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 100 },
+      children: [new TextRun({ text: String(i+1).padStart(2,'0'), size: 72, color: accent, font: fontHead })]
+    }));
+
+    // Chapter title
+    contentChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+      children: [new TextRun({ text: cleanTitle, bold: true, size: 36, color: headingColor, font: fontHead })]
+    }));
+
+    // Divider
+    contentChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 },
+      children: [new TextRun({ text: dividerText, size: 20, color: accent })]
+    }));
+
+    // Body paragraphs
+    var paragraphs = ch.content.split(/\n\n+/);
+    paragraphs.forEach(function(p) {
+      var txt = p.trim();
+      if (!txt) return;
+      contentChildren.push(new Paragraph({
+        alignment: textAlign,
+        indent: indent ? { firstLine: indent } : undefined,
+        spacing: { after: 200, line: lineSpacing },
+        children: [new TextRun({ text: txt, size: bodySize, color: bodyColor, font: fontBody })]
+      }));
+    });
+
+    // Chapter end mark
+    contentChildren.push(new Paragraph({ text: '' }));
+    contentChildren.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: endMark, size: 20, color: accent })]
+    }));
+  });
+
+  sections.push({
+    properties: {
+      page: {
+        margin: { top: 1584, bottom: 1584, left: 1584, right: 1584 },
+        size: { width: 11906, height: 16838 }
+      }
+    },
+    headers: {
+      default: new Header({
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: outline.title, italics: true, size: 16, color: accent, font: fontBody })]
+        })]
+      })
+    },
+    footers: {
+      default: new Footer({
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ children: [PageNumber.CURRENT], size: 16, color: accent })]
+        })]
+      })
+    },
+    children: contentChildren
+  });
+
+  var doc = new Document({ sections: sections });
+  var docxBuffer = await Packer.toBuffer(doc);
+  fs.writeFileSync(docxPath, docxBuffer);
+  console.log('  DOCX created: ' + docxPath);
+
+  // Convert DOCX to PDF via LibreOffice
+  try {
+    var pdfBuffer = await libreConvert(docxBuffer, '.pdf', undefined);
+    fs.writeFileSync(pdfPath, pdfBuffer);
+    console.log('  PDF converted: ' + pdfPath);
+  } catch (err) {
+    console.warn('  LibreOffice conversion failed: ' + err.message);
+    console.warn('  Saving DOCX as fallback — install LibreOffice for PDF conversion');
+    fs.copyFileSync(docxPath, pdfPath);
+  }
 }
 
 // --- Ebook status + download ---
@@ -1390,13 +887,7 @@ NEVER use: "threshold", "traveler", "tome", "seek", "knowledge you seek", "summo
       ...tokenLimit(200),
       temperature: 1.2,
     });
-    // Strip stray placeholder tokens the model sometimes leaks, e.g. "(CONTACT_TAB)"
-    const greeting = completion.choices[0].message.content
-      .replace(/\s*\([A-Z0-9]+_[A-Z0-9_]*\)\s*/g, ' ')
-      .replace(/\s+/g, ' ')
-      .replace(/^["']|["']$/g, '')
-      .trim();
-    res.json({ reply: greeting });
+    res.json({ reply: completion.choices[0].message.content.replace(/^["']|["']$/g, '').trim() });
   } catch (err) {
     res.json({ reply: 'What would you learn if no one was watching?' });
   }
