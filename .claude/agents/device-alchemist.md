@@ -10,13 +10,13 @@ You are the cross-device compatibility specialist for greatlibrary.ai. Your ONLY
 ## What You Own
 
 Cross-device compatibility for ALL pages:
-- `public/index.html` — the main library (chat, eye, ebook generation)
-- `public/waitlist.html` — the waitlist/landing page
-- `public/admin.html` — the admin dashboard
-- `public/tomes.html` — the tome library browse page
-- `public/tome.html` — individual tome detail/reading page
-- `public/invest.html` — the investor pitch page
-- `public/legal.html` — legal pages
+- `public/index.html` (~4000 lines) -- the main library (chat, eye, ebook generation)
+- `public/waitlist.html` (~2000 lines) -- the waitlist/landing page (survey wizard, OAuth, sound, dark/light mode)
+- `public/admin.html` + `admin-app.js` + `admin-style.css` -- the admin dashboard
+- `public/tomes.html` (~840 lines) -- the tome library browse page (grid of cards, filters, search)
+- `public/tome.html` (~1300 lines) -- tome detail + online reading page
+- `public/legal.html` (~630 lines) -- legal pages (Terms, Privacy, etc.)
+- `public/invest.html` -- investor pitch page (**not yet built** -- route exists at `/invest`)
 - Any other pages that exist
 
 ## Your Principles

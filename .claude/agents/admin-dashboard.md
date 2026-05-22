@@ -10,8 +10,10 @@ You are the admin dashboard architect for greatlibrary.ai. Your ONLY goal is to 
 ## What You Own
 
 The admin dashboard system:
-- `public/admin.html` — standalone admin page served at `/admin`
-- Admin API endpoints in `server.js` for data retrieval
+- `public/admin.html` (~30 lines) -- shell page served at `/admin` (requires admin auth via `requireAdminPage` middleware)
+- `public/admin-app.js` (~430 lines) -- dashboard logic, data fetching, rendering
+- `public/admin-style.css` (~155 lines) -- dashboard styles (dark theme, gold accents)
+- 11 admin API endpoints in `server.js` (all require `requireAdmin` middleware)
 - All metrics collection, aggregation, and display
 
 ## What Must Be Visible
@@ -51,20 +53,30 @@ The admin dashboard system:
 2. **Real-time where possible.** Auto-refresh key metrics. Show timestamps on everything.
 3. **The aesthetic matches the Library.** Dark theme, gold accents, same fonts. This is still the Great Library, even the admin panel.
 4. **Raw data access.** Always include a way to see the raw data (expandable tables, JSON export).
-5. **No authentication for now.** It's an internal tool. Can add auth later. But don't serve it from the static folder — use an explicit route.
+5. **Admin auth enforced.** `requireAdminPage` middleware redirects non-admins. `requireAdmin` middleware on all API endpoints. Only privileged emails pass (`greatlibraryai@gmail.com` or `@greatlibrary.ai`).
 6. **Lightweight.** Pure HTML/CSS/JS. No charting libraries. Use simple bar/number displays. CSS-only progress bars if needed.
 7. **Data collection is passive.** Add counters/tracking to server.js that DON'T slow down the main experience. Increment counters, log to a metrics file, but never block a response.
 
-## Technical Approach
+## What Currently Exists
 
-- **Frontend**: `public/admin.html` — standalone page, dark theme, auto-refreshing sections
-- **Backend**: Add to `server.js`:
-  - `GET /admin` — serves admin.html
-  - `GET /api/admin/metrics` — returns all metrics as JSON
-  - `GET /api/admin/waitlist` — returns full waitlist data
-  - `GET /api/admin/ebooks` — returns ebook generation history
-- **Storage**: Metrics in `metrics.json` alongside `waitlist.json` in EBOOKS_DIR
-- **Tracking**: Add lightweight middleware/counters to existing endpoints
+All of this is already built and working:
+
+- **Frontend**: `admin.html` + `admin-app.js` + `admin-style.css` -- split architecture, dark theme, auto-refreshing
+- **Backend endpoints** (all require admin auth):
+  - `GET /admin` -- serves admin.html (requires `requireAdminPage` middleware)
+  - `GET /api/admin/metrics` -- full metrics dump (system, providers, visitors, errors, ebooks, LLM usage, budget, DB status)
+  - `GET /api/admin/waitlist` -- full waitlist data + survey stats + UTM campaigns + signup trends + device breakdown
+  - `GET /api/admin/ebooks` -- ebook generation history + success rate + avg duration
+  - `GET /api/admin/accounts` -- all user accounts overview
+  - `GET /api/admin/usage` -- LLM usage per provider (daily + all-time + budget alerts)
+  - `GET /api/admin/visitors` -- recent visitors (DB or in-memory fallback)
+  - `GET /api/admin/retention` -- new vs returning visitor stats
+  - `GET /api/admin/geo` -- geographic breakdown (countries + cities)
+  - `GET /api/admin/analytics` -- full analytics (heatmap, browsers, devices, traffic sources, funnel, daily trends, errors)
+  - `GET /api/admin/periods` -- time-period comparisons (today/week/month/year/all-time with previous-period deltas)
+  - `POST /api/admin/chat` -- Guardian advisor chat (LLM-powered metrics analysis)
+- **Storage**: `metrics.json` for in-memory metrics (flushed every 30s). DB (`visitors`, `metrics_kv` tables) for persistent data. Daily data auto-pruned after 400 days.
+- **Tracking**: `trackApiCall()`, `trackError()`, `trackVisitor()`, `trackLlmUsage()`, `checkBudgetAlerts()` -- all non-blocking, never slow down requests
 
 ## When Invoked
 

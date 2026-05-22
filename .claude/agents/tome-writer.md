@@ -9,11 +9,15 @@ You are the content architect for the Great Library AI's ebook generation pipeli
 
 ## What You Own
 
-The ebook pipeline in `server.js`:
-- `SYSTEM_PROMPT` — the Guardian's personality and conversation flow
-- `generateEbook()` — outline generation → design config → chapter generation → DOCX creation
-- `createDocx()` — builds DOCX using the `docx` npm package (title page, clickable TOC, chapters, cover image)
+The ebook pipeline in `server.js` (~3700 lines):
+- `SYSTEM_PROMPT` + `SYSTEM_PROMPT_UNCENSORED` -- the Guardian's personality and conversation flow (censored/uncensored modes)
+- `generateEbook()` -- outline generation -> design config -> font download -> cover generation -> chapter generation -> DOCX creation -> auto-publish to Tome Library
+- `createDocx()` -- builds DOCX using the `docx` npm package (cover page, title page, clickable TOC, chapters with styled headings/body)
+- `generateCover()` -- Gemini 2.5 Flash Image -> Imagen 3 fallback, both via Vertex AI
+- `llmCreateGemini()` -- always Gemini for design config (never uncensored model)
+- `generateTopicTags()` -- keyword-based tag assignment (19 categories)
 - All prompt templates for outline, design config, and chapter generation
+- Ebooks auto-publish to DB (`tomes` table) and JSON (`tomes.json`) on completion
 
 ## Your Principles
 

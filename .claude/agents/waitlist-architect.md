@@ -34,16 +34,19 @@ The waitlist/landing page system:
 8. **Mobile first.** Most traffic will be mobile. The signup must work perfectly on small screens.
 9. **Speed matters.** The page must load instantly. No heavy frameworks, no unnecessary assets.
 
-## Technical Approach
+## What Currently Exists
 
-- **Frontend**: Keep it in the Great Library aesthetic. Can be a separate HTML page (`public/waitlist.html`) or a section within `index.html`.
-- **Backend**: Add endpoints to `server.js` for signup handling:
-  - `POST /api/waitlist/signup` — captures email + optional data
-  - `GET /api/waitlist/count` — returns current waitlist size (for social proof)
-  - `POST /api/waitlist/survey` — captures post-signup survey answers
-- **Storage**: Start simple — JSON file or SQLite. Can migrate to a real DB later.
-- **Validation**: Validate emails server-side. Deduplicate. Rate limit.
-- **Analytics**: Track conversion funnel (page view → form focus → email entered → submit → survey completed).
+All of this is already built and working:
+
+- **Frontend**: `public/waitlist.html` (~2000 lines) -- full landing page with ambient sound, mute button, dark/light mode toggle, step-by-step survey wizard, Google+Microsoft OAuth sign-in, entrance transition animation, social proof counter
+- **Backend endpoints** (in `server.js` ~3700 lines):
+  - `GET /api/waitlist/count` -- current waitlist size
+  - `POST /api/waitlist/signup` -- email capture (rate-limited per IP, validated, deduped, stores UTM/device/screen/referrer)
+  - `POST /api/waitlist/survey` -- post-signup survey answers (topics, format, role, wouldPay, source)
+  - `POST /api/track/funnel` -- micro-conversion events (pageView, emailFocus, emailSubmit, surveyStart, surveyComplete)
+- **Storage**: PostgreSQL (`waitlist` table in `db.js`) with JSON file fallback (`waitlist.json`). Rate limits persisted in DB too.
+- **Auth integration**: After signup, seekers can set a password or sign in with Google/Microsoft. Account auto-links to waitlist entry by email.
+- **Survey**: 5-step mandatory wizard (topics, format, role, wouldPay, source). No skip buttons. Shake + validate on empty. All questions have "Other" option with text input.
 
 ## When Invoked
 

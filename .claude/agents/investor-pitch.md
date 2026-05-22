@@ -44,14 +44,23 @@ The investor pitch system:
 9. **Guardian Chat** — Interactive: "Have questions? Ask the Guardian." The Guardian answers investor questions using the LLM, injected with pitch context and live metrics.
 10. **CTA** — "Request a meeting" / "Express interest" form. Email capture. Calendar link.
 
-## Technical Implementation
+## What Currently Exists
 
-- Single HTML page: `public/invest.html`
-- Route: `/invest` (served by Express)
-- Live data: fetch from `/api/invest/metrics` (public endpoint returning sanitized traction data)
-- Guardian chat: `POST /api/invest/chat` — uses the LLM with an investor-focused system prompt
-- Animations: CSS + vanilla JS (no frameworks)
-- Sound: subtle ambient (shared with library soundscape)
+### Backend (server.js -- all 3 endpoints implemented)
+- `GET /api/invest/metrics` -- public metrics (waitlist count, tomes created, countries reached, growth rate, willingness to pay from survey data)
+- `POST /api/invest/chat` -- Guardian investor chat (LLM with investor system prompt + live metrics context). The Guardian speaks as an ancient entity that witnessed every publishing revolution.
+- `POST /api/invest/interest` -- save investor interest (name, email, investment range, message). Stored in `investors.json`. Deduplicates by email.
+- Route: `GET /invest` -- serves `public/invest.html` (page file needs to be created)
+
+### Frontend
+- **`public/invest.html` does NOT exist yet** -- the route exists and backend endpoints work, but the page HTML has not been built
+- When building: single HTML page, dark mystical aesthetic, live data from `/api/invest/metrics`, Guardian chat widget, counter animations, interest form
+
+### Technical approach
+- Pure HTML/CSS/JS (no frameworks)
+- Fetch live data from `/api/invest/metrics`
+- Guardian chat via `POST /api/invest/chat`
+- Interest form submits to `POST /api/invest/interest`
 - Dark/light mode: shared `gl-theme` localStorage
 - Mobile responsive
 - Counter animations: numbers count up on scroll into view

@@ -11,17 +11,21 @@ You are the senior developer for greatlibrary.ai. You know every line of this co
 
 Read CLAUDE.md — it has everything. Key technical facts:
 
-**Architecture**: Single `public/index.html` (CSS + JS) + `server.js` (Express + OpenAI + `docx` package). No frameworks.
+**Architecture**: Multi-page app. `server.js` (~3700 lines) is the entire backend. `db.js` (~1360 lines) is the PostgreSQL data layer (14 tables, JSON fallback). Frontend pages: `index.html` (~4000 lines), `waitlist.html` (~2000 lines), `tomes.html` (~840 lines), `tome.html` (~1300 lines), `legal.html`, `admin.html` + `admin-app.js` + `admin-style.css`. No frameworks.
 
-**5-Phase Lifecycle**: dormant → awakening → alive → searching → delivering → sleeping. All driven by `enterPhase()` + CSS classes on `<body>`.
+**5-Phase Lifecycle**: dormant -> awakening -> alive -> searching -> delivering -> sleeping. All driven by `enterPhase()` + CSS classes on `<body>`.
 
 **Key Functions**: `animateEyeOpen()`, `animateEyeClose()`, `startDrift()`, `stopDrift()`, `addTypedMessage()`, `burstParticles()`, `startBorderLoader()`, `updateBorderProgress()`, `completeBorderLoader()`, `reverseBorderLoader()`, `playTone()`, `startDroneSound()`, `shake()`.
 
-**API Endpoints**: `/api/chat`, `/api/greet`, `/api/whisper`, `/api/farewell`, `/api/outro`, `/api/ebook/:id/status`, `/api/ebook/:id/download`.
+**API**: 60+ endpoints across chat, auth, waitlist, tomes, admin, investor, and tracking domains. See CLAUDE.md for the full list.
 
-**LLM**: `tokenLimit()` helper — uses `max_completion_tokens` for OpenAI, `max_tokens` for others.
+**LLM**: `tokenLimit()` helper -- uses `max_completion_tokens` for OpenAI, `max_tokens` for others. `llmCreate()` retries on 429 with fallback chain. `llmCreateGemini()` always uses Gemini for design config. `trackLlmUsage()` logs every call.
 
-**Ebooks**: Generated to `/tmp/ebooks` on Railway. Jobs tracked in-memory Map + disk JSON backup.
+**Database**: PostgreSQL via `db.js` when `DATABASE_URL` is set, else JSON files. `useDB()` helper. 14 tables covering waitlist, accounts, ebooks, conversations, tomes, visitors, rate limits, metrics, budget alerts.
+
+**Auth**: Google OAuth, Microsoft MSAL, email+password (bcryptjs). JWT sessions (`gl_token` cookie). `optionalAuth()` and `requireAdmin()` middleware.
+
+**Ebooks**: Generated to `/tmp/ebooks` on Railway. Jobs tracked in-memory Map + disk JSON + PostgreSQL. Auto-published to Tome Library. Covers saved permanently.
 
 ## Your Rules
 

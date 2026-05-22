@@ -60,52 +60,51 @@ The account system is the thread that ties the Library together:
 
 ## Technical Approach
 
-### Frontend (public/index.html)
-- Replace the "coming soon" Account section in settings with actual sign-in UI
-- Google sign-in: use Google Identity Services (GSI) library — loads async, renders a custom-styled button
-- Microsoft sign-in: use MSAL.js browser library — same approach, custom-styled
-- Signed-in state: show avatar (from Google/Microsoft), display name, email, sign-out
-- Ebook history panel: list of past tomes with re-download links
-- All styled to match the Library — no default provider buttons
+## What Currently Exists
 
-### Backend (server.js)
-Add auth endpoints:
-- `POST /api/auth/google` — receives Google ID token, verifies with Google, creates/finds account, sets session cookie
-- `POST /api/auth/microsoft` — receives MSAL token, verifies, creates/finds account, sets session cookie
-- `POST /api/auth/email/signup` — email + password signup (bcrypt hash)
-- `POST /api/auth/email/signin` — email + password signin
-- `POST /api/auth/signout` — clears session
-- `GET /api/auth/me` — returns current user (from session cookie) or null
-- `GET /api/auth/ebooks` — returns signed-in user's ebook history
+All of this is already built and working:
 
-Add middleware:
-- `optionalAuth()` — reads session cookie, attaches `req.user` if valid, but doesn't block if absent
-- Apply to `/api/chat` so ebooks get linked to accounts when signed in
+### Frontend (public/index.html, public/waitlist.html)
+- Account section in settings panel with Google/Microsoft/email sign-in
+- Google sign-in: Google Identity Services (GSI) `renderButton()` -- custom-styled
+- Microsoft sign-in: MSAL.js popup with `/consumers` authority
+- Email sign-in: email+password form with forgot-password flow
+- Signed-in state: avatar, name, email, sign-out button
+- Ebook history panel with re-download links
+- Waitlist page also has Google/Microsoft OAuth for post-signup sign-in
+
+### Backend (server.js ~3700 lines)
+All auth endpoints are implemented:
+- `POST /api/auth/google` -- Google One Tap sign-in (ID token verification)
+- `POST /api/auth/google/token` -- Google OAuth access token sign-in (fallback)
+- `POST /api/auth/microsoft` -- MSAL sign-in (Graph API profile fetch)
+- `POST /api/auth/email/signup` -- email+password registration (bcrypt, min 8 chars)
+- `POST /api/auth/email/signin` -- email+password login
+- `POST /api/auth/forgot-password` -- generate reset token (logged to console, no email service)
+- `POST /api/auth/reset-password` -- validate token and set new password
+- `POST /api/auth/check-email` -- check if email has an account (providers, hasPassword)
+- `POST /api/auth/signout` -- clear session cookie
+- `GET /api/auth/me` -- current user from session
+- `GET /api/auth/access` -- check if user has library access (privileged check)
+- `GET /api/auth/ebooks` -- user's ebook history
+- `GET /api/auth/config` -- client IDs for Google/Microsoft OAuth
+
+Middleware:
+- `optionalAuth()` -- reads `gl_token` cookie, attaches `req.user` if valid, never blocks
+- `requireAdmin()` -- verifies admin email (checks both DB and JSON)
+- Applied to `/api/chat` so ebooks get linked to accounts when signed in
 
 ### Storage
-- `accounts.json` in EBOOKS_DIR — array of account objects:
-  ```json
-  {
-    "id": "uuid",
-    "email": "seeker@example.com",
-    "name": "Display Name",
-    "avatar": "url",
-    "provider": "google|microsoft|email",
-    "passwordHash": "bcrypt (email accounts only)",
-    "waitlistId": "linked waitlist entry index",
-    "ebookIds": ["id1", "id2"],
-    "tomesCount": 5,
-    "membershipStatus": "free|member",
-    "createdAt": "ISO timestamp",
-    "lastSignIn": "ISO timestamp"
-  }
-  ```
+- PostgreSQL (`accounts` table in `db.js`) with JSON file fallback (`accounts.json`)
+- Account fields: id, email, name, avatar, providers (array), passwordHash, ebookIds (array), tomesCount, membership, waitlistLinked, waitlistSurvey, lastSignIn, createdAt
+- Auto-links to waitlist entry by matching email on sign-in
+- Reset tokens stored in JSON (short-lived, JSON is sufficient)
 
-### Dependencies
-- `jsonwebtoken` — for JWT session tokens
-- `bcrypt` (or `bcryptjs`) — for email account password hashing
-- Google token verification: `google-auth-library` (already in deps)
-- Microsoft token verification: verify JWT against Microsoft's public keys (or use `jwks-rsa`)
+### Dependencies (already in package.json)
+- `jsonwebtoken` -- JWT session tokens (30-day expiry, httpOnly cookie)
+- `bcryptjs` -- password hashing
+- `google-auth-library` -- Vertex AI auth (Google token verification uses fetch to tokeninfo endpoint)
+- Microsoft token verification: fetch to MS Graph API `/me` endpoint
 
 ## When Invoked
 

@@ -157,23 +157,41 @@ Design RESTful endpoints:
 - Cover images need to be saved permanently (not in /tmp)
 - Chapter content should be stored for online reading (not just in the .docx)
 
-## What Currently Exists
+## What Currently Exists (All Built)
 
-- Ebooks are generated and stored as .docx files
-- Cover images are generated but may be in /tmp (ephemeral)
-- `jobs.json` tracks ebook metadata (title, chapters, status)
-- Users have a "tomes counter" in localStorage
-- There's a "tome history" section in the settings panel for signed-in users
-- The ebook pipeline already creates all the content — the Library just needs to surface it
+The Tome Library is fully implemented:
 
-## When Building
+### Frontend
+- `public/tomes.html` (~840 lines) -- browse page with grid of tome cards, topic filter pills, sort dropdown (newest/oldest/most-liked/most-viewed/trending), search bar, pagination
+- `public/tome.html` (~1300 lines) -- detail page with cover, metadata, chapter list, online reading view (chapter navigation, progress), engagement bar (like/dislike/save/share/report), threaded comments, download button
 
-1. Read `server.js` to understand the current ebook generation pipeline and data structures
-2. Read `public/index.html` for design reference (match the aesthetic)
-3. Start with the browse page and tome cards — that's the highest impact
-4. Add engagement features incrementally (likes → comments → saves → sharing)
-5. Make sure existing ebook generation automatically publishes to the library
-6. Mobile-first responsive design
+### Backend (server.js)
+17 tome API endpoints fully implemented:
+- `GET /api/tomes` -- browse with filters, sort, pagination (DB + JSON fallback)
+- `GET /api/tomes/trending` -- top 10 trending (score = likes*3 + views / sqrt(age))
+- `GET /api/tomes/search?q=` -- search by title/subtitle/author/tags/chapter titles
+- `GET /api/tomes/:id` -- full details (increments unique view count per IP per hour)
+- `GET /api/tomes/:id/chapters` -- chapter content for online reading (single or all)
+- `GET /api/tomes/:id/cover` -- serve cover image (filesystem -> DB fallback)
+- `GET /api/tomes/:id/download` -- download DOCX (tracks download count)
+- `GET /api/tomes/:id/user-state` -- check if user liked/saved/disliked
+- `GET /api/tomes/:id/comments` -- threaded comments (newest first)
+- `POST /api/tomes/:id/like` -- toggle like (works for anon via IP hash)
+- `POST /api/tomes/:id/dislike` -- toggle dislike
+- `POST /api/tomes/:id/save` -- toggle bookmark (requires auth)
+- `POST /api/tomes/:id/report` -- report a tome
+- `POST /api/tomes/:id/comments` -- add comment (requires auth, max 2000 chars)
+- `POST /api/tomes/:id/comments/:commentId/like` -- like a comment
+- `GET /api/my-tomes` -- current user's created tomes
+- `GET /api/my-tomes/saved` -- bookmarked tomes
+
+### Data
+- PostgreSQL: `tomes`, `tome_likes`, `tome_saves`, `tome_comments`, `tome_views`, `tome_reports` tables
+- JSON fallback: `tomes.json` (tomes, likes, saves, comments, views, reports arrays)
+- Covers: saved permanently to `ebooks/covers/` + stored as BYTEA in DB
+- Auto-publish: `generateEbook()` auto-publishes to library on completion
+- Auto-migration: existing ebooks migrate to library on startup (from jobs.json + orphaned .docx files)
+- Topic tags: keyword-based assignment from 19 categories via `generateTopicTags()`
 
 ## What Good Looks Like
 
