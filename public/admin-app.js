@@ -2,9 +2,10 @@
   var $ = function(sel, ctx) { return (ctx || document).querySelector(sel); };
   var $$ = function(sel, ctx) { return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); };
 
-  var metricsData = null, waitlistData = null, ebooksData = null, accountsData = null, usageData = null, analyticsData = null;
+  var metricsData = null, waitlistData = null, ebooksData = null, accountsData = null, usageData = null, analyticsData = null, budgetData = null;
   var sortState = {};
   var firstLoad = true;
+  var budgetAlertShown = {}; // track which provider alerts have played sound
 
   // ==================== THEME ====================
   var isLightMode = localStorage.getItem('gl-theme') === 'light';
@@ -118,27 +119,61 @@
     try {
       var r = await Promise.all([
         fetch('/api/admin/metrics'), fetch('/api/admin/waitlist'), fetch('/api/admin/ebooks'),
-        fetch('/api/admin/accounts'), fetch('/api/admin/usage'), fetch('/api/admin/analytics')
+        fetch('/api/admin/accounts'), fetch('/api/admin/usage'), fetch('/api/admin/analytics'),
+        fetch('/api/admin/budget')
       ]);
       if (r[0].status === 403 || r[1].status === 403) { window.location.href = '/'; return; }
       metricsData = await r[0].json(); waitlistData = await r[1].json(); ebooksData = await r[2].json();
       accountsData = await r[3].json(); usageData = await r[4].json(); analyticsData = await r[5].json();
+      budgetData = await r[6].json();
       render();
       $('#lastRefresh').textContent = new Date().toLocaleTimeString();
     } catch (err) { console.error('Dashboard fetch failed:', err); }
+  }
+
+  // Fast budget-only refresh (every 15s between full refreshes)
+  async function fetchBudgetOnly() {
+    try {
+      var r = await fetch('/api/admin/budget');
+      if (r.status === 403) return;
+      budgetData = await r.json();
+      // Only re-render the budget sections
+      var providerEl = document.getElementById('budget-providers');
+      var budgetEl = document.getElementById('budget-detail');
+      if (providerEl && budgetData) providerEl.innerHTML = renderProviderCards(budgetData, metricsData);
+      if (budgetEl && budgetData) budgetEl.innerHTML = renderBudgetDetail(budgetData, usageData);
+      updateResetCountdown();
+    } catch (err) { /* silent */ }
   }
 
   function render() {
     if (!metricsData || !waitlistData || !ebooksData) return;
     var d = metricsData, w = waitlistData, e = ebooksData, a = accountsData, u = usageData, an = analyticsData;
     var grid = $('#dashboard');
+    var b = budgetData;
     renderAlertBanner(u);
     renderKPIs(d, w, e, an);
     grid.innerHTML = [
-      renderTraffic(d, an), renderVisitorFeed(d), renderWaitlistOverview(w, d), renderSurveyInsights(w),
-      renderEbookOverview(e), renderCoverStats(d), renderAccountsOverview(a), renderProviders(d),
-      renderLlmUsage(u, d), renderApiUsage(d), renderErrors(d, an), renderSystem(d),
-      renderWaitlistTable(w), renderEbookTable(e), renderReferrers(d)
+      /* Row 2: Traffic + Live Visitors — side by side */
+      renderTraffic(d, an), renderVisitorFeed(d),
+      /* Row 3: Waitlist + Ebook — side by side */
+      renderWaitlistOverview(w, d), renderEbookOverview(e),
+      /* Row 4: Survey — full width */
+      renderSurveyInsights(w),
+      /* Row 5: Cover + Accounts — side by side */
+      renderCoverStats(d), renderAccountsOverview(a),
+      /* Row 6: LLM Providers with Budget — full width */
+      renderProviders(d, b),
+      /* Row 7: Budget Detail — full width */
+      renderLlmUsage(u, d, b),
+      /* Row 8: Errors + System — side by side */
+      renderErrors(d, an), renderSystem(d),
+      /* Row 9: Waitlist table — full width */
+      renderWaitlistTable(w),
+      /* Row 10: Ebook table — full width */
+      renderEbookTable(e),
+      /* Row 11: API Calls + Referrers — side by side */
+      renderApiUsage(d), renderReferrers(d)
     ].join('');
     bindTableSort(); bindSearch(); bindExport();
     if (firstLoad) {
@@ -164,13 +199,14 @@
     var convRate = d.pageVisits.waitlist > 0 ? Math.round(w.total / d.pageVisits.waitlist * 100) : 0;
     var totalVisits = (d.pageVisits.waitlist || 0) + (d.pageVisits.library || 0) + (d.pageVisits.tomes || 0);
     var liveCount = an ? (an.liveVisitors || 0) : 0;
+    function kz(v) { return (v === 0 || v === '0%') ? ' zero' : ''; }
     $('#kpiRow').innerHTML = ''
-      + '<div class="kpi-card' + (liveCount > 0 ? ' live-pulse' : '') + '"><div class="kpi-value' + (liveCount > 0 ? ' accent' : '') + '" data-target="' + liveCount + '">0</div><div class="kpi-label">' + (liveCount > 0 ? '<span class="pulse"></span>' : '') + 'Live Now</div></div>'
-      + '<div class="kpi-card"><div class="kpi-value" data-target="' + totalVisits + '">0</div><div class="kpi-label">Total Visits</div></div>'
-      + '<div class="kpi-card"><div class="kpi-value" data-target="' + d.uniqueVisitors + '">0</div><div class="kpi-label">Unique Visitors</div></div>'
-      + '<div class="kpi-card"><div class="kpi-value" data-target="' + w.total + '">0</div><div class="kpi-label">Signups</div></div>'
-      + '<div class="kpi-card"><div class="kpi-value" data-target="' + e.completed + '">0</div><div class="kpi-label">Ebooks</div></div>'
-      + '<div class="kpi-card"><div class="kpi-value accent" data-target="' + convRate + '%">0%</div><div class="kpi-label">Conversion</div></div>';
+      + '<div class="kpi-card' + (liveCount > 0 ? ' live-pulse' : '') + '"><div class="kpi-value' + (liveCount > 0 ? ' accent' : kz(liveCount)) + '" data-target="' + liveCount + '">0</div><div class="kpi-label">' + (liveCount > 0 ? '<span class="pulse"></span>' : '') + 'Live Now</div></div>'
+      + '<div class="kpi-card"><div class="kpi-value' + kz(totalVisits) + '" data-target="' + totalVisits + '">0</div><div class="kpi-label">Total Visits</div></div>'
+      + '<div class="kpi-card"><div class="kpi-value' + kz(d.uniqueVisitors) + '" data-target="' + d.uniqueVisitors + '">0</div><div class="kpi-label">Unique Visitors</div></div>'
+      + '<div class="kpi-card"><div class="kpi-value' + kz(w.total) + '" data-target="' + w.total + '">0</div><div class="kpi-label">Signups</div></div>'
+      + '<div class="kpi-card"><div class="kpi-value' + kz(e.completed) + '" data-target="' + e.completed + '">0</div><div class="kpi-label">Ebooks</div></div>'
+      + '<div class="kpi-card"><div class="kpi-value accent' + kz(convRate + '%') + '" data-target="' + convRate + '%">0%</div><div class="kpi-label">Conversion</div></div>';
   }
 
   function renderTraffic(d, an) {
@@ -180,10 +216,11 @@
       return '<div class="bar-item"><div class="bar-label">' + e[0] + '</div><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(e[1]/srcTotal*100) + '%"></div></div><div class="bar-count">' + e[1] + ' (' + Math.round(e[1]/srcTotal*100) + '%)</div></div>';
     }).join('');
     var br = an ? an.bounceRate : 0, nv = an ? an.newVisitors : 0, rv = an ? an.returningVisitors : 0, dt = d.devices.tablet || 0;
+    function zc(v) { return v === 0 ? ' zero' : ''; }
     return '<div class="card"><div class="card-title"><span class="pulse"></span>Traffic & Visitors</div>'
-      + '<div class="stat-row"><div class="stat"><div class="stat-value">' + d.pageVisits.waitlist + '</div><div class="stat-label">Waitlist visits</div></div><div class="stat"><div class="stat-value">' + d.pageVisits.library + '</div><div class="stat-label">Library visits</div></div><div class="stat"><div class="stat-value">' + (d.pageVisits.tomes||0) + '</div><div class="stat-label">Tomes visits</div></div></div>'
-      + '<div class="stat-row"><div class="stat"><div class="stat-value small">' + d.devices.desktop + '</div><div class="stat-label">Desktop</div></div><div class="stat"><div class="stat-value small">' + d.devices.mobile + '</div><div class="stat-label">Mobile</div></div><div class="stat"><div class="stat-value small">' + dt + '</div><div class="stat-label">Tablet</div></div></div>'
-      + '<div class="stat-row"><div class="stat"><div class="stat-value small">' + nv + '</div><div class="stat-label">New visitors</div></div><div class="stat"><div class="stat-value small">' + rv + '</div><div class="stat-label">Returning</div></div><div class="stat"><div class="stat-value small">' + br + '%</div><div class="stat-label">Bounce rate</div></div></div>'
+      + '<div class="stat-row"><div class="stat"><div class="stat-value'+zc(d.pageVisits.waitlist)+'">' + d.pageVisits.waitlist + '</div><div class="stat-label">Waitlist visits</div></div><div class="stat"><div class="stat-value'+zc(d.pageVisits.library)+'">' + d.pageVisits.library + '</div><div class="stat-label">Library visits</div></div><div class="stat"><div class="stat-value'+zc(d.pageVisits.tomes||0)+'">' + (d.pageVisits.tomes||0) + '</div><div class="stat-label">Tomes visits</div></div></div>'
+      + '<div class="stat-row"><div class="stat"><div class="stat-value small'+zc(d.devices.desktop)+'">' + d.devices.desktop + '</div><div class="stat-label">Desktop</div></div><div class="stat"><div class="stat-value small'+zc(d.devices.mobile)+'">' + d.devices.mobile + '</div><div class="stat-label">Mobile</div></div><div class="stat"><div class="stat-value small'+zc(dt)+'">' + dt + '</div><div class="stat-label">Tablet</div></div></div>'
+      + '<div class="stat-row"><div class="stat"><div class="stat-value small'+zc(nv)+'">' + nv + '</div><div class="stat-label">New visitors</div></div><div class="stat"><div class="stat-value small'+zc(rv)+'">' + rv + '</div><div class="stat-label">Returning</div></div><div class="stat"><div class="stat-value small'+zc(br)+'">' + br + '%</div><div class="stat-label">Bounce rate</div></div></div>'
       + (srcBars ? '<div class="section-label" style="margin-top:16px">Traffic Sources</div><div class="bar-group">' + srcBars + '</div>' : '') + '</div>';
   }
 
@@ -205,30 +242,36 @@
       var geo = [v.city,v.region,v.country].filter(Boolean).join(', ') || v.ip;
       return '<div class="visitor-item"><div class="visitor-dot'+(ir?' recent':'')+'"></div><div class="visitor-page">'+escHtml(v.page)+'</div><div class="visitor-geo">'+(v.country?countryFlag(v.country)+' ':'')+escHtml(geo)+'</div><div class="visitor-device">'+(v.isMobile?'Mobile':'Desktop')+'</div><div class="visitor-time">'+ta+'</div></div>';
     }).join('');
-    return '<div class="card card-full"><div class="card-title"><span class="pulse"></span>Live Visitors</div>' + cb + '<div class="section-label">Recent Activity</div><div class="visitor-feed">' + (fi || '<div class="empty-state">No visitor data yet.</div>') + '</div></div>';
+    return '<div class="card"><div class="card-title"><span class="pulse"></span>Live Visitors</div>' + cb + '<div class="section-label">Recent Activity</div><div class="visitor-feed">' + (fi || '<div class="empty-state">Visitor activity appears here in real time as seekers arrive.</div>') + '</div></div>';
   }
 
   function renderWaitlistOverview(w, d) {
     var cr = d.pageVisits.waitlist > 0 ? Math.round(w.total / d.pageVisits.waitlist * 100) : 0;
     var sr = w.surveyStats.completionRate, trend = w.signupTrend || [], th = '';
     if (trend.length > 0) {
-      var mt = Math.max.apply(null, trend.map(function(t){ return t.count; })) || 1;
-      th = '<div style="margin-top:16px"><div class="section-label">Last 30 Days</div><div style="display:flex;align-items:flex-end;gap:2px;height:60px">' + trend.map(function(t) {
-        var h = Math.max(2, Math.round(t.count / mt * 56));
-        return '<div title="'+t.date+': '+t.count+'" style="flex:1;height:'+h+'px;background:linear-gradient(0deg,#3a3528,#5a5038);border-radius:2px 2px 0 0;min-width:3px"></div>';
-      }).join('') + '</div></div>';
+      var hasData = trend.some(function(t){ return t.count > 0; });
+      if (hasData) {
+        var mt = Math.max.apply(null, trend.map(function(t){ return t.count; })) || 1;
+        th = '<div style="margin-top:16px"><div class="section-label">Last 30 Days</div><div style="display:flex;align-items:flex-end;gap:2px;height:60px">' + trend.map(function(t) {
+          var h = Math.max(2, Math.round(t.count / mt * 56));
+          return '<div title="'+t.date+': '+t.count+'" style="flex:1;height:'+h+'px;background:linear-gradient(0deg,#3a3528,#5a5038);border-radius:2px 2px 0 0;min-width:3px"></div>';
+        }).join('') + '</div></div>';
+      }
     }
     var fn = analyticsData ? analyticsData.funnel : null, fh = '';
     if (fn) {
       var steps = [{label:'Page View',value:fn.pageView||0},{label:'Email Submit',value:fn.emailSubmit||0},{label:'Survey Done',value:fn.surveyComplete||0}];
       var fm = Math.max.apply(null, steps.map(function(s){ return s.value; })) || 1;
-      fh = '<div style="margin-top:16px"><div class="section-label">Conversion Funnel</div>' + steps.map(function(s) {
-        return '<div class="bar-item"><div class="bar-label" style="min-width:90px">'+s.label+'</div><div class="bar-track"><div class="bar-fill" style="width:'+Math.round(s.value/fm*100)+'%"></div></div><div class="bar-count">'+s.value+'</div></div>';
-      }).join('') + '</div>';
+      fh = '<div style="margin-top:20px"><div class="section-label">Conversion Funnel</div><div class="funnel-group">' + steps.map(function(s,i) {
+        var pct = fm > 0 ? Math.round(s.value/fm*100) : 0;
+        var dropoff = i > 0 && steps[i-1].value > 0 ? ' (' + Math.round(s.value/steps[i-1].value*100) + '%)' : '';
+        return '<div class="bar-item"><div class="bar-label">'+s.label+'</div><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div><div class="bar-count">'+s.value+dropoff+'</div></div>';
+      }).join('') + '</div></div>';
     }
+    function zc(v) { return v === 0 || v === '0' ? ' zero' : ''; }
     return '<div class="card"><div class="card-title">Waitlist & Signups</div>'
-      + '<div class="stat-row"><div class="stat"><div class="stat-value">'+w.total+'</div><div class="stat-label">Total signups</div></div><div class="stat"><div class="stat-value accent">'+w.rate.today+'</div><div class="stat-label">Today</div></div><div class="stat"><div class="stat-value accent">'+w.rate.thisWeek+'</div><div class="stat-label">This week</div></div></div>'
-      + '<div class="stat-row"><div class="stat"><div class="stat-value small">'+cr+'%</div><div class="stat-label">Visit-to-signup</div></div><div class="stat"><div class="stat-value small">'+sr+'%</div><div class="stat-label">Survey completion</div></div><div class="stat"><div class="stat-value small">'+w.surveyStats.completed+'</div><div class="stat-label">Surveys done</div></div></div>'
+      + '<div class="stat-row"><div class="stat"><div class="stat-value'+zc(w.total)+'">'+w.total+'</div><div class="stat-label">Total signups</div></div><div class="stat"><div class="stat-value accent'+zc(w.rate.today)+'">'+w.rate.today+'</div><div class="stat-label">Today</div></div><div class="stat"><div class="stat-value accent'+zc(w.rate.thisWeek)+'">'+w.rate.thisWeek+'</div><div class="stat-label">This week</div></div></div>'
+      + '<div class="stat-row"><div class="stat"><div class="stat-value small'+zc(cr)+'">'+cr+'%</div><div class="stat-label">Visit-to-signup</div></div><div class="stat"><div class="stat-value small'+zc(parseInt(sr))+'">'+sr+'%</div><div class="stat-label">Survey completion</div></div><div class="stat"><div class="stat-value small'+zc(w.surveyStats.completed)+'">'+w.surveyStats.completed+'</div><div class="stat-label">Surveys done</div></div></div>'
       + th + fh + '</div>';
   }
 
@@ -242,33 +285,35 @@
     }
     var pe = Object.entries(s.wouldPay||{}), fe = Object.entries(s.formats||{}), re = Object.entries(s.roles||{}), se = Object.entries(s.sources||{});
     var hd = topics.length > 0 || pe.length > 0 || fe.length > 0 || re.length > 0 || se.length > 0;
+    function emptySection(label) { return '<div><div class="section-label">'+label+'</div><div style="color:#2a2520;font-size:13px;font-style:italic;padding:8px 0">---</div></div>'; }
     return '<div class="card card-full"><div class="card-title">Survey Insights</div>'
-      + (!hd ? '<div class="empty-state">No survey data yet.</div>' : '')
-      + (topics.length > 0 ? '<div style="margin-bottom:20px"><div class="section-label">Top Topics</div><div class="bar-group">'+tb+'</div></div>' : '')
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">'
-      + (re.length > 0 ? '<div><div class="section-label">Seeker Role</div><div class="bar-group">'+mb(re)+'</div></div>' : '')
-      + (fe.length > 0 ? '<div><div class="section-label">Preferred Format</div><div class="bar-group">'+mb(fe)+'</div></div>' : '')
-      + (pe.length > 0 ? '<div><div class="section-label">Would Pay?</div><div class="bar-group">'+mb(pe)+'</div></div>' : '')
-      + (se.length > 0 ? '<div><div class="section-label">Discovery Source</div><div class="bar-group">'+mb(se)+'</div></div>' : '')
+      + (!hd ? '<div class="empty-state" style="margin-bottom:20px">Survey responses appear here as seekers complete the waitlist form.</div>' : '')
+      + (topics.length > 0 ? '<div style="margin-bottom:20px"><div class="section-label">Top Topics</div><div class="bar-group">'+tb+'</div></div>' : (!hd ? '<div style="margin-bottom:20px"><div class="section-label">Top Topics</div><div style="color:#2a2520;font-size:13px;font-style:italic;padding:8px 0">---</div></div>' : ''))
+      + '<div class="survey-grid">'
+      + (re.length > 0 ? '<div><div class="section-label">Seeker Role</div><div class="bar-group">'+mb(re)+'</div></div>' : (!hd ? emptySection('Seeker Role') : ''))
+      + (fe.length > 0 ? '<div><div class="section-label">Preferred Format</div><div class="bar-group">'+mb(fe)+'</div></div>' : (!hd ? emptySection('Preferred Format') : ''))
+      + (pe.length > 0 ? '<div><div class="section-label">Would Pay?</div><div class="bar-group">'+mb(pe)+'</div></div>' : (!hd ? emptySection('Would Pay?') : ''))
+      + (se.length > 0 ? '<div><div class="section-label">Discovery Source</div><div class="bar-group">'+mb(se)+'</div></div>' : (!hd ? emptySection('Discovery Source') : ''))
       + '</div></div>';
   }
 
   function renderEbookOverview(e) {
+    function zc(v) { return v === 0 || v === '0' ? ' zero' : ''; }
     return '<div class="card"><div class="card-title">Ebook Generation</div>'
-      + '<div class="stat-row"><div class="stat"><div class="stat-value">'+e.completed+'</div><div class="stat-label">Completed</div></div><div class="stat"><div class="stat-value'+(e.active>0?' accent':'')+'">'+e.active+'</div><div class="stat-label">'+(e.active>0?'<span class="pulse warn"></span>':'')+'In progress</div></div><div class="stat"><div class="stat-value danger">'+e.failed+'</div><div class="stat-label">Failed</div></div></div>'
-      + '<div class="stat-row"><div class="stat"><div class="stat-value small">'+e.avgDurationSeconds+'s</div><div class="stat-label">Avg generation time</div></div><div class="stat"><div class="stat-value small">'+e.successRate+'%</div><div class="stat-label">Success rate</div></div><div class="stat"><div class="stat-value small">'+e.total+'</div><div class="stat-label">Total attempts</div></div></div></div>';
+      + '<div class="stat-row"><div class="stat"><div class="stat-value'+zc(e.completed)+'">'+e.completed+'</div><div class="stat-label">Completed</div></div><div class="stat"><div class="stat-value'+(e.active>0?' accent':zc(e.active))+'">'+e.active+'</div><div class="stat-label">'+(e.active>0?'<span class="pulse warn"></span>':'')+'In progress</div></div><div class="stat"><div class="stat-value'+(e.failed>0?' danger':' zero')+'">'+e.failed+'</div><div class="stat-label">Failed</div></div></div>'
+      + '<div class="stat-row"><div class="stat"><div class="stat-value small'+(e.avgDurationSeconds===0?' zero':'')+'">'+e.avgDurationSeconds+'s</div><div class="stat-label">Avg generation time</div></div><div class="stat"><div class="stat-value small'+(e.total===0?' zero':'')+'">'+e.successRate+'%</div><div class="stat-label">Success rate</div></div><div class="stat"><div class="stat-value small'+zc(e.total)+'">'+e.total+'</div><div class="stat-label">Total attempts</div></div></div></div>';
   }
 
   function renderCoverStats(d) {
     var c = d.covers, t = c.geminiSuccess + c.imagenFallback + c.failed;
-    if (t === 0) return '<div class="card"><div class="card-title">Cover Generation</div><div class="empty-state">No covers generated yet.</div></div>';
+    if (t === 0) return '<div class="card"><div class="card-title">Cover Generation</div><div class="empty-state">Cover stats appear here after the first ebook generation.</div></div>';
     return '<div class="card"><div class="card-title">Cover Generation</div>'
       + '<div class="stat-row"><div class="stat"><div class="stat-value success small">'+c.geminiSuccess+'</div><div class="stat-label">Gemini (direct)</div></div><div class="stat"><div class="stat-value accent small">'+c.imagenFallback+'</div><div class="stat-label">Imagen fallback</div></div><div class="stat"><div class="stat-value danger small">'+c.failed+'</div><div class="stat-label">Failed</div></div></div>'
       + '<div class="stat-row"><div class="stat"><div class="stat-value small">'+Math.round(c.imagenFallback/t*100)+'%</div><div class="stat-label">Fallback rate</div></div><div class="stat"><div class="stat-value small">'+Math.round(c.failed/t*100)+'%</div><div class="stat-label">Failure rate</div></div></div></div>';
   }
 
   function renderAccountsOverview(a) {
-    if (!a || !a.accounts) return '';
+    if (!a || !a.accounts) return '<div class="card"><div class="card-title">Accounts</div><div class="empty-state">No accounts created yet. User data appears here after the first sign-in.</div></div>';
     var mem = a.accounts.filter(function(x){ return x.membershipStatus==='member'; }).length;
     var wg = a.accounts.filter(function(x){ return x.providers && x.providers.indexOf('google')>=0; }).length;
     var wm = a.accounts.filter(function(x){ return x.providers && x.providers.indexOf('microsoft')>=0; }).length;
@@ -276,9 +321,11 @@
     var ww = a.accounts.filter(function(x){ return x.waitlistLinked; }).length;
     var tt = a.accounts.reduce(function(s,x){ return s+(x.tomesCount||0); }, 0);
     var rows = a.accounts.slice(0,50).map(function(u) { return '<tr><td title="'+escHtml(u.email)+'">'+escHtml(u.email)+'</td><td>'+(u.providers||[]).join(', ')+'</td><td>'+(u.tomesCount||0)+'</td><td>'+(u.createdAt?new Date(u.createdAt).toLocaleDateString():'-')+'</td></tr>'; }).join('');
-    return '<div class="card card-full"><div class="card-title">Accounts ('+a.total+')</div>'
-      + '<div class="stat-row"><div class="stat"><div class="stat-value">'+a.total+'</div><div class="stat-label">Total</div></div><div class="stat"><div class="stat-value accent">'+mem+'</div><div class="stat-label">Members</div></div><div class="stat"><div class="stat-value small">'+wg+'</div><div class="stat-label">Google</div></div><div class="stat"><div class="stat-value small">'+wm+'</div><div class="stat-label">Microsoft</div></div><div class="stat"><div class="stat-value small">'+we+'</div><div class="stat-label">Email</div></div><div class="stat"><div class="stat-value small">'+ww+'</div><div class="stat-label">Waitlist-linked</div></div><div class="stat"><div class="stat-value small">'+tt+'</div><div class="stat-label">Total tomes</div></div></div>'
-      + (a.accounts.length > 0 ? '<div class="data-table-wrap"><table class="data-table" style="table-layout:fixed"><colgroup><col style="width:40%"><col style="width:20%"><col style="width:15%"><col style="width:25%"></colgroup><thead><tr><th>Email</th><th>Provider</th><th>Tomes</th><th>Joined</th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '') + '</div>';
+    return '<div class="card"><div class="card-title">Accounts ('+a.total+')</div>'
+      + '<div class="stat-row"><div class="stat"><div class="stat-value'+(a.total===0?' zero':'')+'">'+a.total+'</div><div class="stat-label">Total</div></div><div class="stat"><div class="stat-value accent'+(mem===0?' zero':'')+'">'+mem+'</div><div class="stat-label">Members</div></div></div>'
+      + '<div class="stat-row"><div class="stat"><div class="stat-value small'+(wg===0?' zero':'')+'">'+wg+'</div><div class="stat-label">Google</div></div><div class="stat"><div class="stat-value small'+(wm===0?' zero':'')+'">'+wm+'</div><div class="stat-label">Microsoft</div></div><div class="stat"><div class="stat-value small'+(we===0?' zero':'')+'">'+we+'</div><div class="stat-label">Email</div></div></div>'
+      + '<div class="stat-row"><div class="stat"><div class="stat-value small'+(ww===0?' zero':'')+'">'+ww+'</div><div class="stat-label">Waitlist-linked</div></div><div class="stat"><div class="stat-value small'+(tt===0?' zero':'')+'">'+tt+'</div><div class="stat-label">Total tomes</div></div></div>'
+      + (a.accounts.length > 0 ? '<div class="data-table-wrap"><table class="data-table" style="table-layout:fixed"><colgroup><col style="width:40%"><col style="width:20%"><col style="width:15%"><col style="width:25%"></colgroup><thead><tr><th>Email</th><th>Provider</th><th>Tomes</th><th>Joined</th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '<div class="empty-state">No accounts created yet. User data appears here after the first sign-in.</div>') + '</div>';
   }
 
   function renderProviders(d) {
@@ -293,7 +340,7 @@
   }
 
   function renderLlmUsage(u, d) {
-    if (!u) return '';
+    if (!u) return '<div class="card card-full"><div class="card-title">API & Budget</div><div class="empty-state">Usage tracking data appears here once API calls are made.</div></div>';
     var today = u.today || {}, allTime = u.allTime || {}, todayBars = '';
     var pcs = { gemini:{label:'Gemini',tl:1000000}, openai:{label:'OpenAI',tl:2500000}, openrouter:{label:'OpenRouter',tl:null} };
     for (var prov in pcs) {
@@ -346,21 +393,21 @@
 
   function renderWaitlistTable(w) {
     var signups = w.signups || [];
-    if (!signups.length) return '<div class="card card-full"><div class="card-title">Waitlist Signups</div><div class="empty-state">The ledger is empty.</div></div>';
+    if (!signups.length) return '<div class="card card-full"><div class="card-title">Waitlist Signups</div><div class="empty-state">No signups recorded yet. Waitlist data appears here as seekers join.</div></div>';
     var rows = signups.map(function(s) { return '<tr><td title="'+escHtml(s.email)+'">'+escHtml(s.email)+'</td><td>'+formatTime(s.timestamp)+'</td><td>'+(s.referrer?escHtml(tryHostname(s.referrer)):'--')+'</td><td>'+(s.hasSurvey?'<span class="tag tag-yes">yes</span>':'<span class="tag tag-no">no</span>')+'</td><td title="'+(s.survey?escHtml(s.survey.topics||''):'')+'">'+(s.survey?escHtml(s.survey.topics||'--'):'--')+'</td><td>'+(s.survey?escHtml(s.survey.format||'--'):'--')+'</td><td>'+(s.survey?escHtml(s.survey.role||'--'):'--')+'</td><td>'+(s.survey?escHtml(s.survey.wouldPay||'--'):'--')+'</td><td>'+(s.survey?escHtml(s.survey.source||'--'):'--')+'</td></tr>'; }).join('');
     return '<div class="card card-full"><div class="card-title">Waitlist Signups ('+signups.length+')<button class="btn-export" data-export="waitlist">Export JSON</button></div><input class="search-input" type="text" placeholder="Search emails..." data-search="waitlist-table"><div class="data-table-wrap"><table class="data-table" id="waitlist-table" style="table-layout:auto;min-width:900px"><thead><tr><th data-sort="0" style="min-width:180px">Email</th><th data-sort="1" style="min-width:110px">Date</th><th data-sort="2" style="min-width:100px">Referrer</th><th data-sort="3" style="min-width:70px">Survey</th><th data-sort="4" style="min-width:150px">Topics</th><th data-sort="5" style="min-width:90px">Format</th><th data-sort="6" style="min-width:90px">Role</th><th data-sort="7" style="min-width:90px">Would Pay</th><th data-sort="8" style="min-width:110px">Source</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
   function renderEbookTable(e) {
     var jobs = e.jobs || [];
-    if (!jobs.length) return '<div class="card card-full"><div class="card-title">Ebook History</div><div class="empty-state">No tomes forged yet.</div></div>';
+    if (!jobs.length) return '<div class="card card-full"><div class="card-title">Ebook History</div><div class="empty-state">Ebook history appears here after the first generation.</div></div>';
     var rows = jobs.map(function(j) { var sc = j.status==='ready'?'tag-ready':j.status==='generating'?'tag-generating':'tag-failed'; return '<tr><td title="'+escHtml(j.title||'')+'">'+escHtml(j.title||'--')+'</td><td><span class="tag '+sc+'">'+j.status+'</span></td><td>'+(j.chapters||'--')+'</td><td>'+(j.durationHuman||'--')+'</td><td>'+formatTime(j.generatedAt)+'</td><td title="'+(j.error?escHtml(j.error):'')+'">'+( j.error?escHtml(j.error):'--')+'</td></tr>'; }).join('');
     return '<div class="card card-full"><div class="card-title">Ebook History ('+jobs.length+')<button class="btn-export" data-export="ebooks">Export JSON</button></div><input class="search-input" type="text" placeholder="Search titles..." data-search="ebook-table"><div class="data-table-wrap"><table class="data-table" id="ebook-table" style="table-layout:fixed"><colgroup><col style="width:30%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:20%"><col style="width:20%"></colgroup><thead><tr><th data-sort="0">Title</th><th data-sort="1">Status</th><th data-sort="2">Chapters</th><th data-sort="3">Duration</th><th data-sort="4">Date</th><th data-sort="5">Error</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
   function renderReferrers(d) {
     var refs = Object.entries(d.referrers||{}).sort(function(a,b){ return b[1]-a[1]; });
-    if (!refs.length) return '<div class="card"><div class="card-title">Referrers</div><div class="empty-state">No external referrers yet.</div></div>';
+    if (!refs.length) return '<div class="card"><div class="card-title">Referrers</div><div class="empty-state">Referrer data appears here as visitors arrive from external sources.</div></div>';
     var mx = refs[0][1];
     var bars = refs.slice(0,15).map(function(e) { return '<div class="bar-item"><div class="bar-label" style="min-width:140px">'+escHtml(e[0])+'</div><div class="bar-track"><div class="bar-fill" style="width:'+Math.round(e[1]/mx*100)+'%"></div></div><div class="bar-count">'+e[1]+'</div></div>'; }).join('');
     return '<div class="card"><div class="card-title">Referrers</div><div class="bar-group">'+bars+'</div></div>';
