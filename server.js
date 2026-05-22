@@ -583,26 +583,30 @@ async function createDocx(docxPath, outline, chapters, coverPath, design) {
 
   const sections = [];
 
-  // --- COVER PAGE ---
+  // --- COVER PAGE (full-bleed floating image) ---
   if (coverPath && fs.existsSync(coverPath)) {
     const coverData = fs.readFileSync(coverPath);
     sections.push({
       properties: {
         page: {
-          margin: { top: 0, bottom: 0, left: 0, right: 0 },
+          margin: { top: 0, bottom: 0, left: 0, right: 0, header: 0, footer: 0, gutter: 0 },
           size: { width: 11906, height: 16838 }
         }
       },
       children: [
         new Paragraph({
+          spacing: { before: 0, after: 0 },
           children: [
             new ImageRun({
               data: coverData,
-              transformation: { width: 794, height: 1123 },
+              altText: { title: 'Cover', description: 'Book cover', name: 'cover' },
+              transformation: { width: 800, height: 1132 },
               floating: {
                 horizontalPosition: { relative: HorizontalPositionRelativeFrom.PAGE, offset: 0 },
                 verticalPosition: { relative: VerticalPositionRelativeFrom.PAGE, offset: 0 },
                 wrap: { type: TextWrappingType.NONE },
+                zIndex: 1,
+                behindDocument: true,
               }
             })
           ]
