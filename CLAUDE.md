@@ -131,7 +131,7 @@ Clients are constructed at startup from whichever API keys are present; `activeP
 - `public/waitlist.html` — waitlist landing page with step-by-step survey wizard
 - `public/legal.html` — legal pages template (Terms, Privacy, Cookies, etc.)
 - `public/admin.html` — admin dashboard (privileged access only)
-- `.claude/agents/` — project subagents: `code-guardian` (build/fix/review), `guardian-designer` (UI/UX), `tome-writer` (ebook + prompts), `vibe-check` (end-to-end QA), `waitlist-architect` (waitlist/signup), `admin-dashboard` (metrics/analytics), `legal-scribe` (legal pages), `account-keeper` (auth/identity)
+- `.claude/agents/` — project subagents: `code-guardian` (build/fix/review), `guardian-designer` (UI/UX), `tome-writer` (ebook + prompts), `vibe-check` (end-to-end QA), `waitlist-architect` (waitlist/signup), `admin-dashboard` (metrics/analytics), `legal-scribe` (legal pages), `account-keeper` (auth/identity), `data-keeper` (database/persistence/security)
 - `.env` (gitignored) holds API keys; `ebooks/` and `node_modules/` are gitignored
 
 ## Privileged Accounts
