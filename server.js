@@ -1584,6 +1584,26 @@ app.post('/api/auth/google', async (req, res) => {
   res.json({ success: true, user: { id: account.id, email: account.email, name: account.name, avatar: account.avatar, tomesCount: account.tomesCount, membershipStatus: account.membershipStatus } });
 });
 
+// POST /api/auth/google/token — Google OAuth access token sign-in (fallback for when One Tap is suppressed)
+app.post('/api/auth/google/token', async (req, res) => {
+  const { accessToken } = req.body;
+  if (!accessToken) return res.status(400).json({ error: 'No token provided' });
+
+  try {
+    const gRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!gRes.ok) return res.status(401).json({ error: 'Invalid token' });
+    const profile = await gRes.json();
+    if (!profile.email) return res.status(401).json({ error: 'No email in token' });
+
+    const account = createOrUpdateAccount({ email: profile.email, name: profile.name, avatar: profile.picture, provider: 'google' });
+    const token = issueToken(account);
+    setAuthCookie(res, token);
+    res.json({ success: true, user: { id: account.id, email: account.email, name: account.name, avatar: account.avatar, tomesCount: account.tomesCount, membershipStatus: account.membershipStatus } });
+  } catch { return res.status(500).json({ error: 'Token verification failed' }); }
+});
+
 // POST /api/auth/microsoft — MSAL sign-in
 app.post('/api/auth/microsoft', async (req, res) => {
   const { accessToken } = req.body;

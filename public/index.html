@@ -3650,15 +3650,20 @@
     fetch('/api/auth/config').then(r => r.json()).then(c => { authConfig = c; }).catch(() => {});
 
     // Google Sign-In (Google Identity Services)
+    // Uses renderButton() for reliability — prompt()/One Tap silently fails when
+    // previously dismissed (cooldown), third-party cookies blocked, or domain issues.
+    // renderButton creates a real Google popup that always works.
+    let googleSignInReady = false;
     document.getElementById('googleSignInBtn').addEventListener('click', () => {
       if (!authConfig.googleClientId) return showAuthError('Google sign-in not configured yet');
       if (!window.google?.accounts?.id) {
         const script = document.createElement('script');
         script.src = 'https://accounts.google.com/gsi/client';
-        script.onload = () => initGoogleSignIn();
+        script.onload = () => { initGoogleSignIn(); triggerGoogleSignIn(); };
         document.head.appendChild(script);
       } else {
-        window.google.accounts.id.prompt();
+        if (!googleSignInReady) initGoogleSignIn();
+        triggerGoogleSignIn();
       }
     });
 
@@ -3669,6 +3674,35 @@
         callback: handleGoogleCredential,
         auto_select: false
       });
+      // Render Google's real sign-in button offscreen — we'll relay clicks to it
+      let hiddenDiv = document.getElementById('googleHiddenBtn');
+      if (!hiddenDiv) {
+        hiddenDiv = document.createElement('div');
+        hiddenDiv.id = 'googleHiddenBtn';
+        hiddenDiv.style.cssText = 'position:absolute;width:300px;top:-10000px;left:-10000px;visibility:hidden;';
+        document.body.appendChild(hiddenDiv);
+      }
+      window.google.accounts.id.renderButton(hiddenDiv, {
+        type: 'standard', theme: 'filled_black', size: 'large', width: 300
+      });
+      googleSignInReady = true;
+    }
+
+    function triggerGoogleSignIn() {
+      const hiddenDiv = document.getElementById('googleHiddenBtn');
+      if (hiddenDiv) {
+        // Make the container briefly clickable (visibility:visible but off-screen)
+        hiddenDiv.style.visibility = 'visible';
+        const clickTarget = hiddenDiv.querySelector('[role="button"]') ||
+                            hiddenDiv.querySelector('div[tabindex="0"]');
+        if (clickTarget) {
+          clickTarget.click();
+          setTimeout(() => { hiddenDiv.style.visibility = 'hidden'; }, 200);
+          return;
+        }
+        hiddenDiv.style.visibility = 'hidden';
+      }
+      // Fallback: try prompt() anyway
       window.google.accounts.id.prompt();
     }
 
