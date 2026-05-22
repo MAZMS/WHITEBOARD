@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>The Great Library</title>
+  <meta name="description" content="An ancient intelligence is preparing to generate ebooks on any topic you desire. Join the waitlist.">
+  <link rel="icon" href="/favicon.jpg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0a0a0a;
+      font-family: Georgia, 'Times New Roman', serif;
+      color: #c8b88a;
+      overflow-x: hidden;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    body::-webkit-scrollbar { display: none; }
+
+    .waitlist {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-y: auto;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .waitlist::-webkit-scrollbar { display: none; }
+
+    .waitlist-inner {
+      width: 100%;
+      max-width: 480px;
+      padding: 40px 28px;
+      text-align: center;
+      position: relative;
+    }
+
+    .waitlist-inner::before {
+      content: '';
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(180, 160, 100, 0.04) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: wl-glow 6s ease-in-out infinite;
+    }
+    @keyframes wl-glow {
+      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    }
+
+    .wl-eye {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 32px;
+      opacity: 0;
+      animation: wl-eye-in 2s ease-out 0.3s forwards;
+    }
+    @keyframes wl-eye-in {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .wl-headline {
+      color: #c8b88a;
+      font-size: 28px;
+      font-weight: normal;
+      line-height: 1.35;
+      margin-bottom: 14px;
+      opacity: 0;
+      animation: wl-fade-up 1.2s ease-out 0.8s forwards;
+    }
+    .wl-sub {
+      color: #6a6050;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 36px;
+      opacity: 0;
+      animation: wl-fade-up 1.2s ease-out 1.2s forwards;
+    }
+    @keyframes wl-fade-up {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .wl-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: wl-fade-up 1.2s ease-out 1.6s forwards;
+    }
+    .wl-email {
+      flex: 1;
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 14px 18px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.4s, box-shadow 0.4s;
+    }
+    .wl-email::placeholder { color: #4a4030; }
+    .wl-email:focus {
+      border-color: #5a5038;
+      box-shadow: 0 0 20px rgba(180, 160, 100, 0.08);
+    }
+    .wl-submit {
+      background: rgba(180, 160, 100, 0.1);
+      border: 1px solid #3a3528;
+      border-radius: 6px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 15px;
+      padding: 14px 24px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+      white-space: nowrap;
+    }
+    .wl-submit:hover {
+      background: rgba(180, 160, 100, 0.18);
+      border-color: #5a5038;
+      box-shadow: 0 0 15px rgba(180, 160, 100, 0.06);
+    }
+    .wl-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .wl-count {
+      color: #3a3528;
+      font-size: 13px;
+      font-style: italic;
+      opacity: 0;
+      animation: wl-fade-up 1.2s ease-out 2s forwards;
+    }
+    .wl-error {
+      color: #7a4040;
+      font-size: 13px;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+
+    /* Thank you + Survey */
+    .wl-thankyou { display: none; }
+    .wl-thankyou.visible { display: block; animation: wl-fade-up 0.8s ease-out; }
+    .wl-thankyou-text { color: #c8b88a; font-size: 22px; margin-bottom: 8px; line-height: 1.4; }
+    .wl-thankyou-sub { color: #5a5040; font-size: 14px; margin-bottom: 32px; }
+
+    .wl-survey {
+      text-align: left;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .wl-survey.visible { opacity: 1; transform: translateY(0); }
+    .wl-survey-q { margin-bottom: 24px; }
+    .wl-survey-label { color: #8a8070; font-size: 13px; margin-bottom: 10px; display: block; }
+    .wl-survey-input {
+      width: 100%;
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 12px 16px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .wl-survey-input::placeholder { color: #3a3528; }
+    .wl-survey-input:focus { border-color: #4a4030; }
+
+    .wl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .wl-chip {
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 20px;
+      padding: 8px 18px;
+      color: #8a8070;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+    }
+    .wl-chip:hover { border-color: #4a4030; color: #c8b88a; }
+    .wl-chip.selected { background: rgba(180, 160, 100, 0.12); border-color: #5a5038; color: #c8b88a; }
+
+    .wl-survey-done { text-align: center; margin-top: 20px; }
+    .wl-survey-submit {
+      background: rgba(180, 160, 100, 0.08);
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      color: #8a8070;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+    }
+    .wl-survey-submit:hover { background: rgba(180, 160, 100, 0.15); border-color: #4a4030; color: #c8b88a; }
+    .wl-skip {
+      background: none; border: none;
+      color: #3a3528;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      font-style: italic;
+      cursor: pointer;
+      margin-left: 16px;
+      transition: color 0.3s;
+    }
+    .wl-skip:hover { color: #5a5040; }
+
+    .wl-final { display: none; text-align: center; }
+    .wl-final.visible { display: block; animation: wl-fade-up 0.8s ease-out; }
+    .wl-final-text { color: #5a5040; font-size: 14px; font-style: italic; }
+
+    @media (max-width: 600px) {
+      .waitlist-inner { padding: 32px 20px; }
+      .wl-headline { font-size: 22px; }
+      .wl-sub { font-size: 14px; margin-bottom: 28px; }
+      .wl-form { flex-direction: column; }
+      .wl-email { font-size: 16px; }
+      .wl-submit { padding: 14px; }
+      .wl-eye { width: 64px; height: 64px; margin-bottom: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="waitlist">
+    <div class="waitlist-inner">
+      <div class="wl-eye">
+        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+          <ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+          <circle cx="60" cy="68" r="8" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+          <circle cx="60" cy="68" r="3.5" fill="#4a4030"/>
+          <path d="M34 68 Q60 48 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+          <path d="M34 68 Q60 88 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+        </svg>
+      </div>
+
+      <h1 class="wl-headline">The Library is opening.</h1>
+      <p class="wl-sub">An ancient intelligence is preparing to generate ebooks on any topic you desire. Leave your name in the ledger. When the doors open, you will be the first to enter.</p>
+
+      <div id="wlSignup">
+        <form class="wl-form" id="wlForm">
+          <input type="email" class="wl-email" id="wlEmail" placeholder="Your email..." autocomplete="email" required>
+          <button type="submit" class="wl-submit" id="wlBtn">Enter</button>
+        </form>
+        <div class="wl-error" id="wlError"></div>
+        <div class="wl-count" id="wlCount"></div>
+      </div>
+
+      <div class="wl-thankyou" id="wlThankyou">
+        <div class="wl-thankyou-text">The ledger remembers you.</div>
+        <div class="wl-thankyou-sub">You will be summoned when the doors open.</div>
+
+        <div class="wl-survey" id="wlSurvey">
+          <div class="wl-survey-q">
+            <label class="wl-survey-label">What knowledge would you seek from the Library?</label>
+            <input type="text" class="wl-survey-input" id="surveyTopics" placeholder="Philosophy, coding, history, fitness...">
+          </div>
+          <div class="wl-survey-q">
+            <label class="wl-survey-label">How do you consume your tomes?</label>
+            <div class="wl-chips" id="formatChips">
+              <button type="button" class="wl-chip" data-value="phone">Phone</button>
+              <button type="button" class="wl-chip" data-value="tablet">Tablet</button>
+              <button type="button" class="wl-chip" data-value="desktop">Desktop</button>
+              <button type="button" class="wl-chip" data-value="kindle">Kindle</button>
+            </div>
+          </div>
+          <div class="wl-survey-q">
+            <label class="wl-survey-label">Would you pay for premium AI-generated ebooks?</label>
+            <div class="wl-chips" id="payChips">
+              <button type="button" class="wl-chip" data-value="yes">Yes</button>
+              <button type="button" class="wl-chip" data-value="maybe">Maybe</button>
+              <button type="button" class="wl-chip" data-value="no">No</button>
+            </div>
+          </div>
+          <div class="wl-survey-done">
+            <button type="button" class="wl-survey-submit" id="surveySubmitBtn">Submit</button>
+            <button type="button" class="wl-skip" id="surveySkipBtn">Skip</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="wl-final" id="wlFinal">
+        <div class="wl-final-text">The Guardian notes your preferences. Patience... the halls are vast.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let userEmail = null;
+    const signupEl = document.getElementById('wlSignup');
+    const formEl = document.getElementById('wlForm');
+    const emailEl = document.getElementById('wlEmail');
+    const btnEl = document.getElementById('wlBtn');
+    const errorEl = document.getElementById('wlError');
+    const countEl = document.getElementById('wlCount');
+    const thankyouEl = document.getElementById('wlThankyou');
+    const surveyEl = document.getElementById('wlSurvey');
+    const finalEl = document.getElementById('wlFinal');
+
+    // Fetch waitlist count
+    (async function() {
+      try {
+        const res = await fetch('/api/waitlist/count');
+        const data = await res.json();
+        if (data.count > 0) {
+          countEl.textContent = data.count + (data.count === 1 ? ' seeker awaits' : ' seekers await');
+        }
+      } catch {}
+    })();
+
+    // Email signup
+    formEl.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = emailEl.value.trim();
+      if (!email) return;
+      btnEl.disabled = true;
+      btnEl.textContent = '...';
+      errorEl.textContent = '';
+      try {
+        const res = await fetch('/api/waitlist/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errorEl.textContent = data.error || 'Something went wrong.';
+          btnEl.disabled = false;
+          btnEl.textContent = 'Enter';
+          return;
+        }
+        userEmail = email;
+        signupEl.style.opacity = '0';
+        signupEl.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => {
+          signupEl.style.display = 'none';
+          thankyouEl.classList.add('visible');
+          countEl.style.display = 'none';
+          setTimeout(() => surveyEl.classList.add('visible'), 800);
+        }, 500);
+      } catch {
+        errorEl.textContent = 'The connection falters. Try again.';
+        btnEl.disabled = false;
+        btnEl.textContent = 'Enter';
+      }
+    });
+
+    // Chip selection
+    document.querySelectorAll('.wl-chips').forEach(group => {
+      group.addEventListener('click', (e) => {
+        const chip = e.target.closest('.wl-chip');
+        if (!chip) return;
+        if (group.id === 'payChips') {
+          group.querySelectorAll('.wl-chip').forEach(c => c.classList.remove('selected'));
+        }
+        chip.classList.toggle('selected');
+      });
+    });
+
+    // Survey submit
+    document.getElementById('surveySubmitBtn').addEventListener('click', async () => {
+      const topics = document.getElementById('surveyTopics').value.trim();
+      const formats = [...document.querySelectorAll('#formatChips .wl-chip.selected')].map(c => c.dataset.value);
+      const payChip = document.querySelector('#payChips .wl-chip.selected');
+      try {
+        await fetch('/api/waitlist/survey', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: userEmail,
+            topics: topics || null,
+            format: formats.length ? formats.join(', ') : null,
+            wouldPay: payChip ? payChip.dataset.value : null
+          })
+        });
+      } catch {}
+      surveyEl.style.opacity = '0';
+      surveyEl.style.transition = 'opacity 0.5s ease';
+      setTimeout(() => {
+        surveyEl.style.display = 'none';
+        document.querySelector('.wl-thankyou-sub').style.display = 'none';
+        finalEl.classList.add('visible');
+      }, 500);
+    });
+
+    // Survey skip
+    document.getElementById('surveySkipBtn').addEventListener('click', () => {
+      surveyEl.style.opacity = '0';
+      surveyEl.style.transition = 'opacity 0.5s ease';
+      setTimeout(() => { surveyEl.style.display = 'none'; }, 500);
+    });
+  </script>
+</body>
+</html>

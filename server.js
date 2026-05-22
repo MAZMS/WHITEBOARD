@@ -8,6 +8,10 @@ const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
+
+// Serve waitlist as the landing page, Library at /library
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'waitlist.html')));
+app.get('/library', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Use /tmp for ebooks — always writable on Railway
