@@ -61,9 +61,6 @@
       padding: 0;
       pointer-events: none;
     }
-    body.centered .input-area {
-      border-top-color: transparent;
-    }
 
     /* ===== EYE CONTAINER & AURA ===== */
     .eye-container {
@@ -367,7 +364,6 @@
 
     /* ===== INPUT ===== */
     .input-area {
-      border-top: 1px solid #2a2520;
       padding: 20px 24px 28px;
       display: flex;
       justify-content: center;
@@ -375,7 +371,7 @@
       z-index: 2;
       flex-shrink: 0;
       width: 100%;
-      transition: border-top-color 0.8s ease, opacity 3s ease-out;
+      transition: opacity 3s ease-out;
     }
 
     .input-area form {
@@ -795,10 +791,6 @@
     body.light-mode .pupil { fill: #8a7a40; }
     body.light-mode .particle { background: rgba(120, 100, 50, 0.12); }
 
-    body.light-mode .input-area {
-      border-top-color: #d8d0c0;
-      transition: border-color 0.8s;
-    }
     body.light-mode .input-area textarea {
       background: #FAF6EE;
       border-color: #d0c8b0;
@@ -940,12 +932,6 @@
       filter: drop-shadow(0 0 6px rgba(180, 80, 60, 0.4));
       transition: stroke 1.5s;
     }
-    body.uncensored .input-area {
-      border-top-color: #2a2020;
-      transition: border-color 1.5s;
-    }
-    /* No divider line above the input on the centered greeting (matches censored) */
-    body.centered.uncensored .input-area { border-top-color: transparent; }
     body.uncensored .input-area textarea {
       border-color: #2a2020;
       color: #c4a088;
