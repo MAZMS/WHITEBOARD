@@ -310,8 +310,24 @@ function requireAdminPage(req, res, next) {
 // --- Admin routes (explicit, not from static folder) ---
 app.get('/admin', requireAdminPage, (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
-// Serve waitlist as the landing page, Library at /library
+// Homepage: signed-in users see the library, everyone else sees the waitlist
 app.get('/', (req, res) => {
+  const token = (req.headers.cookie || '').split(';').map(c => c.trim()).find(c => c.startsWith('gl_token='))?.split('=')[1];
+  const payload = token ? verifyToken(token) : null;
+  if (payload) {
+    // Authenticated — serve the library directly
+    metrics.pageVisits.library++;
+    trackVisitor(req, 'library');
+    metricsDirty = true;
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  } else {
+    metrics.pageVisits.waitlist++;
+    trackVisitor(req, 'waitlist');
+    metricsDirty = true;
+    res.sendFile(path.join(__dirname, 'public', 'waitlist.html'));
+  }
+});
+app.get('/waitlist', (req, res) => {
   metrics.pageVisits.waitlist++;
   trackVisitor(req, 'waitlist');
   metricsDirty = true;
