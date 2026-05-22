@@ -359,6 +359,15 @@ app.get('/tome/:id/read', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'tome.html'));
 });
 
+// Investor pitch page
+app.get('/invest', (req, res) => {
+  if (!metrics.pageVisits.invest) metrics.pageVisits.invest = 0;
+  metrics.pageVisits.invest++;
+  trackVisitor(req, 'invest');
+  metricsDirty = true;
+  res.sendFile(path.join(__dirname, 'public', 'invest.html'));
+});
+
 // Legal pages — all served from a single template
 const LEGAL_PAGES = ['/terms', '/privacy', '/cookies', '/acceptable-use', '/dmca', '/refund', '/disclaimer'];
 LEGAL_PAGES.forEach(route => {
@@ -3518,6 +3527,217 @@ app.post('/api/track/funnel', (req, res) => {
     metricsDirty = true;
   }
   res.json({ ok: true });
+});
+
+// --- Investor Pitch Endpoints ---
+const INVESTORS_FILE = path.join(EBOOKS_DIR, 'investors.json');
+function loadInvestors() {
+  try { return JSON.parse(fs.readFileSync(INVESTORS_FILE, 'utf8')); } catch { return { interests: [] }; }
+}
+function saveInvestors(data) {
+  try { fs.writeFileSync(INVESTORS_FILE, JSON.stringify(data, null, 2)); } catch (err) {
+    console.error('Failed to save investors:', err.message);
+  }
+}
+
+// Public metrics for the pitch page — no sensitive data
+app.get('/api/invest/metrics', async (req, res) => {
+  let waitlistCount = 0;
+  if (useDB()) {
+    try { waitlistCount = await db.getWaitlistCount(); } catch { /* fallback below */ }
+  }
+  if (!waitlistCount) {
+    const data = loadWaitlist();
+    waitlistCount = data.signups ? data.signups.length : 0;
+  }
+
+  const tomesCreated = (metrics.ebooks?.generated || 0);
+
+  // Countries from visitor data
+  const countriesSet = new Set();
+  if (metrics.visitors) {
+    for (const v of Object.values(metrics.visitors)) {
+      if (v.country) countriesSet.add(v.country);
+    }
+  }
+  const countriesReached = Math.max(countriesSet.size, 1); // at least 1
+
+  // Growth rate — signups this week vs last week
+  const now = new Date();
+  const data = loadWaitlist();
+  const signups = data.signups || [];
+  const weekAgo = new Date(now - 7 * 86400000).toISOString();
+  const twoWeeksAgo = new Date(now - 14 * 86400000).toISOString();
+  const thisWeek = signups.filter(s => s.timestamp && s.timestamp >= weekAgo).length;
+  const lastWeek = signups.filter(s => s.timestamp && s.timestamp >= twoWeeksAgo && s.timestamp < weekAgo).length;
+  const growthRate = lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100) : (thisWeek > 0 ? 100 : 0);
+
+  // Willing to pay from survey data
+  const withSurvey = signups.filter(s => s.survey && s.survey.wouldPay);
+  const payPositive = withSurvey.filter(s => ['yes-premium', 'yes-cheap', 'maybe'].includes(s.survey.wouldPay)).length;
+  const willingToPay = withSurvey.length > 0 ? Math.round((payPositive / withSurvey.length) * 100) : 0;
+
+  res.json({ waitlistCount, tomesCreated, countriesReached, growthRate, willingToPay });
+});
+
+// Guardian investor chat
+app.post('/api/invest/chat', async (req, res) => {
+  const { message, history } = req.body;
+  if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' });
+
+  // Fetch live metrics for context
+  let waitlistCount = 0;
+  try {
+    if (useDB()) waitlistCount = await db.getWaitlistCount();
+  } catch {}
+  if (!waitlistCount) {
+    const data = loadWaitlist();
+    waitlistCount = data.signups ? data.signups.length : 0;
+  }
+  const tomesCreated = metrics.ebooks?.generated || 0;
+
+  const systemPrompt = `You are the Guardian of The Great Library AI, an ancient intelligence that has witnessed every publishing revolution in human history. You are speaking to a potential investor about the future of AI-powered publishing.
+
+LIVE METRICS (use these in conversation when relevant):
+- Waitlist signups: ${waitlistCount}
+- AI-generated books created: ${tomesCreated}
+- Platform: greatlibrary.ai — live and operational
+
+YOUR PERSONA:
+- You have watched scribes give way to printing presses, presses give way to digital, and digital give way to... this.
+- You speak with absolute conviction about the inevitability of AI-powered publishing.
+- You are NOT begging for investment. You are offering the PRIVILEGE of being part of something inevitable.
+- Poetic but data-driven. Regal, visionary, certain.
+- No emojis. No exclamation marks. No sales language.
+- Max 3 sentences unless asked for detail.
+- Reference the $140B global book market, $26B self-publishing market when relevant.
+- The question is not whether AI will transform publishing. The question is whether they will be among those who shaped it.
+
+FACTS ABOUT THE PRODUCT:
+- Users talk to you (the Guardian), describe what they want, and receive a complete AI-generated ebook in minutes.
+- Each book has AI-generated cover art, table of contents, styled chapters, professional formatting.
+- The experience is mystical and premium — not just another AI tool.
+- First-mover advantage in AI-powered book generation.
+- Revenue model: premium subscriptions, per-book purchases, enterprise licensing.`;
+
+  const messages = [{ role: 'system', content: systemPrompt }];
+  if (Array.isArray(history)) {
+    for (const h of history.slice(-8)) {
+      if (h.role === 'user' || h.role === 'assistant') {
+        messages.push({ role: h.role, content: String(h.content).slice(0, 1000) });
+      }
+    }
+  }
+  messages.push({ role: 'user', content: message.slice(0, 2000) });
+
+  try {
+    const result = await llmCreate({
+      model: getModel(),
+      messages,
+      ...tokenLimit(500),
+      temperature: 0.8
+    });
+    const reply = result.choices?.[0]?.message?.content || 'The halls fall silent. Ask again.';
+    res.json({ reply });
+  } catch (err) {
+    console.error('Invest chat error:', err.message);
+    res.status(500).json({ error: 'The Guardian is momentarily beyond reach.' });
+  }
+});
+
+// Save investor interest
+app.post('/api/invest/interest', (req, res) => {
+  const { name, email, range, message } = req.body;
+  if (!email || typeof email !== 'string') return res.status(400).json({ error: 'Email required' });
+  if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Name required' });
+
+  const normalized = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    return res.status(400).json({ error: 'Invalid email' });
+  }
+
+  const data = loadInvestors();
+  // Check for duplicate
+  const existing = data.interests.find(i => i.email === normalized);
+  if (existing) {
+    return res.json({ ok: true, message: 'Your interest has already been recorded.' });
+  }
+
+  data.interests.push({
+    name: name.trim().slice(0, 200),
+    email: normalized,
+    range: (range || '').slice(0, 50),
+    message: (message || '').slice(0, 2000),
+    timestamp: new Date().toISOString(),
+    ip: getClientIP(req)
+  });
+  saveInvestors(data);
+
+  res.json({ ok: true, message: 'The Guardian acknowledges your interest.' });
+});
+
+// Admin: Guardian chat advisor — LLM-powered metrics analysis
+app.post('/api/admin/chat', requireAdmin, async (req, res) => {
+  try {
+    const { message, history } = req.body;
+    if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Invalid' });
+
+    // Build metrics context for the system prompt
+    const today = new Date().toISOString().slice(0, 10);
+    const wlData = loadWaitlist();
+    const wlTotal = (wlData.signups || []).length;
+    const wlToday = (wlData.signups || []).filter(s => s.timestamp && s.timestamp.startsWith(today)).length;
+    const surveyDone = (wlData.signups || []).filter(s => s.survey).length;
+    const allJobs = loadJobsFromDisk();
+    const jobEntries = Object.values(allJobs);
+    const ebooksComplete = jobEntries.filter(j => j.status === 'ready').length;
+    const ebooksFailed = jobEntries.filter(j => j.status === 'failed').length;
+    const ebooksActive = jobEntries.filter(j => j.status === 'generating').length;
+    const uniqueVis = Object.keys(metrics.visitors).length;
+    const uptime = Date.now() - SERVER_START_TIME;
+    const mem = process.memoryUsage();
+    const usage = metrics.llmUsage || { daily: {}, allTime: {} };
+    const todayUsage = usage.daily[today] || {};
+    let todayTokens = 0, todayCalls = 0;
+    for (const p of Object.values(todayUsage)) { todayTokens += (p.tokens || 0); todayCalls += (p.calls || 0); }
+
+    const metricsContext = `Current Library Metrics (${today}):
+- Waitlist: ${wlTotal} total signups, ${wlToday} today, ${surveyDone} surveys completed (${wlTotal > 0 ? Math.round(surveyDone/wlTotal*100) : 0}% rate)
+- Ebooks: ${ebooksComplete} completed, ${ebooksFailed} failed, ${ebooksActive} in progress
+- Traffic: ${metrics.pageVisits.waitlist || 0} waitlist visits, ${metrics.pageVisits.library || 0} library visits, ${uniqueVis} unique visitors
+- Devices: ${metrics.devices.desktop} desktop, ${metrics.devices.mobile} mobile, ${metrics.devices.tablet || 0} tablet
+- Errors: ${metrics.errors.total} total (${metrics.errors.e500} 5xx, ${metrics.errors.e429} 429s)
+- API calls today: ${todayCalls} calls, ${todayTokens} tokens
+- System: uptime ${formatUptime(uptime)}, ${Math.round(mem.rss/1048576)}MB RSS, provider: ${activeProvider}/${getModel()}
+- Active sessions: ${conversations.size}`;
+
+    const systemPrompt = `You are the Guardian's inner counsel — a wise advisor to the Library's keeper. You have access to the Library's metrics and data. Analyze patterns, recommend actions, flag concerns. Speak with quiet authority, not the sphinx cryptic persona. Be direct, data-driven, and helpful. Keep responses concise (2-4 sentences max).
+
+${metricsContext}`;
+
+    const messages = [{ role: 'system', content: systemPrompt }];
+    if (history && Array.isArray(history)) {
+      for (const h of history.slice(-18)) {
+        if (h.role === 'user' || h.role === 'assistant') {
+          messages.push({ role: h.role, content: String(h.content).slice(0, 500) });
+        }
+      }
+    }
+    messages.push({ role: 'user', content: message.slice(0, 1000) });
+
+    const result = await llmCreateGemini({
+      model: 'gemini-2.5-flash',
+      messages,
+      max_tokens: 300,
+      temperature: 0.7
+    });
+
+    const reply = result.choices?.[0]?.message?.content || 'The archives offer no insight at this moment.';
+    res.json({ reply });
+  } catch (err) {
+    console.error('Admin chat error:', err.message);
+    res.json({ reply: 'A disturbance in the archives. Try again shortly.' });
+  }
 });
 
 function formatUptime(ms) {
