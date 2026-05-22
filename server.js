@@ -119,6 +119,13 @@ app.get('/library', (req, res) => {
   metricsDirty = true;
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// Legal pages — all served from a single template
+const LEGAL_PAGES = ['/terms', '/privacy', '/cookies', '/acceptable-use', '/dmca', '/refund', '/disclaimer'];
+LEGAL_PAGES.forEach(route => {
+  app.get(route, (req, res) => res.sendFile(path.join(__dirname, 'public', 'legal.html')));
+});
+
 app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
 
 // Use /tmp for ebooks — always writable on Railway

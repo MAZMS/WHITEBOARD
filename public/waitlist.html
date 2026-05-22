@@ -301,6 +301,23 @@
     }
     .wl-enter-link:hover { color: #c8b88a; }
 
+    .wl-legal {
+      margin-top: 48px;
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      opacity: 0;
+      animation: wl-fade-up 1.2s ease-out 2.6s forwards;
+    }
+    .wl-legal a {
+      color: #2a2520;
+      font-size: 11px;
+      text-decoration: none;
+      letter-spacing: 0.5px;
+      transition: color 0.3s;
+    }
+    .wl-legal a:hover { color: #5a5040; }
+
     @media (max-width: 600px) {
       .waitlist-inner { padding: 32px 20px; }
       .wl-headline { font-size: 22px; }
@@ -405,6 +422,12 @@
       </div>
 
       <a href="/library" class="wl-enter-link">Enter the Library</a>
+
+      <div class="wl-legal">
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/cookies">Cookies</a>
+      </div>
     </div>
   </div>
 
