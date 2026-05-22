@@ -408,19 +408,33 @@
       background: none;
       box-shadow: none;
     }
-    .wl-skip-btn {
-      background: none;
-      border: none;
-      color: #3a3528;
-      font-family: Georgia, serif;
+    /* Validation reminder */
+    .wl-validation-msg {
+      color: #7a5a3a;
       font-size: 13px;
       font-style: italic;
-      cursor: pointer;
-      transition: color 0.3s;
-      -webkit-tap-highlight-color: transparent;
+      margin-top: 10px;
+      min-height: 18px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
-    .wl-skip-btn:hover { color: #5a5040; }
-    .wl-skip-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .wl-validation-msg.visible {
+      opacity: 1;
+    }
+
+    /* Shake animation for unanswered questions */
+    @keyframes wl-shake {
+      0%, 100% { transform: translateX(0); }
+      15% { transform: translateX(-6px); }
+      30% { transform: translateX(5px); }
+      45% { transform: translateX(-4px); }
+      60% { transform: translateX(3px); }
+      75% { transform: translateX(-2px); }
+      90% { transform: translateX(1px); }
+    }
+    .wl-shake {
+      animation: wl-shake 0.4s ease-in-out;
+    }
 
     /* Final done view */
     .wl-final { display: none; text-align: center; }
@@ -543,9 +557,9 @@
           </div>
           <label class="wl-step-label">What knowledge would you seek from the Library?</label>
           <input type="text" class="wl-survey-input" id="surveyTopics" placeholder="Philosophy, coding, history, fitness...">
+          <div class="wl-validation-msg" id="validation-1"></div>
           <div class="wl-nav">
             <button type="button" class="wl-nav-btn back" onclick="wizardBack()">Back</button>
-            <button type="button" class="wl-skip-btn" onclick="wizardSkip()">Skip</button>
             <button type="button" class="wl-nav-btn" onclick="wizardNext()">Next</button>
           </div>
         </div>
@@ -562,9 +576,9 @@
             <button type="button" class="wl-chip" data-value="other" data-other="true">Other</button>
           </div>
           <input type="text" class="wl-other-input" id="formatOther" placeholder="How do you read?">
+          <div class="wl-validation-msg" id="validation-2"></div>
           <div class="wl-nav">
             <button type="button" class="wl-nav-btn back" onclick="wizardBack()">Back</button>
-            <button type="button" class="wl-skip-btn" onclick="wizardSkip()">Skip</button>
             <button type="button" class="wl-nav-btn" onclick="wizardNext()">Next</button>
           </div>
         </div>
@@ -581,9 +595,9 @@
             <button type="button" class="wl-chip" data-value="other" data-other="true">Other</button>
           </div>
           <input type="text" class="wl-other-input" id="roleOther" placeholder="Describe yourself...">
+          <div class="wl-validation-msg" id="validation-3"></div>
           <div class="wl-nav">
             <button type="button" class="wl-nav-btn back" onclick="wizardBack()">Back</button>
-            <button type="button" class="wl-skip-btn" onclick="wizardSkip()">Skip</button>
             <button type="button" class="wl-nav-btn" onclick="wizardNext()">Next</button>
           </div>
         </div>
@@ -597,9 +611,9 @@
             <button type="button" class="wl-chip" data-value="maybe">Maybe</button>
             <button type="button" class="wl-chip" data-value="free-only">Free only</button>
           </div>
+          <div class="wl-validation-msg" id="validation-4"></div>
           <div class="wl-nav">
             <button type="button" class="wl-nav-btn back" onclick="wizardBack()">Back</button>
-            <button type="button" class="wl-skip-btn" onclick="wizardSkip()">Skip</button>
             <button type="button" class="wl-nav-btn" onclick="wizardNext()">Next</button>
           </div>
         </div>
@@ -615,6 +629,7 @@
             <button type="button" class="wl-chip" data-value="other" data-other="true">Other</button>
           </div>
           <input type="text" class="wl-other-input" id="sourceOther" placeholder="Tell us where...">
+          <div class="wl-validation-msg" id="validation-5"></div>
           <div class="wl-nav">
             <button type="button" class="wl-nav-btn back" onclick="wizardBack()">Back</button>
             <button type="button" class="wl-nav-btn" onclick="wizardSubmit()">Record my preferences</button>
@@ -762,8 +777,88 @@
       updateProgress();
     }
 
+    // --- Step validation ---
+    const validationMessages = [
+      'The Guardian requires an answer.',
+      'Choose before you proceed.',
+      'An answer is required to continue.',
+      'The Guardian awaits your response.',
+    ];
+
+    function getValidationMsg() {
+      return validationMessages[Math.floor(Math.random() * validationMessages.length)];
+    }
+
+    function showValidation(step) {
+      const msgEl = document.getElementById('validation-' + step);
+      if (!msgEl) return;
+      msgEl.textContent = getValidationMsg();
+      msgEl.classList.add('visible');
+
+      // Shake the question area
+      const stepEl = document.getElementById('step-' + step);
+      const shakeTarget = stepEl.querySelector('.wl-chips') || stepEl.querySelector('.wl-survey-input');
+      if (shakeTarget) {
+        shakeTarget.classList.remove('wl-shake');
+        shakeTarget.offsetHeight; // force reflow to restart animation
+        shakeTarget.classList.add('wl-shake');
+      }
+    }
+
+    function clearValidation(step) {
+      const msgEl = document.getElementById('validation-' + step);
+      if (msgEl) {
+        msgEl.classList.remove('visible');
+      }
+    }
+
+    function validateStep(step) {
+      if (step === 1) {
+        // Text input — topics
+        return document.getElementById('surveyTopics').value.trim().length > 0;
+      }
+      if (step === 2) {
+        // Chips (multi) + other
+        const selected = document.querySelectorAll('#formatChips .wl-chip.selected');
+        if (selected.length === 0) return false;
+        const otherChip = document.querySelector('#formatChips [data-other="true"]');
+        if (otherChip && otherChip.classList.contains('selected')) {
+          return document.getElementById('formatOther').value.trim().length > 0;
+        }
+        return true;
+      }
+      if (step === 3) {
+        // Chips (single) + other
+        const selected = document.querySelector('#roleChips .wl-chip.selected');
+        if (!selected) return false;
+        if (selected.dataset.other === 'true') {
+          return document.getElementById('roleOther').value.trim().length > 0;
+        }
+        return true;
+      }
+      if (step === 4) {
+        // Chips (single, no other)
+        return !!document.querySelector('#payChips .wl-chip.selected');
+      }
+      if (step === 5) {
+        // Chips (single) + other
+        const selected = document.querySelector('#sourceChips .wl-chip.selected');
+        if (!selected) return false;
+        if (selected.dataset.other === 'true') {
+          return document.getElementById('sourceOther').value.trim().length > 0;
+        }
+        return true;
+      }
+      return true;
+    }
+
     function wizardNext() {
       if (isTransitioning) return;
+      if (!validateStep(currentStep)) {
+        showValidation(currentStep);
+        return;
+      }
+      clearValidation(currentStep);
       if (currentStep < totalSteps - 1) {
         showStep(currentStep + 1, 1);
       }
@@ -771,6 +866,7 @@
 
     function wizardBack() {
       if (isTransitioning) return;
+      clearValidation(currentStep);
       if (currentStep === 1) {
         // Going back to email step — restore the email so user can edit it
         emailEl.value = userEmail || '';
@@ -783,17 +879,13 @@
       }
     }
 
-    function wizardSkip() {
-      if (isTransitioning) return;
-      if (currentStep < totalSteps - 1) {
-        showStep(currentStep + 1, 1);
-      } else {
-        wizardSubmit();
-      }
-    }
-
     async function wizardSubmit() {
       if (isTransitioning) return;
+      if (!validateStep(currentStep)) {
+        showValidation(currentStep);
+        return;
+      }
+      clearValidation(currentStep);
       isTransitioning = true;
 
       const data = collectSurveyData();
@@ -851,6 +943,16 @@
             otherInput.value = '';
           }
         }
+
+        // Clear validation message on selection
+        clearValidation(currentStep);
+      });
+    });
+
+    // Clear validation on text input
+    document.querySelectorAll('.wl-survey-input, .wl-other-input').forEach(input => {
+      input.addEventListener('input', () => {
+        clearValidation(currentStep);
       });
     });
 
