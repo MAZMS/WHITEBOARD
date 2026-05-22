@@ -558,6 +558,48 @@
       text-shadow: 0 0 20px rgba(180, 160, 100, 0.3);
     }
 
+    /* --- Top-right controls (sound + theme) --- */
+    .wl-controls {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 10px;
+      z-index: 100;
+      opacity: 0;
+      animation: wl-fade-up 1.2s ease-out 2.4s forwards;
+    }
+    .wl-ctrl-btn {
+      width: 36px;
+      height: 36px;
+      background: rgba(20, 18, 16, 0.6);
+      border: 1px solid #2a2520;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wl-ctrl-btn:hover {
+      background: rgba(180, 160, 100, 0.1);
+      border-color: #4a4030;
+      transform: scale(1.08);
+    }
+    .wl-ctrl-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: #5a5040;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: stroke 0.3s;
+    }
+    .wl-ctrl-btn:hover svg { stroke: #c8b88a; }
+    .wl-ctrl-btn.active svg { stroke: #c8b88a; }
+
     .wl-legal {
       margin-top: 16px;
       display: flex;
@@ -575,6 +617,121 @@
     }
     .wl-legal a:hover { color: #5a5040; }
 
+    /* ===== LIGHT MODE — The Sunlit Hall (Waitlist) ===== */
+    body.light-mode {
+      background: #f5f2e8;
+      color: #3a3020;
+    }
+    body.light-mode .waitlist-inner::before {
+      background: radial-gradient(circle, rgba(140, 120, 60, 0.06) 0%, transparent 70%);
+    }
+    body.light-mode .wl-headline { color: #3a3020; }
+    body.light-mode .wl-sub { color: #8a7860; }
+    body.light-mode .wl-dot { background: #d8d0c0; }
+    body.light-mode .wl-dot.filled { background: #b0a070; }
+    body.light-mode .wl-dot.current { background: #8a7a40; box-shadow: 0 0 8px rgba(120, 100, 50, 0.2); }
+    body.light-mode .wl-email {
+      background: #faf8f2;
+      border-color: #d8d0c0;
+      color: #3a3020;
+    }
+    body.light-mode .wl-email::placeholder { color: #b0a890; }
+    body.light-mode .wl-email:focus { border-color: #b0a070; box-shadow: 0 0 20px rgba(120, 100, 50, 0.06); }
+    body.light-mode .wl-submit {
+      background: rgba(140, 120, 60, 0.12);
+      border-color: #b0a070;
+      color: #3a3020;
+    }
+    body.light-mode .wl-submit:hover {
+      background: rgba(140, 120, 60, 0.22);
+      border-color: #8a7a40;
+    }
+    body.light-mode .wl-count { color: #8a7860; }
+    body.light-mode .wl-early { color: #8a7860; }
+    body.light-mode .wl-error { color: #8a4040; }
+    body.light-mode .wl-existing { color: #8a7860; }
+    body.light-mode .wl-oauth-divider::before,
+    body.light-mode .wl-oauth-divider::after { background: #d8d0c0; }
+    body.light-mode .wl-oauth-divider span { color: #b0a890; }
+    body.light-mode .wl-oauth-btn {
+      border-color: #d8d0c0;
+      color: #8a7860;
+    }
+    body.light-mode .wl-oauth-btn:hover {
+      border-color: #b0a070;
+      color: #3a3020;
+      background: rgba(140, 120, 60, 0.06);
+    }
+    body.light-mode .wl-oauth-btn svg { opacity: 0.8; }
+    body.light-mode .wl-step-label { color: #6a5a40; }
+    body.light-mode .wl-survey-input {
+      background: #faf8f2;
+      border-color: #d8d0c0;
+      color: #3a3020;
+    }
+    body.light-mode .wl-survey-input::placeholder { color: #b0a890; }
+    body.light-mode .wl-survey-input:focus { border-color: #b0a070; }
+    body.light-mode .wl-chip {
+      background: #faf8f2;
+      border-color: #d8d0c0;
+      color: #6a5a40;
+    }
+    body.light-mode .wl-chip:hover { border-color: #b0a070; color: #3a3020; }
+    body.light-mode .wl-chip.selected {
+      background: rgba(140, 120, 60, 0.12);
+      border-color: #8a7a40;
+      color: #3a3020;
+    }
+    body.light-mode .wl-other-input {
+      background: #faf8f2;
+      border-color: #d8d0c0;
+      color: #3a3020;
+    }
+    body.light-mode .wl-other-input::placeholder { color: #b0a890; }
+    body.light-mode .wl-other-input:focus { border-color: #b0a070; }
+    body.light-mode .wl-nav-btn {
+      background: rgba(140, 120, 60, 0.08);
+      border-color: #d8d0c0;
+      color: #3a3020;
+    }
+    body.light-mode .wl-nav-btn:hover {
+      background: rgba(140, 120, 60, 0.16);
+      border-color: #b0a070;
+    }
+    body.light-mode .wl-nav-btn.back {
+      background: none;
+      border-color: #d8d0c0;
+      color: #8a7860;
+    }
+    body.light-mode .wl-nav-btn.back:hover { border-color: #b0a070; color: #6a5a40; }
+    body.light-mode .wl-validation-msg { color: #8a5a3a; }
+    body.light-mode .wl-confirmed-text { color: #3a3020; }
+    body.light-mode .wl-confirmed-sub { color: #8a7860; }
+    body.light-mode .wl-confirmed-pos { color: #6a5a40; }
+    body.light-mode .wl-final-text { color: #8a7860; }
+    body.light-mode .wl-enter-reward-text { color: #8a7860; }
+    body.light-mode .wl-enter-link { color: #6a5a30; text-shadow: none; }
+    body.light-mode .wl-enter-link:hover { color: #3a3020; }
+    body.light-mode .wl-legal a { color: #b0a890; }
+    body.light-mode .wl-legal a:hover { color: #6a5a40; }
+    body.light-mode .wl-eye svg polygon { stroke: #b0a070; }
+    body.light-mode .wl-eye svg ellipse { stroke: #b0a070; }
+    body.light-mode .wl-eye svg circle { stroke: #b0a070; }
+    body.light-mode .wl-eye .wl-pupil { fill: #8a7a40; }
+    body.light-mode .wl-eye svg path { stroke: #b0a070; }
+    body.light-mode .wl-particle { background: rgba(120, 100, 50, 0.15); }
+    body.light-mode .wl-ctrl-btn {
+      background: rgba(250, 248, 242, 0.7);
+      border-color: #d8d0c0;
+    }
+    body.light-mode .wl-ctrl-btn:hover {
+      background: rgba(140, 120, 60, 0.1);
+      border-color: #b0a070;
+    }
+    body.light-mode .wl-ctrl-btn svg { stroke: #8a7860; }
+    body.light-mode .wl-ctrl-btn:hover svg { stroke: #3a3020; }
+    body.light-mode .wl-ctrl-btn.active svg { stroke: #3a3020; }
+
     @media (max-width: 600px) {
       .waitlist-inner { padding: 32px 20px; }
       .wl-headline { font-size: 22px; }
@@ -591,6 +748,26 @@
   </style>
 </head>
 <body>
+  <!-- Top-right controls: Sound + Theme -->
+  <div class="wl-controls">
+    <button class="wl-ctrl-btn" id="wlSoundBtn" title="Toggle sound" aria-label="Toggle sound">
+      <svg id="wlSoundIcon" viewBox="0 0 24 24">
+        <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+        <path id="wlSoundWave1" d="M15.54 8.46a5 5 0 010 7.07"/>
+        <path id="wlSoundWave2" d="M19.07 4.93a10 10 0 010 14.14"/>
+      </svg>
+    </button>
+    <button class="wl-ctrl-btn" id="wlThemeBtn" title="Toggle theme" aria-label="Toggle theme">
+      <svg id="wlThemeIcon" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </button>
+  </div>
+
   <div class="waitlist">
     <div class="waitlist-inner">
       <div class="wl-eye-wrap">
@@ -1374,6 +1551,167 @@
         }
       } catch {}
     })();
+
+    // ===== SOUND ENGINE — Ambient Waitlist Soundscape =====
+    let audioCtx = null;
+    let wlMasterGain = null;
+    let wlReverbNode = null;
+    let wlAmbientNodes = {};
+    let wlChimesInterval = null;
+    let wlAmbientStarted = false;
+    let wlMuted = localStorage.getItem('gl-muted') === 'true';
+    let wlVolume = parseFloat(localStorage.getItem('gl-volume') || '0.7');
+    const WL_MAX_GAIN = 4;
+    const wlChimeNotes = [440, 523, 587, 659, 784, 880];
+
+    const wlSoundBtn = document.getElementById('wlSoundBtn');
+    const wlSoundWave1 = document.getElementById('wlSoundWave1');
+    const wlSoundWave2 = document.getElementById('wlSoundWave2');
+
+    function wlGetGain() { return wlVolume * WL_MAX_GAIN; }
+
+    function wlUpdateSoundIcon() {
+      if (wlMuted) {
+        wlSoundWave1.style.display = 'none';
+        wlSoundWave2.style.display = 'none';
+        wlSoundBtn.classList.remove('active');
+      } else {
+        wlSoundWave1.style.display = '';
+        wlSoundWave2.style.display = '';
+        wlSoundBtn.classList.add('active');
+      }
+    }
+    wlUpdateSoundIcon();
+
+    function wlInitAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      wlMasterGain = audioCtx.createGain();
+      wlMasterGain.gain.value = wlMuted ? 0 : wlGetGain();
+      wlMasterGain.connect(audioCtx.destination);
+      // Simple reverb
+      const len = audioCtx.sampleRate * 2.5;
+      const buf = audioCtx.createBuffer(2, len, audioCtx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = buf.getChannelData(ch);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+      }
+      wlReverbNode = audioCtx.createConvolver();
+      wlReverbNode.buffer = buf;
+      const rGain = audioCtx.createGain();
+      rGain.gain.value = 0.25;
+      wlReverbNode.connect(rGain);
+      rGain.connect(wlMasterGain);
+    }
+
+    function wlOut(node) {
+      node.connect(wlMasterGain);
+      if (wlReverbNode) node.connect(wlReverbNode);
+    }
+
+    function wlPlayTone(freq, duration, type, vol) {
+      if (!audioCtx || wlMuted) return;
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol || 0.08, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      o.connect(g); wlOut(g); o.start(); o.stop(audioCtx.currentTime + duration);
+    }
+
+    function wlPlayChime() {
+      if (!audioCtx || wlMuted) return;
+      const f = wlChimeNotes[Math.floor(Math.random() * wlChimeNotes.length)];
+      wlPlayTone(f, 3.5, 'sine', 0.018);
+    }
+
+    function wlCreateOsc(freq, type, vol, filterFreq) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      const f = audioCtx.createBiquadFilter();
+      o.type = type; o.frequency.value = freq;
+      f.type = 'lowpass'; f.frequency.value = filterFreq || 250; f.Q.value = 1;
+      g.gain.value = vol;
+      o.connect(f); f.connect(g); wlOut(g); o.start();
+      return { osc: o, gain: g, filter: f };
+    }
+
+    function wlStartAmbient() {
+      if (!audioCtx || wlAmbientStarted) return;
+      wlAmbientStarted = true;
+      // Low drone — quiet, meditative
+      wlAmbientNodes.drone = wlCreateOsc(55, 'sine', 0.018, 200);
+      // Sub harmonic
+      wlAmbientNodes.sub = wlCreateOsc(82.5, 'sine', 0.008, 180);
+      // Gentle noise layer (wind)
+      const bs = audioCtx.sampleRate * 2;
+      const b = audioCtx.createBuffer(1, bs, audioCtx.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < bs; i++) d[i] = Math.random() * 2 - 1;
+      const n = audioCtx.createBufferSource(); n.buffer = b; n.loop = true;
+      const nf = audioCtx.createBiquadFilter(), ng = audioCtx.createGain();
+      nf.type = 'bandpass'; nf.frequency.value = 250; nf.Q.value = 0.5;
+      ng.gain.value = 0.006;
+      // Slow LFO on filter
+      const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
+      lfo.frequency.value = 0.04; lg.gain.value = 100;
+      lfo.connect(lg); lg.connect(nf.frequency); lfo.start();
+      n.connect(nf); nf.connect(ng); wlOut(ng); n.start();
+      wlAmbientNodes.wind = { noise: n, filter: nf, gain: ng };
+      // Chimes — sparse, every ~8s with 30% chance
+      wlChimesInterval = setInterval(() => { if (Math.random() < 0.3) wlPlayChime(); }, 8000);
+      // Entry tone
+      wlPlayTone(220, 2, 'sine', 0.02);
+      setTimeout(() => wlPlayTone(330, 1.5, 'sine', 0.015), 400);
+    }
+
+    // Start audio on first user interaction
+    function wlTryStartAudio() {
+      wlInitAudio();
+      if (!wlMuted) wlStartAmbient();
+    }
+    document.addEventListener('click', function wlFirstClick() {
+      wlTryStartAudio();
+      document.removeEventListener('click', wlFirstClick);
+    }, { once: true });
+
+    wlSoundBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      wlMuted = !wlMuted;
+      localStorage.setItem('gl-muted', wlMuted);
+      wlUpdateSoundIcon();
+      wlInitAudio();
+      if (!wlMuted && !wlAmbientStarted) wlStartAmbient();
+      if (wlMasterGain) {
+        wlMasterGain.gain.setTargetAtTime(wlMuted ? 0 : wlGetGain(), audioCtx.currentTime, 0.3);
+      }
+    });
+
+    // ===== THEME TOGGLE — Dark / Light =====
+    const wlThemeBtn = document.getElementById('wlThemeBtn');
+    const wlThemeIcon = document.getElementById('wlThemeIcon');
+    let wlLightMode = localStorage.getItem('gl-theme') === 'light';
+
+    function wlApplyTheme() {
+      document.body.classList.toggle('light-mode', wlLightMode);
+      wlThemeBtn.classList.toggle('active', wlLightMode);
+      // Swap icon: sun for dark mode (click to go light), moon for light mode (click to go dark)
+      if (wlLightMode) {
+        wlThemeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+      } else {
+        wlThemeIcon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+      }
+    }
+    wlApplyTheme();
+
+    wlThemeBtn.addEventListener('click', () => {
+      wlLightMode = !wlLightMode;
+      localStorage.setItem('gl-theme', wlLightMode ? 'light' : 'dark');
+      wlApplyTheme();
+    });
+
+    // ===== Update theme-color meta for light mode =====
+    if (wlLightMode) {
+      document.querySelector('meta[name="theme-color"]').content = '#f5f2e8';
+    }
 
     // --- Initialize ---
     buildProgress();
