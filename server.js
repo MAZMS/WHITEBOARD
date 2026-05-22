@@ -10,9 +10,115 @@ const app = express();
 app.set('trust proxy', true); // Railway runs behind a proxy
 app.use(express.json());
 
+// --- Metrics tracking (passive, non-blocking) ---
+const METRICS_FILE = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks/metrics.json' : path.join(__dirname, 'ebooks', 'metrics.json');
+const SERVER_START_TIME = Date.now();
+
+function loadMetrics() {
+  try { return JSON.parse(fs.readFileSync(METRICS_FILE, 'utf8')); }
+  catch { return createEmptyMetrics(); }
+}
+
+function createEmptyMetrics() {
+  return {
+    apiCalls: { chat: 0, greet: 0, whisper: 0, farewell: 0, outro: 0, mode: 0, status: 0 },
+    errors: { total: 0, e500: 0, e429: 0, timeouts: 0 },
+    pageVisits: { waitlist: 0, library: 0, admin: 0 },
+    ebooks: { generated: 0, failed: 0, totalGenerationMs: 0 },
+    covers: { geminiSuccess: 0, imagenFallback: 0, failed: 0 },
+    visitors: {},       // ip -> { first, last, hits, ua }
+    referrers: {},      // referrer -> count
+    devices: { mobile: 0, desktop: 0 },
+    dailySignups: {},   // "YYYY-MM-DD" -> count
+    lastUpdated: null
+  };
+}
+
+let metrics = loadMetrics();
+let metricsDirty = false;
+
+function saveMetrics() {
+  if (!metricsDirty) return;
+  metrics.lastUpdated = new Date().toISOString();
+  try { fs.writeFileSync(METRICS_FILE, JSON.stringify(metrics, null, 2)); }
+  catch (err) { console.error('Failed to save metrics:', err.message); }
+  metricsDirty = false;
+}
+
+// Flush metrics to disk every 30s — never blocks a request
+setInterval(saveMetrics, 30000);
+
+function trackApiCall(endpoint) {
+  if (metrics.apiCalls[endpoint] !== undefined) {
+    metrics.apiCalls[endpoint]++;
+    metricsDirty = true;
+  }
+}
+
+function trackError(statusCode) {
+  metrics.errors.total++;
+  if (statusCode === 500) metrics.errors.e500++;
+  if (statusCode === 429) metrics.errors.e429++;
+  metricsDirty = true;
+}
+
+function trackVisitor(req) {
+  const ip = getClientIPEarly(req);
+  const ua = req.get('user-agent') || '';
+  const ref = req.get('referer') || '';
+  const now = new Date().toISOString();
+
+  // Visitor tracking (capped at 10k unique IPs to avoid memory bloat)
+  if (Object.keys(metrics.visitors).length < 10000) {
+    if (!metrics.visitors[ip]) {
+      metrics.visitors[ip] = { first: now, last: now, hits: 1, ua: ua.slice(0, 200) };
+    } else {
+      metrics.visitors[ip].last = now;
+      metrics.visitors[ip].hits++;
+    }
+  }
+
+  // Device detection from user agent
+  if (/mobile|android|iphone|ipad|ipod/i.test(ua)) {
+    metrics.devices.mobile++;
+  } else if (ua) {
+    metrics.devices.desktop++;
+  }
+
+  // Referrer tracking (skip self-referrals)
+  if (ref && !ref.includes('greatlibrary.ai') && !ref.includes('localhost')) {
+    try {
+      const refHost = new URL(ref).hostname;
+      metrics.referrers[refHost] = (metrics.referrers[refHost] || 0) + 1;
+    } catch {}
+  }
+
+  metricsDirty = true;
+}
+
+// IP helper that works before waitlist code defines getClientIP
+function getClientIPEarly(req) {
+  const forwarded = req.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return req.ip || req.connection?.remoteAddress || 'unknown';
+}
+
+// --- Admin routes (explicit, not from static folder) ---
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+
 // Serve waitlist as the landing page, Library at /library
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'waitlist.html')));
-app.get('/library', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/', (req, res) => {
+  metrics.pageVisits.waitlist++;
+  trackVisitor(req);
+  metricsDirty = true;
+  res.sendFile(path.join(__dirname, 'public', 'waitlist.html'));
+});
+app.get('/library', (req, res) => {
+  metrics.pageVisits.library++;
+  trackVisitor(req);
+  metricsDirty = true;
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Use /tmp for ebooks — always writable on Railway
@@ -302,6 +408,7 @@ function getJob(id) {
 
 // --- Chat endpoint ---
 app.post('/api/chat', async (req, res) => {
+  trackApiCall('chat');
   const { message, sessionId } = req.body;
   if (!message) return res.status(400).json({ error: 'No message provided' });
 
@@ -342,6 +449,7 @@ app.post('/api/chat', async (req, res) => {
       generateEbook(ebookId, trimmed).catch(err => {
         console.error('Ebook generation failed:', err.message, err.stack);
         saveJob(ebookId, { status: 'failed', sessionId: id, error: err.message });
+        metrics.ebooks.failed++; metricsDirty = true;
       });
       res.json({ reply, tomeGenerating: true, ebookId });
     } else {
@@ -349,6 +457,7 @@ app.post('/api/chat', async (req, res) => {
     }
   } catch (err) {
     console.error(`LLM error (${activeProvider}):`, err.message, err.status, err.code);
+    trackError(err.status || 500);
     res.status(500).json({
       error: activeProvider === 'selfhosted'
         ? 'The Guardian sleeps... the ancient vessel may need awakening.'
@@ -395,6 +504,7 @@ async function generateCover(title, subtitle, designTheme, styleSeedText) {
             const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
             fs.writeFileSync(coverPath, imgBuffer);
             console.log(`  Cover generated via ${imageModel} (Vertex AI)`);
+            metrics.covers.geminiSuccess++; metricsDirty = true;
             return { path: coverPath, needsOverlay: false };
           }
           console.warn(`  ${imageModel}: no image`, JSON.stringify(data).slice(0, 200));
@@ -418,20 +528,24 @@ async function generateCover(title, subtitle, designTheme, styleSeedText) {
         const coverPath = path.join(EBOOKS_DIR, `cover-${Date.now()}.png`);
         fs.writeFileSync(coverPath, imgBuffer);
         console.log(`  Cover generated via Imagen 3 (needs text overlay)`);
+        metrics.covers.imagenFallback++; metricsDirty = true;
         return { path: coverPath, needsOverlay: true };
       }
       console.warn('Imagen 3 failed:', JSON.stringify(imgData).slice(0, 300));
     }
 
+    metrics.covers.failed++; metricsDirty = true;
     return null;
   } catch (err) {
     console.warn('Cover generation failed:', err.message);
+    metrics.covers.failed++; metricsDirty = true;
     return null;
   }
 }
 
 // --- Ebook generation ---
 async function generateEbook(ebookId, conversationHistory) {
+  const ebookStartTime = Date.now();
   console.log(`Generating ebook ${ebookId} using provider=${activeProvider} model=${getModel()} uncensored=${isUncensoredProvider()}`);
 
   // Step 1: Generate ebook outline (title + chapters)
@@ -562,14 +676,22 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
   // Clean up cover image
   if (coverPath) try { fs.unlinkSync(coverPath); } catch (e) {}
 
+  const genDuration = Date.now() - ebookStartTime;
   saveJob(ebookId, {
     status: 'ready',
     title: outline.title,
     filename: ebookId + '.docx',
-    path: docxFilepath
+    path: docxFilepath,
+    generatedAt: new Date().toISOString(),
+    durationMs: genDuration,
+    chapters: outline.chapters.length
   });
 
-  console.log('Ebook "' + outline.title + '" ready: ' + ebookId + '.docx');
+  metrics.ebooks.generated++;
+  metrics.ebooks.totalGenerationMs += genDuration;
+  metricsDirty = true;
+  saveMetrics(); // Flush immediately on ebook completion
+  console.log('Ebook "' + outline.title + '" ready: ' + ebookId + '.docx (' + Math.round(genDuration / 1000) + 's)');
 }
 
 async function createDocx(docxPath, outline, chapters, coverPath, design) {
@@ -783,6 +905,7 @@ app.get('/api/ebook/:id/status', (req, res) => {
 
 // --- Eye click whisper (Oracle) ---
 app.post('/api/whisper', async (req, res) => {
+  trackApiCall('whisper');
   const prev = req.body.previous || [];
   const context = req.body.context || [];
   const isSearching = req.body.isSearching || false;
@@ -841,6 +964,7 @@ app.get('/api/ebook/:id/download', (req, res) => {
 
 // --- Outro (seek again text) ---
 app.get('/api/outro', async (req, res) => {
+  trackApiCall('outro');
   try {
     const completion = await openai.chat.completions.create({
       model: getModel(),
@@ -869,6 +993,7 @@ app.get('/api/greet', async (req, res) => { greetHandler(req, res); });
 app.post('/api/greet', async (req, res) => { greetHandler(req, res); });
 
 async function greetHandler(req, res) {
+  trackApiCall('greet');
   const previous = req.body?.previous || [];
   const prevBlock = previous.length > 0
     ? `\n\nYou have ALREADY said these — NEVER repeat or rephrase any of them:\n${previous.map((p, i) => `${i+1}. "${p}"`).join('\n')}\n\nYour new question must be COMPLETELY different in structure, words, and metaphor.`
@@ -906,6 +1031,7 @@ NEVER use: "threshold", "traveler", "tome", "seek", "knowledge you seek", "summo
 
 // --- Farewell ---
 app.get('/api/farewell', async (req, res) => {
+  trackApiCall('farewell');
   try {
     const completion = await openai.chat.completions.create({
       model: getModel(),
@@ -924,6 +1050,7 @@ app.get('/api/farewell', async (req, res) => {
 
 // --- Guardian Mode Toggle ---
 app.post('/api/mode', (req, res) => {
+  trackApiCall('mode');
   const { mode } = req.body; // 'censored' or 'uncensored'
   if (mode === 'censored') {
     activeProvider = clients.gemini ? 'gemini' : clients.openai ? 'openai' : activeProvider;
@@ -939,6 +1066,7 @@ app.get('/api/mode', (req, res) => {
 
 // --- Status ---
 app.get('/api/status', async (req, res) => {
+  trackApiCall('status');
   try {
     const models = await openai.models.list();
     res.json({ provider: activeProvider, model: getModel(), status: 'connected', models: models.data.map(m => m.id) });
@@ -977,7 +1105,7 @@ app.get('/api/waitlist/count', (req, res) => {
 });
 
 app.post('/api/waitlist/signup', (req, res) => {
-  const { email, utm } = req.body;
+  const { email, utm, sourceReferrer, device, screen } = req.body;
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email required' });
   }
@@ -1028,6 +1156,19 @@ app.post('/api/waitlist/signup', (req, res) => {
     ip: clientIP
   };
 
+  // Capture the actual source referrer (how user arrived at the site, sent from frontend)
+  if (sourceReferrer && typeof sourceReferrer === 'string') {
+    entry.sourceReferrer = sourceReferrer.slice(0, 500);
+  }
+
+  // Capture device type (mobile/tablet/desktop) and screen dimensions
+  if (device && typeof device === 'string') {
+    entry.device = device.slice(0, 20);
+  }
+  if (screen && typeof screen === 'string') {
+    entry.screen = screen.slice(0, 20);
+  }
+
   // Capture UTM params if provided
   if (utm && typeof utm === 'object') {
     entry.utm = {};
@@ -1042,12 +1183,16 @@ app.post('/api/waitlist/signup', (req, res) => {
   saveWaitlist(data);
 
   const position = data.signups.length;
+  // Track daily signups for the dashboard
+  const today = new Date().toISOString().slice(0, 10);
+  metrics.dailySignups[today] = (metrics.dailySignups[today] || 0) + 1;
+  metricsDirty = true;
   console.log(`Waitlist signup: ${normalized} (#${position})`);
   res.json({ success: true, count: position, position });
 });
 
 app.post('/api/waitlist/survey', (req, res) => {
-  const { email, topics, format, role, wouldPay } = req.body;
+  const { email, topics, format, role, wouldPay, source } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
 
   const data = loadWaitlist();
@@ -1067,12 +1212,144 @@ app.post('/api/waitlist/survey', (req, res) => {
     format: sanitize(format, 100),
     role: sanitize(role, 50),
     wouldPay: sanitize(wouldPay, 20),
+    source: sanitize(source, 50),
     answeredAt: new Date().toISOString()
   };
 
   saveWaitlist(data);
   res.json({ success: true });
 });
+
+// --- Admin API endpoints ---
+app.get('/api/admin/metrics', (req, res) => {
+  metrics.pageVisits.admin++;
+  metricsDirty = true;
+
+  const uptime = Date.now() - SERVER_START_TIME;
+  const mem = process.memoryUsage();
+  const uniqueVisitors = Object.keys(metrics.visitors).length;
+
+  // Active ebook jobs (in-progress)
+  const allJobs = loadJobsFromDisk();
+  const activeJobs = Object.entries(allJobs)
+    .filter(([, j]) => j.status === 'generating')
+    .map(([id, j]) => ({ id, ...j }));
+
+  res.json({
+    ...metrics,
+    system: {
+      uptime,
+      uptimeHuman: formatUptime(uptime),
+      memoryMB: {
+        rss: Math.round(mem.rss / 1048576),
+        heapUsed: Math.round(mem.heapUsed / 1048576),
+        heapTotal: Math.round(mem.heapTotal / 1048576)
+      },
+      activeSessions: conversations.size,
+      activeProvider,
+      activeModel: getModel(),
+      nodeVersion: process.version,
+      platform: process.platform
+    },
+    uniqueVisitors,
+    activeJobs,
+    serverStartTime: new Date(SERVER_START_TIME).toISOString()
+  });
+});
+
+app.get('/api/admin/waitlist', (req, res) => {
+  const data = loadWaitlist();
+  const signups = data.signups || [];
+
+  // Compute survey stats
+  const withSurvey = signups.filter(s => s.survey);
+  const topicCounts = {};
+  const formatCounts = {};
+  const wouldPayCounts = {};
+
+  withSurvey.forEach(s => {
+    if (s.survey.topics) {
+      s.survey.topics.split(/[,;]+/).forEach(t => {
+        const clean = t.trim().toLowerCase();
+        if (clean) topicCounts[clean] = (topicCounts[clean] || 0) + 1;
+      });
+    }
+    if (s.survey.format) formatCounts[s.survey.format] = (formatCounts[s.survey.format] || 0) + 1;
+    if (s.survey.wouldPay) wouldPayCounts[s.survey.wouldPay] = (wouldPayCounts[s.survey.wouldPay] || 0) + 1;
+  });
+
+  // Signup rate: today, this week
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const weekAgo = new Date(now - 7 * 86400000).toISOString();
+  const todayCount = signups.filter(s => s.timestamp && s.timestamp.startsWith(todayStr)).length;
+  const weekCount = signups.filter(s => s.timestamp && s.timestamp >= weekAgo).length;
+
+  res.json({
+    total: signups.length,
+    signups: signups.map(s => ({
+      email: s.email,
+      timestamp: s.timestamp,
+      referrer: s.referrer,
+      ip: s.ip,
+      hasSurvey: !!s.survey,
+      survey: s.survey || null
+    })),
+    surveyStats: {
+      completed: withSurvey.length,
+      completionRate: signups.length ? Math.round(withSurvey.length / signups.length * 100) : 0,
+      topTopics: Object.entries(topicCounts).sort((a, b) => b[1] - a[1]).slice(0, 20),
+      formats: formatCounts,
+      wouldPay: wouldPayCounts
+    },
+    rate: {
+      today: todayCount,
+      thisWeek: weekCount,
+      allTime: signups.length
+    }
+  });
+});
+
+app.get('/api/admin/ebooks', (req, res) => {
+  const allJobs = loadJobsFromDisk();
+  const jobs = Object.entries(allJobs).map(([id, j]) => ({
+    id,
+    status: j.status,
+    title: j.title || null,
+    generatedAt: j.generatedAt || null,
+    durationMs: j.durationMs || null,
+    durationHuman: j.durationMs ? Math.round(j.durationMs / 1000) + 's' : null,
+    chapters: j.chapters || null,
+    error: j.error || null
+  }));
+
+  const completed = jobs.filter(j => j.status === 'ready');
+  const failed = jobs.filter(j => j.status === 'failed');
+  const active = jobs.filter(j => j.status === 'generating');
+  const avgDuration = completed.length
+    ? Math.round(completed.reduce((sum, j) => sum + (j.durationMs || 0), 0) / completed.length / 1000)
+    : 0;
+
+  res.json({
+    total: jobs.length,
+    completed: completed.length,
+    failed: failed.length,
+    active: active.length,
+    avgDurationSeconds: avgDuration,
+    successRate: jobs.length ? Math.round(completed.length / jobs.length * 100) : 0,
+    jobs: jobs.sort((a, b) => (b.generatedAt || '').localeCompare(a.generatedAt || ''))
+  });
+});
+
+function formatUptime(ms) {
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${s % 60}s`;
+}
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
