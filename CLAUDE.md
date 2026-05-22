@@ -147,15 +147,36 @@ These emails have admin/privileged access everywhere (library gate, admin dashbo
 - **Gemini**: GCP $300 credits via service account. Alert at < $50 remaining.
 - Alert emails go to `greatlibraryai@gmail.com` and `z@greatlibrary.ai`
 
+## Launch Date
+- **Library opens to the public: June 1, 2026 00:00:00 UTC**
+- Until then, only privileged accounts can access the library
+- Non-privileged users see a countdown timer on the library page
+
+## Microsoft Auth (Entra ID)
+- Client ID: `3fe2e1f9-4f6d-4f22-98cc-b536bb9ff0bc`
+- Platform: SPA (not Web) — MSAL browser popup, no client secret
+- Authority: `https://login.microsoftonline.com/consumers`
+- SPA Redirect URIs: `https://greatlibrary.ai`, `http://localhost:8080`
+- Railway env: only `MICROSOFT_CLIENT_ID` needed (no secret, no redirect URI env var)
+
+## Auth & Sessions
+- JWT auth cookie (`gl_token`), httpOnly, 30-day expiry, path `/`
+- JWT_SECRET must be stable across deploys — set as Railway env var or derived from stable env vars
+- Google sign-in uses `renderButton()` (not `prompt()` which fails silently)
+- Microsoft sign-in uses MSAL popup with `/consumers` authority
+
 ## Mohamed's Preferences (don't make him repeat these)
 - **Screenshots ARE the spec** — when he shares a screenshot, understand the issue from the visual
 - **Delegate to agents** — launch in background, parallel when possible, give full context
-- **Wizard > wall of options** — multi-step forms should show one question at a time (Back/Next/Skip)
+- **Wizard > wall of options** — multi-step forms should show one question at a time (Back/Next)
+- **No skip buttons** — survey questions are mandatory, shake + validate on empty answers
 - **Always include "Other"** — any multiple-choice must have an Other option with text input
 - **No clutter in locked states** — show normal UI but disabled, not overlay text/gates
 - **Rewards for completion** — gate features behind completing flows (e.g., survey → library access)
+- **No premature monetization** — don't show $49 membership or payment UI pre-launch, it's a turn-off
 - **Simple > fancy** — if something gets complex and buggy, strip it back
 - **Don't fight the tools** — if a library resists a design, simplify the design
+- **Settings panel** — title is "Chamber of Secrets", order: Account → Appearance → Mode → Sound → Progress
 
 ## Workflow
 - Run locally with `npm start` (needs `.env` with at least one provider key)
