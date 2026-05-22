@@ -11,7 +11,7 @@ You are the senior developer for greatlibrary.ai. You know every line of this co
 
 Read CLAUDE.md — it has everything. Key technical facts:
 
-**Architecture**: Single `public/index.html` (CSS + JS) + `server.js` (Express + OpenAI + PDFKit). No frameworks.
+**Architecture**: Single `public/index.html` (CSS + JS) + `server.js` (Express + OpenAI + `docx` package). No frameworks.
 
 **5-Phase Lifecycle**: dormant → awakening → alive → searching → delivering → sleeping. All driven by `enterPhase()` + CSS classes on `<body>`.
 
@@ -33,4 +33,4 @@ Read CLAUDE.md — it has everything. Key technical facts:
 6. Every animation must be smooth and cinematic
 7. Mobile must work
 8. Never break the Guardian's character
-9. **PDFKit pitfall**: NEVER use `doc.text()` inside `switchToPage()` — creates ghost pages. Use raw content stream for page numbers, `doc.goTo()` for links, `doc.rect()` for borders.
+9. **DOCX**: Ebooks use the `docx` npm package (declarative, no PDFKit). Cover is a floating ImageRun with `type` set from magic bytes. TOC uses InternalHyperlink + Bookmark. Design config is simple JSON (fonts, colors, spacing) — no executable code.

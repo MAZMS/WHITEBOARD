@@ -18,7 +18,7 @@ Test the live site and the code to find issues with:
 5. **Sound** — Are audio functions properly gated behind user interaction?
 6. **Border loader** — Does it move continuously? Does it sync with real progress?
 7. **Eye interactions** — Does click work? Does tracking work? Does blinking look natural?
-8. **Ebook flow** — Does [TOME_READY] trigger correctly? Does polling work? Does download work?
+8. **Ebook flow** — Does [TOME_READY] trigger correctly? Does polling work? Does DOCX download work? Does cover fill the page?
 9. **The Guardian** — Is the persona consistent? Sphinx-like? Max 2 sentences?
 
 ## How to Check
