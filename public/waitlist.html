@@ -1351,6 +1351,30 @@
       });
     });
 
+    // --- Check if already signed in (session persists via cookie) ---
+    (async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me');
+        const { user } = await res.json();
+        if (user && user.email) {
+          // User is already signed in — show the "Enter the Library" link
+          userEmail = user.email;
+          const wizardEl = document.getElementById('wlWizard');
+          wizardEl.style.opacity = '0';
+          wizardEl.style.transition = 'opacity 0.5s ease';
+          setTimeout(() => {
+            wizardEl.style.display = 'none';
+            finalEl.querySelector('.wl-final-text').textContent =
+              'The ledger knows your name, ' + (user.name || 'Seeker') + '.';
+            finalEl.classList.add('visible');
+            setTimeout(() => {
+              document.getElementById('wlEnterReward').classList.add('visible');
+            }, 600);
+          }, 500);
+        }
+      } catch {}
+    })();
+
     // --- Initialize ---
     buildProgress();
     // Show step 0 (email) immediately

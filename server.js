@@ -1455,7 +1455,39 @@ app.post('/api/waitlist/survey', (req, res) => {
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+// JWT_SECRET must persist across server restarts or all sessions are invalidated.
+// Priority: 1) JWT_SECRET env var  2) deterministic derivation from other stable env vars  3) file cache  4) random (last resort)
+const JWT_SECRET = (() => {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+
+  // On Railway, /tmp is ephemeral — file-cached secrets vanish on every deploy.
+  // Derive a stable secret from env vars that don't change between deploys.
+  if (process.env.RAILWAY_ENVIRONMENT) {
+    const stableInputs = [
+      process.env.RAILWAY_PROJECT_ID,
+      process.env.RAILWAY_SERVICE_ID,
+      process.env.OPENAI_API_KEY,
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GEMINI_API_KEY
+    ].filter(Boolean).join(':');
+    if (stableInputs) {
+      const derived = crypto.createHash('sha256').update('gl-jwt-secret:' + stableInputs).digest('hex');
+      console.log('[Auth] JWT_SECRET derived from stable env vars (set JWT_SECRET env var for best practice)');
+      return derived;
+    }
+  }
+
+  // Local dev: cache to disk so it survives restarts
+  const secretFile = path.join(EBOOKS_DIR, '.jwt_secret');
+  try {
+    const existing = fs.readFileSync(secretFile, 'utf8').trim();
+    if (existing) return existing;
+  } catch {}
+  const generated = crypto.randomBytes(32).toString('hex');
+  try { fs.writeFileSync(secretFile, generated, 'utf8'); } catch {}
+  console.warn('[Auth] No JWT_SECRET env var set — generated and cached to disk. Set JWT_SECRET in production!');
+  return generated;
+})();
 const ACCOUNTS_FILE = path.join(EBOOKS_DIR, 'accounts.json');
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID || '';

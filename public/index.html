@@ -3675,9 +3675,6 @@
       } catch (e) { showAuthError('Microsoft sign-in failed'); }
     }
 
-    // Check auth on page load
-    checkAuth();
-
     // ===== LIBRARY ACCESS GATE =====
     let libraryAccessGranted = false;
     const guardianInput = document.getElementById('guardianInput');
@@ -3764,12 +3761,16 @@
       }
     };
 
-    // Initial check — if already signed in with a privileged account
-    if (currentUser && isPrivileged(currentUser.email)) {
-      grantLibraryAccess();
-    } else {
-      denyLibraryAccess();
-    }
+    // Check auth on page load, then decide access
+    // Must await so the cookie-based session is restored before the access gate runs
+    (async () => {
+      await checkAuth();
+      if (currentUser && isPrivileged(currentUser.email)) {
+        grantLibraryAccess();
+      } else {
+        denyLibraryAccess();
+      }
+    })();
 
     // ===== START: BORDER SIZING =====
     sizeBorderLoader();
