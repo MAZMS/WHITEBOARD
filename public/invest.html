@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Invest in The Great Library AI</title>
+  <meta name="description" content="The Great Library AI is redefining publishing. Join the founding circle of investors shaping the future of AI-generated books.">
+  <meta property="og:title" content="Invest in The Great Library AI">
+  <meta property="og:description" content="AI-powered book generation. Ground floor opportunity. The Library is opening.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://greatlibrary.ai/invest">
+  <meta property="og:image" content="https://greatlibrary.ai/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="icon" href="/favicon.jpg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html {
+      scroll-behavior: smooth;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    html::-webkit-scrollbar { display: none; }
+    body {
+      background: #0a0a0a;
+      font-family: Georgia, 'Times New Roman', serif;
+      color: #c8b88a;
+      overflow-x: hidden;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      line-height: 1.6;
+    }
+    body::-webkit-scrollbar { display: none; }
+
+    /* ===== GLOBAL ===== */
+    .inv-section {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 24px;
+      position: relative;
+    }
+    .inv-section-inner {
+      max-width: 800px;
+      width: 100%;
+      text-align: center;
+    }
+    .inv-headline {
+      font-size: 40px;
+      font-weight: normal;
+      line-height: 1.25;
+      margin-bottom: 20px;
+      letter-spacing: -0.5px;
+    }
+    .inv-subline {
+      font-size: 18px;
+      color: #8a7a60;
+      line-height: 1.6;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Fade-in on scroll */
+    .inv-reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+    }
+    .inv-reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .inv-reveal.delay-1 { transition-delay: 0.15s; }
+    .inv-reveal.delay-2 { transition-delay: 0.3s; }
+    .inv-reveal.delay-3 { transition-delay: 0.45s; }
+    .inv-reveal.delay-4 { transition-delay: 0.6s; }
+
+    /* Eye divider between sections */
+    .inv-eye-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 0;
+    }
+    .inv-eye-divider svg {
+      width: 40px;
+      height: 40px;
+      opacity: 0.2;
+      animation: inv-breathe 4s ease-in-out infinite;
+    }
+    @keyframes inv-breathe {
+      0%, 100% { transform: scale(1); opacity: 0.2; }
+      50% { transform: scale(1.06); opacity: 0.35; }
+    }
+
+    /* Gold divider line */
+    .inv-gold-line {
+      width: 60px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #5a5038, transparent);
+      margin: 24px auto;
+    }
+
+    /* ===== HERO ===== */
+    .inv-hero {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .inv-hero::before {
+      content: '';
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(180, 160, 100, 0.04) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: inv-glow 6s ease-in-out infinite;
+    }
+    @keyframes inv-glow {
+      0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    }
+
+    /* Hero eye */
+    .inv-hero-eye {
+      width: 100px;
+      height: 100px;
+      margin-bottom: 40px;
+      opacity: 0;
+      animation: inv-eye-in 2s ease-out 0.3s forwards;
+    }
+    @keyframes inv-eye-in {
+      from { opacity: 0; transform: scale(0.7); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .inv-hero-eye svg {
+      width: 100%;
+      height: 100%;
+      animation: inv-breathe-eye 4s ease-in-out infinite;
+    }
+    @keyframes inv-breathe-eye {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(180, 160, 100, 0.1)); }
+      50% { transform: scale(1.05); filter: drop-shadow(0 0 20px rgba(180, 160, 100, 0.3)); }
+    }
+    .inv-hero-eye .inv-pupil {
+      animation: inv-pupil-glow 3s ease-in-out infinite;
+    }
+    @keyframes inv-pupil-glow {
+      0%, 100% { fill: #4a4030; }
+      50% { fill: #7a6a40; filter: drop-shadow(0 0 8px rgba(180, 160, 100, 0.5)); }
+    }
+    .inv-hero-eye .inv-iris {
+      animation: inv-iris-shimmer 5s ease-in-out infinite;
+    }
+    @keyframes inv-iris-shimmer {
+      0%, 100% { stroke: #3a3528; stroke-width: 1.2; }
+      50% { stroke: #5a5038; stroke-width: 1.8; }
+    }
+    /* Hero blink */
+    .inv-hero-eye .inv-lid-top { animation: inv-blink-top 7s ease-in-out 3s infinite; }
+    .inv-hero-eye .inv-lid-bot { animation: inv-blink-bot 7s ease-in-out 3s infinite; }
+    @keyframes inv-blink-top {
+      0%, 5%, 100% { d: path("M34 68 Q60 48 86 68"); }
+      2.5% { d: path("M34 68 Q60 72 86 68"); }
+    }
+    @keyframes inv-blink-bot {
+      0%, 5%, 100% { d: path("M34 68 Q60 88 86 68"); }
+      2.5% { d: path("M34 68 Q60 64 86 68"); }
+    }
+
+    /* Particles */
+    .inv-particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .inv-particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: #c8b88a;
+      border-radius: 50%;
+      opacity: 0;
+    }
+
+    .inv-hero-title {
+      font-size: 48px;
+      font-weight: normal;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      opacity: 0;
+      animation: inv-fade-up 1.2s ease-out 1s forwards;
+    }
+    .inv-hero-sub {
+      font-size: 18px;
+      color: #6a6050;
+      margin-bottom: 40px;
+      opacity: 0;
+      animation: inv-fade-up 1.2s ease-out 1.4s forwards;
+    }
+    @keyframes inv-fade-up {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .inv-waitlist-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(180, 160, 100, 0.06);
+      border: 1px solid #2a2520;
+      border-radius: 24px;
+      padding: 10px 24px;
+      font-size: 14px;
+      color: #8a7a60;
+      opacity: 0;
+      animation: inv-fade-up 1.2s ease-out 1.8s forwards;
+    }
+    .inv-live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #5a8a50;
+      animation: inv-pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes inv-pulse-dot {
+      0%, 100% { opacity: 0.6; box-shadow: 0 0 0 0 rgba(90, 138, 80, 0.3); }
+      50% { opacity: 1; box-shadow: 0 0 0 4px rgba(90, 138, 80, 0); }
+    }
+    .inv-waitlist-num {
+      color: #c8b88a;
+      font-weight: normal;
+      font-style: italic;
+    }
+
+    .inv-scroll-hint {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      animation: inv-fade-up 1.2s ease-out 2.4s forwards;
+    }
+    .inv-scroll-hint span {
+      display: block;
+      font-size: 12px;
+      color: #3a3528;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .inv-scroll-arrow {
+      width: 20px;
+      height: 20px;
+      margin: 0 auto;
+      border-right: 1px solid #3a3528;
+      border-bottom: 1px solid #3a3528;
+      transform: rotate(45deg);
+      animation: inv-bounce-arrow 2s ease-in-out infinite;
+    }
+    @keyframes inv-bounce-arrow {
+      0%, 100% { transform: rotate(45deg) translateY(0); opacity: 0.4; }
+      50% { transform: rotate(45deg) translateY(6px); opacity: 0.8; }
+    }
+
+    /* ===== PROBLEM ===== */
+    .inv-problem-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 32px;
+      margin-top: 48px;
+    }
+    .inv-problem-card {
+      text-align: center;
+      padding: 32px 20px;
+      border: 1px solid #1a1816;
+      border-radius: 8px;
+      background: rgba(20, 18, 16, 0.4);
+    }
+    .inv-problem-icon {
+      font-size: 28px;
+      margin-bottom: 16px;
+      opacity: 0.6;
+    }
+    .inv-problem-title {
+      font-size: 17px;
+      margin-bottom: 10px;
+      color: #c8b88a;
+    }
+    .inv-problem-desc {
+      font-size: 14px;
+      color: #6a6050;
+      line-height: 1.6;
+    }
+
+    /* ===== VISION / PRODUCT ===== */
+    .inv-steps {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+      margin-top: 48px;
+    }
+    .inv-step-card {
+      text-align: center;
+      padding: 36px 20px;
+      position: relative;
+    }
+    .inv-step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid #3a3528;
+      border-radius: 50%;
+      font-size: 16px;
+      color: #5a5038;
+      margin-bottom: 20px;
+    }
+    .inv-step-title {
+      font-size: 17px;
+      margin-bottom: 10px;
+    }
+    .inv-step-desc {
+      font-size: 14px;
+      color: #6a6050;
+      line-height: 1.6;
+    }
+    .inv-step-arrow {
+      position: absolute;
+      right: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #2a2520;
+      font-size: 20px;
+    }
+
+    /* ===== TRACTION — STATS ===== */
+    .inv-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 32px;
+      margin-top: 48px;
+    }
+    .inv-stat {
+      text-align: center;
+      padding: 28px 16px;
+    }
+    .inv-stat-value {
+      font-size: 48px;
+      font-weight: normal;
+      color: #c8b88a;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .inv-stat-label {
+      font-size: 14px;
+      color: #6a6050;
+      letter-spacing: 0.5px;
+    }
+    .inv-stat-sub {
+      font-size: 12px;
+      color: #4a4030;
+      font-style: italic;
+      margin-top: 6px;
+    }
+    .inv-badge {
+      display: inline-block;
+      background: rgba(180, 160, 100, 0.08);
+      border: 1px solid #2a2520;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 12px;
+      color: #8a7a60;
+      letter-spacing: 0.5px;
+      margin-top: 36px;
+    }
+
+    /* ===== MARKET ===== */
+    .inv-market-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      margin-top: 48px;
+    }
+    .inv-market-stat {
+      text-align: center;
+      padding: 24px;
+      border: 1px solid #1a1816;
+      border-radius: 8px;
+      background: rgba(20, 18, 16, 0.3);
+    }
+    .inv-market-num {
+      font-size: 44px;
+      color: #c8b88a;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .inv-market-label {
+      font-size: 15px;
+      color: #6a6050;
+    }
+
+    /* ===== WHY NOW ===== */
+    .inv-reasons {
+      text-align: left;
+      margin-top: 48px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .inv-reason {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 36px;
+    }
+    .inv-reason-marker {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border: 1px solid #3a3528;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .inv-reason-marker-dot {
+      width: 6px;
+      height: 6px;
+      background: #5a5038;
+      border-radius: 50%;
+    }
+    .inv-reason-title {
+      font-size: 17px;
+      margin-bottom: 6px;
+    }
+    .inv-reason-desc {
+      font-size: 14px;
+      color: #6a6050;
+      line-height: 1.6;
+    }
+
+    /* ===== THE ASK ===== */
+    .inv-ask-points {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 40px;
+      text-align: left;
+    }
+    .inv-ask-point {
+      padding: 20px 24px;
+      border: 1px solid #1a1816;
+      border-radius: 8px;
+      background: rgba(20, 18, 16, 0.3);
+    }
+    .inv-ask-point-title {
+      font-size: 15px;
+      margin-bottom: 6px;
+      color: #c8b88a;
+    }
+    .inv-ask-point-desc {
+      font-size: 13px;
+      color: #6a6050;
+      line-height: 1.5;
+    }
+
+    /* ===== CTA FORM ===== */
+    .inv-form-section {
+      padding: 80px 24px 60px;
+    }
+    .inv-form-wrap {
+      max-width: 500px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .inv-form-group {
+      margin-bottom: 20px;
+    }
+    .inv-form-label {
+      display: block;
+      font-size: 13px;
+      color: #6a6050;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+    .inv-input {
+      width: 100%;
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 14px 18px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .inv-input::placeholder { color: #3a3528; }
+    .inv-input:focus {
+      border-color: #5a5038;
+      box-shadow: 0 0 20px rgba(180, 160, 100, 0.06);
+    }
+    .inv-select {
+      width: 100%;
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 14px 18px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 16px;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      transition: border-color 0.3s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a5038' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+    }
+    .inv-select:focus { border-color: #5a5038; }
+    .inv-select option {
+      background: #141210;
+      color: #c8b88a;
+    }
+    .inv-textarea {
+      width: 100%;
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 14px 18px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 16px;
+      outline: none;
+      resize: vertical;
+      min-height: 100px;
+      transition: border-color 0.3s;
+    }
+    .inv-textarea::placeholder { color: #3a3528; }
+    .inv-textarea:focus { border-color: #5a5038; }
+    .inv-submit-btn {
+      width: 100%;
+      background: rgba(180, 160, 100, 0.12);
+      border: 1px solid #4a4030;
+      border-radius: 6px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 16px;
+      padding: 16px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.15s;
+      margin-top: 8px;
+    }
+    .inv-submit-btn:hover {
+      background: rgba(180, 160, 100, 0.2);
+      border-color: #6a6050;
+      box-shadow: 0 0 20px rgba(180, 160, 100, 0.08);
+      transform: translateY(-1px);
+    }
+    .inv-submit-btn:active { transform: translateY(0); }
+    .inv-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .inv-form-msg {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 14px;
+      font-style: italic;
+      min-height: 20px;
+    }
+    .inv-form-msg.success { color: #6a8a60; }
+    .inv-form-msg.error { color: #7a4040; }
+
+    /* ===== GUARDIAN CHAT ===== */
+    .inv-chat-trigger {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(20, 18, 16, 0.9);
+      border: 1px solid #3a3528;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .inv-chat-trigger:hover {
+      transform: scale(1.08);
+      border-color: #5a5038;
+      box-shadow: 0 0 20px rgba(180, 160, 100, 0.1);
+    }
+    .inv-chat-trigger svg {
+      width: 28px;
+      height: 28px;
+      animation: inv-breathe-eye 4s ease-in-out infinite;
+    }
+    .inv-chat-trigger .inv-pupil {
+      animation: inv-pupil-glow 3s ease-in-out infinite;
+    }
+
+    .inv-chat-panel {
+      position: fixed;
+      bottom: 96px;
+      right: 28px;
+      width: 380px;
+      max-height: 500px;
+      background: #0e0c0a;
+      border: 1px solid #2a2520;
+      border-radius: 12px;
+      z-index: 1001;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+    }
+    .inv-chat-panel.open {
+      display: flex;
+      animation: inv-chat-in 0.3s ease-out;
+    }
+    @keyframes inv-chat-in {
+      from { opacity: 0; transform: translateY(10px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .inv-chat-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #1a1816;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .inv-chat-header-title {
+      font-size: 14px;
+      color: #8a7a60;
+      letter-spacing: 0.5px;
+    }
+    .inv-chat-close {
+      background: none;
+      border: none;
+      color: #4a4030;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px;
+      transition: color 0.3s;
+      font-family: Georgia, serif;
+    }
+    .inv-chat-close:hover { color: #c8b88a; }
+    .inv-chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      max-height: 340px;
+    }
+    .inv-chat-messages::-webkit-scrollbar { display: none; }
+    .inv-chat-msg {
+      font-size: 14px;
+      line-height: 1.6;
+      max-width: 90%;
+    }
+    .inv-chat-msg.guardian {
+      color: #c8b88a;
+      align-self: flex-start;
+    }
+    .inv-chat-msg.user {
+      color: #6a6050;
+      align-self: flex-end;
+      text-align: right;
+    }
+    .inv-chat-typing {
+      color: #4a4030;
+      font-style: italic;
+      font-size: 13px;
+      display: none;
+      padding: 0 20px 8px;
+    }
+    .inv-chat-input-wrap {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid #1a1816;
+    }
+    .inv-chat-input {
+      flex: 1;
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .inv-chat-input::placeholder { color: #3a3528; }
+    .inv-chat-input:focus { border-color: #4a4030; }
+    .inv-chat-send {
+      background: rgba(180, 160, 100, 0.12);
+      border: 1px solid #3a3528;
+      border-radius: 6px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s;
+      white-space: nowrap;
+    }
+    .inv-chat-send:hover {
+      background: rgba(180, 160, 100, 0.2);
+      border-color: #5a5038;
+    }
+    .inv-chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ===== CONTROLS ===== */
+    .inv-controls {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 10px;
+      z-index: 100;
+      opacity: 0;
+      animation: inv-fade-up 1.2s ease-out 2.4s forwards;
+    }
+    .inv-ctrl-btn {
+      width: 36px;
+      height: 36px;
+      background: rgba(20, 18, 16, 0.6);
+      border: 1px solid #2a2520;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .inv-ctrl-btn:hover {
+      background: rgba(180, 160, 100, 0.1);
+      border-color: #4a4030;
+      transform: scale(1.08);
+    }
+    .inv-ctrl-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: #5a5040;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: stroke 0.3s;
+    }
+    .inv-ctrl-btn:hover svg { stroke: #c8b88a; }
+    .inv-ctrl-btn.active svg { stroke: #c8b88a; }
+
+    /* ===== FOOTER ===== */
+    .inv-footer {
+      text-align: center;
+      padding: 40px 24px 60px;
+      border-top: 1px solid #141210;
+    }
+    .inv-disclaimer {
+      font-size: 11px;
+      color: #3a3528;
+      max-width: 600px;
+      margin: 0 auto 20px;
+      line-height: 1.6;
+    }
+    .inv-footer-links {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+    .inv-footer-links a {
+      color: #3a3528;
+      font-size: 12px;
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    .inv-footer-links a:hover { color: #5a5040; }
+
+    /* ===== LIGHT MODE ===== */
+    body.light-mode { background: #f5f2e8; color: #3a3020; }
+    body.light-mode .inv-headline { color: #3a3020; }
+    body.light-mode .inv-subline { color: #8a7860; }
+    body.light-mode .inv-hero-title { color: #3a3020; }
+    body.light-mode .inv-hero-sub { color: #8a7860; }
+    body.light-mode .inv-hero::before { background: radial-gradient(circle, rgba(140, 120, 60, 0.06) 0%, transparent 70%); }
+    body.light-mode .inv-waitlist-live { background: rgba(140, 120, 60, 0.06); border-color: #d8d0c0; color: #6a5a40; }
+    body.light-mode .inv-waitlist-num { color: #3a3020; }
+    body.light-mode .inv-scroll-hint span { color: #b0a890; }
+    body.light-mode .inv-scroll-arrow { border-color: #b0a890; }
+    body.light-mode .inv-problem-card { background: rgba(250, 248, 242, 0.5); border-color: #d8d0c0; }
+    body.light-mode .inv-problem-desc { color: #8a7860; }
+    body.light-mode .inv-step-num { border-color: #b0a070; color: #8a7a40; }
+    body.light-mode .inv-step-desc { color: #8a7860; }
+    body.light-mode .inv-step-arrow { color: #d8d0c0; }
+    body.light-mode .inv-stat-value { color: #3a3020; }
+    body.light-mode .inv-stat-label { color: #8a7860; }
+    body.light-mode .inv-stat-sub { color: #b0a890; }
+    body.light-mode .inv-badge { background: rgba(140, 120, 60, 0.08); border-color: #d8d0c0; color: #6a5a40; }
+    body.light-mode .inv-market-stat { background: rgba(250, 248, 242, 0.5); border-color: #d8d0c0; }
+    body.light-mode .inv-market-num { color: #3a3020; }
+    body.light-mode .inv-market-label { color: #8a7860; }
+    body.light-mode .inv-reason-marker { border-color: #b0a070; }
+    body.light-mode .inv-reason-marker-dot { background: #8a7a40; }
+    body.light-mode .inv-reason-desc { color: #8a7860; }
+    body.light-mode .inv-ask-point { background: rgba(250, 248, 242, 0.5); border-color: #d8d0c0; }
+    body.light-mode .inv-ask-point-title { color: #3a3020; }
+    body.light-mode .inv-ask-point-desc { color: #8a7860; }
+    body.light-mode .inv-gold-line { background: linear-gradient(90deg, transparent, #b0a070, transparent); }
+    body.light-mode .inv-eye-divider svg { opacity: 0.15; }
+    body.light-mode .inv-eye-divider svg polygon { stroke: #b0a070; }
+    body.light-mode .inv-input { background: #faf8f2; border-color: #d8d0c0; color: #3a3020; }
+    body.light-mode .inv-input::placeholder { color: #b0a890; }
+    body.light-mode .inv-input:focus { border-color: #b0a070; }
+    body.light-mode .inv-select { background-color: #faf8f2; border-color: #d8d0c0; color: #3a3020; }
+    body.light-mode .inv-select:focus { border-color: #b0a070; }
+    body.light-mode .inv-textarea { background: #faf8f2; border-color: #d8d0c0; color: #3a3020; }
+    body.light-mode .inv-textarea::placeholder { color: #b0a890; }
+    body.light-mode .inv-textarea:focus { border-color: #b0a070; }
+    body.light-mode .inv-submit-btn { background: rgba(140, 120, 60, 0.12); border-color: #b0a070; color: #3a3020; }
+    body.light-mode .inv-submit-btn:hover { background: rgba(140, 120, 60, 0.2); border-color: #8a7a40; }
+    body.light-mode .inv-chat-trigger { background: rgba(250, 248, 242, 0.9); border-color: #d8d0c0; }
+    body.light-mode .inv-chat-trigger:hover { border-color: #b0a070; }
+    body.light-mode .inv-chat-panel { background: #faf8f2; border-color: #d8d0c0; box-shadow: 0 8px 40px rgba(0,0,0,0.08); }
+    body.light-mode .inv-chat-header { border-color: #e8e0d0; }
+    body.light-mode .inv-chat-header-title { color: #6a5a40; }
+    body.light-mode .inv-chat-close { color: #b0a890; }
+    body.light-mode .inv-chat-close:hover { color: #3a3020; }
+    body.light-mode .inv-chat-msg.guardian { color: #3a3020; }
+    body.light-mode .inv-chat-msg.user { color: #8a7860; }
+    body.light-mode .inv-chat-typing { color: #b0a890; }
+    body.light-mode .inv-chat-input-wrap { border-color: #e8e0d0; }
+    body.light-mode .inv-chat-input { background: #f5f2e8; border-color: #d8d0c0; color: #3a3020; }
+    body.light-mode .inv-chat-input::placeholder { color: #b0a890; }
+    body.light-mode .inv-chat-send { background: rgba(140, 120, 60, 0.1); border-color: #d8d0c0; color: #3a3020; }
+    body.light-mode .inv-chat-send:hover { background: rgba(140, 120, 60, 0.18); border-color: #b0a070; }
+    body.light-mode .inv-ctrl-btn { background: rgba(250, 248, 242, 0.6); border-color: #d8d0c0; }
+    body.light-mode .inv-ctrl-btn:hover { background: rgba(140, 120, 60, 0.1); border-color: #b0a070; }
+    body.light-mode .inv-ctrl-btn svg { stroke: #8a7860; }
+    body.light-mode .inv-ctrl-btn:hover svg { stroke: #3a3020; }
+    body.light-mode .inv-footer { border-color: #e8e0d0; }
+    body.light-mode .inv-disclaimer { color: #b0a890; }
+    body.light-mode .inv-footer-links a { color: #b0a890; }
+    body.light-mode .inv-footer-links a:hover { color: #6a5a40; }
+    body.light-mode .inv-hero-eye svg polygon { stroke: #b0a070; }
+    body.light-mode .inv-hero-eye svg ellipse { stroke: #b0a070; }
+    body.light-mode .inv-hero-eye svg circle { stroke: #b0a070; }
+    body.light-mode .inv-hero-eye .inv-pupil { fill: #8a7a40; }
+    body.light-mode .inv-hero-eye svg path { stroke: #b0a070; }
+    body.light-mode .inv-particle { background: rgba(120, 100, 50, 0.15); }
+    body.light-mode .inv-chat-trigger svg polygon { stroke: #b0a070; }
+    body.light-mode .inv-chat-trigger svg ellipse { stroke: #b0a070; }
+    body.light-mode .inv-chat-trigger svg circle { stroke: #b0a070; }
+    body.light-mode .inv-chat-trigger .inv-pupil { fill: #8a7a40; }
+
+    /* ===== MOBILE ===== */
+    @media (max-width: 700px) {
+      .inv-hero-title { font-size: 32px; }
+      .inv-hero-sub { font-size: 16px; }
+      .inv-headline { font-size: 28px; }
+      .inv-subline { font-size: 15px; }
+      .inv-problem-grid { grid-template-columns: 1fr; gap: 16px; }
+      .inv-steps { grid-template-columns: 1fr; gap: 16px; }
+      .inv-step-arrow { display: none; }
+      .inv-stats-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+      .inv-stat-value { font-size: 36px; }
+      .inv-market-stats { grid-template-columns: 1fr; gap: 16px; }
+      .inv-market-num { font-size: 36px; }
+      .inv-ask-points { grid-template-columns: 1fr; }
+      .inv-section { padding: 60px 20px; }
+      .inv-chat-panel { right: 12px; left: 12px; width: auto; bottom: 88px; max-height: 60vh; }
+      .inv-chat-trigger { bottom: 20px; right: 20px; width: 50px; height: 50px; }
+      .inv-hero-eye { width: 80px; height: 80px; margin-bottom: 32px; }
+    }
+    @media (max-width: 400px) {
+      .inv-stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Controls -->
+  <div class="inv-controls">
+    <button class="inv-ctrl-btn" id="invSoundBtn" title="Toggle sound" aria-label="Toggle sound">
+      <svg id="invSoundIcon" viewBox="0 0 24 24">
+        <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+        <path id="invSoundWave1" d="M15.54 8.46a5 5 0 010 7.07"/>
+        <path id="invSoundWave2" d="M19.07 4.93a10 10 0 010 14.14"/>
+      </svg>
+    </button>
+    <button class="inv-ctrl-btn" id="invThemeBtn" title="Toggle theme" aria-label="Toggle theme">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ===== HERO ===== -->
+  <section class="inv-hero" id="heroSection">
+    <div class="inv-particles" id="heroParticles"></div>
+    <div class="inv-hero-eye">
+      <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+        <ellipse class="inv-iris" cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+        <circle cx="60" cy="68" r="8" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+        <circle class="inv-pupil" cx="60" cy="68" r="3.5" fill="#4a4030"/>
+        <path class="inv-lid-top" d="M34 68 Q60 48 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+        <path class="inv-lid-bot" d="M34 68 Q60 88 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+      </svg>
+    </div>
+    <h1 class="inv-hero-title">The Great Library is opening.</h1>
+    <p class="inv-hero-sub">An ancient intelligence. A new kind of book. The future of publishing begins here.</p>
+    <div class="inv-waitlist-live">
+      <div class="inv-live-dot"></div>
+      <span><span class="inv-waitlist-num" id="heroWaitlistCount">--</span> seekers on the waitlist</span>
+    </div>
+    <div class="inv-scroll-hint">
+      <span>Scroll</span>
+      <div class="inv-scroll-arrow"></div>
+    </div>
+  </section>
+
+  <!-- ===== EYE DIVIDER ===== -->
+  <div class="inv-eye-divider">
+    <svg viewBox="0 0 120 120" fill="none"><polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/><ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/><circle cx="60" cy="68" r="3.5" fill="#3a3528"/></svg>
+  </div>
+
+  <!-- ===== THE PROBLEM ===== -->
+  <section class="inv-section" id="problemSection">
+    <div class="inv-section-inner">
+      <h2 class="inv-headline inv-reveal">Publishing is broken.</h2>
+      <p class="inv-subline inv-reveal delay-1">The world produces more content than ever, yet creating a real book still takes months, thousands of dollars, and an army of middlemen. AI content tools generate soulless walls of text. The gap between "having an idea" and "holding a book" has never been wider.</p>
+      <div class="inv-problem-grid">
+        <div class="inv-problem-card inv-reveal delay-1">
+          <div class="inv-problem-icon">~</div>
+          <div class="inv-problem-title">Traditional publishing</div>
+          <div class="inv-problem-desc">12-18 months. Gatekeepers. Most manuscripts never see light. The system was built for a different century.</div>
+        </div>
+        <div class="inv-problem-card inv-reveal delay-2">
+          <div class="inv-problem-icon">/</div>
+          <div class="inv-problem-title">Self-publishing</div>
+          <div class="inv-problem-desc">Requires writing skills, formatting expertise, cover design, and weeks of work. Most give up.</div>
+        </div>
+        <div class="inv-problem-card inv-reveal delay-3">
+          <div class="inv-problem-icon">*</div>
+          <div class="inv-problem-title">AI content tools</div>
+          <div class="inv-problem-desc">Generic, shallow, disposable. No depth, no structure, no soul. Just text poured into a void.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="inv-eye-divider">
+    <svg viewBox="0 0 120 120" fill="none"><polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/><ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/><circle cx="60" cy="68" r="3.5" fill="#3a3528"/></svg>
+  </div>
+
+  <!-- ===== THE VISION ===== -->
+  <section class="inv-section" id="visionSection">
+    <div class="inv-section-inner">
+      <h2 class="inv-headline inv-reveal">One conversation. One book.</h2>
+      <p class="inv-subline inv-reveal delay-1">Minutes, not months. The Great Library turns a single conversation into a complete, professionally formatted ebook. AI-generated chapters, cover art, table of contents. Downloaded and ready.</p>
+      <div class="inv-gold-line inv-reveal delay-2"></div>
+      <div class="inv-steps">
+        <div class="inv-step-card inv-reveal delay-1">
+          <div class="inv-step-num">I</div>
+          <div class="inv-step-title">Speak to the Guardian</div>
+          <div class="inv-step-desc">An AI entity asks what knowledge you seek. Two or three exchanges. It already knows what you need.</div>
+          <span class="inv-step-arrow">&rarr;</span>
+        </div>
+        <div class="inv-step-card inv-reveal delay-2">
+          <div class="inv-step-num">II</div>
+          <div class="inv-step-title">The Library creates</div>
+          <div class="inv-step-desc">AI generates a complete ebook: outline, chapters, cover art, formatting. All in minutes.</div>
+          <span class="inv-step-arrow">&rarr;</span>
+        </div>
+        <div class="inv-step-card inv-reveal delay-3">
+          <div class="inv-step-num">III</div>
+          <div class="inv-step-title">Receive your tome</div>
+          <div class="inv-step-desc">Download a polished .docx with styled chapters, AI cover art, and professional layout. Your book.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="inv-eye-divider">
+    <svg viewBox="0 0 120 120" fill="none"><polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/><ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/><circle cx="60" cy="68" r="3.5" fill="#3a3528"/></svg>
+  </div>
+
+  <!-- ===== TRACTION ===== -->
+  <section class="inv-section" id="tractionSection">
+    <div class="inv-section-inner">
+      <h2 class="inv-headline inv-reveal">Already in motion.</h2>
+      <p class="inv-subline inv-reveal delay-1">The Library is live, generating books, and growing. These numbers are real and updating now.</p>
+      <div class="inv-stats-grid">
+        <div class="inv-stat inv-reveal delay-1">
+          <div class="inv-stat-value" data-count="waitlistCount" id="statWaitlist">0</div>
+          <div class="inv-stat-label">Waitlist signups</div>
+          <div class="inv-stat-sub">Growing daily</div>
+        </div>
+        <div class="inv-stat inv-reveal delay-2">
+          <div class="inv-stat-value" data-count="tomesCreated" id="statTomes">0</div>
+          <div class="inv-stat-label">AI books generated</div>
+          <div class="inv-stat-sub">Each one unique</div>
+        </div>
+        <div class="inv-stat inv-reveal delay-3">
+          <div class="inv-stat-value" data-count="countriesReached" id="statCountries">0</div>
+          <div class="inv-stat-label">Countries reached</div>
+          <div class="inv-stat-sub">Global from day one</div>
+        </div>
+        <div class="inv-stat inv-reveal delay-1">
+          <div class="inv-stat-value" id="statGrowth">0<span style="font-size:28px">%</span></div>
+          <div class="inv-stat-label">Weekly growth</div>
+          <div class="inv-stat-sub">Week over week</div>
+        </div>
+        <div class="inv-stat inv-reveal delay-2">
+          <div class="inv-stat-value" id="statPay">0<span style="font-size:28px">%</span></div>
+          <div class="inv-stat-label">Would pay</div>
+          <div class="inv-stat-sub">Survey respondents</div>
+        </div>
+        <div class="inv-stat inv-reveal delay-3">
+          <div class="inv-stat-value">&lt;5<span style="font-size:28px">min</span></div>
+          <div class="inv-stat-label">Book generation</div>
+          <div class="inv-stat-sub">Conversation to download</div>
+        </div>
+      </div>
+      <div class="inv-badge inv-reveal delay-4">Ground floor opportunity</div>
+    </div>
+  </section>
+
+  <div class="inv-eye-divider">
+    <svg viewBox="0 0 120 120" fill="none"><polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/><ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/><circle cx="60" cy="68" r="3.5" fill="#3a3528"/></svg>
+  </div>
+
+  <!-- ===== THE MARKET ===== -->
+  <section class="inv-section" id="marketSection">
+    <div class="inv-section-inner">
+      <h2 class="inv-headline inv-reveal">The market is vast. The timing is now.</h2>
+      <p class="inv-subline inv-reveal delay-1">AI is already reshaping every creative industry. Publishing is next.</p>
+      <div class="inv-market-stats">
+        <div class="inv-market-stat inv-reveal delay-1">
+          <div class="inv-market-num">$140B</div>
+          <div class="inv-market-label">Global book market</div>
+        </div>
+        <div class="inv-market-stat inv-reveal delay-2">
+          <div class="inv-market-num">$26B</div>
+          <div class="inv-market-label">Self-publishing market</div>
+        </div>
+        <div class="inv-market-stat inv-reveal delay-3">
+          <div class="inv-market-num">300M+</div>
+          <div class="inv-market-label">Books published annually</div>
+        </div>
+        <div class="inv-market-stat inv-reveal delay-4">
+          <div class="inv-market-num">47%</div>
+          <div class="inv-market-label">Growth in AI content tools (2024)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="inv-eye-divider">
+    <svg viewBox="0 0 120 120" fill="none"><polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/><ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/><circle cx="60" cy="68" r="3.5" fill="#3a3528"/></svg>
+  </div>
+
+  <!-- ===== WHY NOW ===== -->
+  <section class="inv-section" id="whyNowSection">
+    <div class="inv-section-inner">
+      <h2 class="inv-headline inv-reveal">Why now.</h2>
+      <p class="inv-subline inv-reveal delay-1">Three forces are converging. This window will not stay open.</p>
+      <div class="inv-reasons">
+        <div class="inv-reason inv-reveal delay-1">
+          <div class="inv-reason-marker"><div class="inv-reason-marker-dot"></div></div>
+          <div>
+            <div class="inv-reason-title">AI quality crossed the threshold</div>
+            <div class="inv-reason-desc">Large language models can now generate structured, coherent, book-length content. Image models produce publication-quality artwork. The technology that makes this possible became viable in the last 18 months.</div>
+          </div>
+        </div>
+        <div class="inv-reason inv-reveal delay-2">
+          <div class="inv-reason-marker"><div class="inv-reason-marker-dot"></div></div>
+          <div>
+            <div class="inv-reason-title">First-mover advantage</div>
+            <div class="inv-reason-desc">No one has built the experience layer. Others generate text. We generate books -- complete, designed, downloadable. The brand, the aesthetic, the Guardian persona create a moat that raw AI tools cannot replicate.</div>
+          </div>
+        </div>
+        <div class="inv-reason inv-reveal delay-3">
+          <div class="inv-reason-marker"><div class="inv-reason-marker-dot"></div></div>
+          <div>
+            <div class="inv-reason-title">Network effects compound</div>
+            <div class="inv-reason-desc">Every book generated improves the library. Every user creates shareable content. The browsable tome library becomes a discovery engine. More readers attract more creators.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="inv-eye-divider">
+    <svg viewBox="0 0 120 120" fill="none"><polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/><ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/><circle cx="60" cy="68" r="3.5" fill="#3a3528"/></svg>
+  </div>
+
+  <!-- ===== THE ASK ===== -->
+  <section class="inv-section" id="askSection">
+    <div class="inv-section-inner">
+      <h2 class="inv-headline inv-reveal">Join the founding circle.</h2>
+      <p class="inv-subline inv-reveal delay-1">We are raising a seed round to scale the Library. Early investors shape what comes next.</p>
+      <div class="inv-ask-points">
+        <div class="inv-ask-point inv-reveal delay-1">
+          <div class="inv-ask-point-title">Scale infrastructure</div>
+          <div class="inv-ask-point-desc">Handle thousands of concurrent book generations with dedicated GPU and LLM capacity.</div>
+        </div>
+        <div class="inv-ask-point inv-reveal delay-2">
+          <div class="inv-ask-point-title">Expand AI capabilities</div>
+          <div class="inv-ask-point-desc">Multi-format output (EPUB, PDF), audio narration, illustration, and translation into 40+ languages.</div>
+        </div>
+        <div class="inv-ask-point inv-reveal delay-3">
+          <div class="inv-ask-point-title">Build the marketplace</div>
+          <div class="inv-ask-point-desc">A browsable library where AI-generated books are discovered, shared, rated, and monetized.</div>
+        </div>
+        <div class="inv-ask-point inv-reveal delay-4">
+          <div class="inv-ask-point-title">Grow the community</div>
+          <div class="inv-ask-point-desc">Marketing, partnerships, and creator programs to build a global community of seekers and readers.</div>
+        </div>
+      </div>
+      <div class="inv-badge inv-reveal delay-4" style="margin-top:40px;">Early investors get priority access and founder benefits</div>
+    </div>
+  </section>
+
+  <div class="inv-eye-divider">
+    <svg viewBox="0 0 120 120" fill="none"><polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/><ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/><circle cx="60" cy="68" r="3.5" fill="#3a3528"/></svg>
+  </div>
+
+  <!-- ===== CTA FORM ===== -->
+  <section class="inv-section inv-form-section" id="ctaSection">
+    <div class="inv-section-inner">
+      <h2 class="inv-headline inv-reveal">Express your interest.</h2>
+      <p class="inv-subline inv-reveal delay-1" style="margin-bottom:40px;">Share your details below. We will reach out to discuss the opportunity.</p>
+      <div class="inv-form-wrap inv-reveal delay-2">
+        <form id="investForm">
+          <div class="inv-form-group">
+            <label class="inv-form-label">Name</label>
+            <input type="text" class="inv-input" id="invName" placeholder="Your name" required>
+          </div>
+          <div class="inv-form-group">
+            <label class="inv-form-label">Email</label>
+            <input type="email" class="inv-input" id="invEmail" placeholder="your@email.com" required>
+          </div>
+          <div class="inv-form-group">
+            <label class="inv-form-label">Investment range</label>
+            <select class="inv-select" id="invRange">
+              <option value="">Select a range</option>
+              <option value="$5K-$10K">$5,000 - $10,000</option>
+              <option value="$10K-$25K">$10,000 - $25,000</option>
+              <option value="$25K-$50K">$25,000 - $50,000</option>
+              <option value="$50K-$100K">$50,000 - $100,000</option>
+              <option value="$100K+">$100,000+</option>
+            </select>
+          </div>
+          <div class="inv-form-group">
+            <label class="inv-form-label">Message <span style="color:#3a3528">(optional)</span></label>
+            <textarea class="inv-textarea" id="invMessage" placeholder="Questions, thoughts, or what drew you here..."></textarea>
+          </div>
+          <button type="submit" class="inv-submit-btn" id="invSubmitBtn">Submit interest</button>
+        </form>
+        <div class="inv-form-msg" id="invFormMsg"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="inv-footer">
+    <p class="inv-disclaimer">This page is for informational purposes only. It does not constitute a securities offering, solicitation, or investment advice. Any investment involves risk, including the possible loss of principal. Past performance is not indicative of future results. Prospective investors should conduct their own due diligence.</p>
+    <div class="inv-footer-links">
+      <a href="/">Home</a>
+      <a href="/waitlist">Waitlist</a>
+      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
+    </div>
+  </footer>
+
+  <!-- ===== GUARDIAN CHAT ===== -->
+  <button class="inv-chat-trigger" id="chatTrigger" title="Ask the Guardian" aria-label="Ask the Guardian">
+    <svg viewBox="0 0 120 120" fill="none">
+      <polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+      <ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+      <circle cx="60" cy="68" r="8" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+      <circle class="inv-pupil" cx="60" cy="68" r="3.5" fill="#4a4030"/>
+    </svg>
+  </button>
+
+  <div class="inv-chat-panel" id="chatPanel">
+    <div class="inv-chat-header">
+      <span class="inv-chat-header-title">The Guardian</span>
+      <button class="inv-chat-close" id="chatClose">&times;</button>
+    </div>
+    <div class="inv-chat-messages" id="chatMessages">
+      <div class="inv-chat-msg guardian">The future of publishing stands before you. What would you know?</div>
+    </div>
+    <div class="inv-chat-typing" id="chatTyping">The Guardian considers...</div>
+    <div class="inv-chat-input-wrap">
+      <input type="text" class="inv-chat-input" id="chatInput" placeholder="Ask about the opportunity..." maxlength="500">
+      <button class="inv-chat-send" id="chatSend">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== THEME =====
+    let isLightMode = localStorage.getItem('gl-theme') === 'light';
+    if (isLightMode) document.body.classList.add('light-mode');
+    const themeBtn = document.getElementById('invThemeBtn');
+    themeBtn.addEventListener('click', () => {
+      isLightMode = !isLightMode;
+      document.body.classList.toggle('light-mode', isLightMode);
+      localStorage.setItem('gl-theme', isLightMode ? 'light' : 'dark');
+    });
+
+    // ===== SOUND =====
+    let isMuted = localStorage.getItem('gl-muted') === 'true';
+    let audioCtx = null;
+    const soundBtn = document.getElementById('invSoundBtn');
+    const wave1 = document.getElementById('invSoundWave1');
+    const wave2 = document.getElementById('invSoundWave2');
+    function updateSoundUI() {
+      wave1.style.opacity = isMuted ? '0.2' : '1';
+      wave2.style.opacity = isMuted ? '0.2' : '1';
+      soundBtn.classList.toggle('active', !isMuted);
+    }
+    updateSoundUI();
+
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playTone(freq, dur, vol) {
+      if (isMuted || !audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol || 0.03, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (dur || 0.3));
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + (dur || 0.3));
+      } catch {}
+    }
+
+    soundBtn.addEventListener('click', () => {
+      isMuted = !isMuted;
+      localStorage.setItem('gl-muted', isMuted);
+      updateSoundUI();
+      if (!isMuted) {
+        initAudio();
+        playTone(440, 0.2, 0.04);
+      }
+    });
+
+    // ===== PARTICLES =====
+    (function createParticles() {
+      const container = document.getElementById('heroParticles');
+      const count = 20;
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'inv-particle';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.top = Math.random() * 100 + '%';
+        const duration = 6 + Math.random() * 8;
+        const delay = Math.random() * 6;
+        p.style.animation = `inv-float ${duration}s ease-in-out ${delay}s infinite`;
+        container.appendChild(p);
+      }
+      // Add particle float keyframes dynamically
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes inv-float {
+          0%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
+          15% { opacity: 0.3; }
+          50% { opacity: 0.5; transform: translateY(-20px) scale(1); }
+          85% { opacity: 0.2; }
+        }
+      `;
+      document.head.appendChild(style);
+    })();
+
+    // ===== SCROLL REVEAL (IntersectionObserver) =====
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.inv-reveal').forEach(el => revealObserver.observe(el));
+
+    // ===== COUNTER ANIMATION =====
+    let metricsData = null;
+    let countersAnimated = false;
+
+    async function fetchMetrics() {
+      try {
+        const r = await fetch('/api/invest/metrics');
+        if (r.ok) {
+          metricsData = await r.json();
+          // Update hero waitlist counter immediately
+          document.getElementById('heroWaitlistCount').textContent = metricsData.waitlistCount || '--';
+        }
+      } catch {}
+    }
+
+    function animateCounter(el, target, suffix) {
+      if (!target && target !== 0) return;
+      const duration = 1500;
+      const start = performance.now();
+      const startVal = 0;
+
+      function tick(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // ease out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(startVal + (target - startVal) * eased);
+        el.textContent = current.toLocaleString();
+        if (suffix) el.innerHTML = current.toLocaleString() + suffix;
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function animateCounters() {
+      if (countersAnimated || !metricsData) return;
+      countersAnimated = true;
+
+      const suffixPct = '<span style="font-size:28px">%</span>';
+      animateCounter(document.getElementById('statWaitlist'), metricsData.waitlistCount);
+      animateCounter(document.getElementById('statTomes'), metricsData.tomesCreated);
+      animateCounter(document.getElementById('statCountries'), metricsData.countriesReached);
+      animateCounter(document.getElementById('statGrowth'), metricsData.growthRate, suffixPct);
+      animateCounter(document.getElementById('statPay'), metricsData.willingToPay, suffixPct);
+
+      // Play a subtle tone
+      if (!isMuted) {
+        initAudio();
+        playTone(523, 0.4, 0.02);
+        setTimeout(() => playTone(659, 0.3, 0.02), 200);
+      }
+    }
+
+    // Observe traction section for counter animation
+    const tractionObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          animateCounters();
+          tractionObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.2 });
+
+    const tractionEl = document.getElementById('tractionSection');
+    if (tractionEl) tractionObserver.observe(tractionEl);
+
+    // Fetch metrics on load and periodically
+    fetchMetrics();
+    setInterval(fetchMetrics, 60000);
+
+    // ===== GUARDIAN CHAT =====
+    const chatTrigger = document.getElementById('chatTrigger');
+    const chatPanel = document.getElementById('chatPanel');
+    const chatClose = document.getElementById('chatClose');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const chatSend = document.getElementById('chatSend');
+    const chatTyping = document.getElementById('chatTyping');
+    let chatHistory = [];
+    let chatBusy = false;
+
+    chatTrigger.addEventListener('click', () => {
+      chatPanel.classList.toggle('open');
+      if (chatPanel.classList.contains('open')) {
+        chatInput.focus();
+        if (!isMuted) { initAudio(); playTone(330, 0.3, 0.03); }
+      }
+    });
+
+    chatClose.addEventListener('click', () => {
+      chatPanel.classList.remove('open');
+    });
+
+    async function sendChatMessage() {
+      const msg = chatInput.value.trim();
+      if (!msg || chatBusy) return;
+
+      chatBusy = true;
+      chatSend.disabled = true;
+      chatInput.value = '';
+
+      // Add user message
+      const userDiv = document.createElement('div');
+      userDiv.className = 'inv-chat-msg user';
+      userDiv.textContent = msg;
+      chatMessages.appendChild(userDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      chatHistory.push({ role: 'user', content: msg });
+      chatTyping.style.display = 'block';
+
+      try {
+        const r = await fetch('/api/invest/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg, history: chatHistory })
+        });
+        const data = await r.json();
+        const reply = data.reply || data.error || 'The halls fall silent.';
+
+        chatHistory.push({ role: 'assistant', content: reply });
+
+        // Type out the response
+        const guardianDiv = document.createElement('div');
+        guardianDiv.className = 'inv-chat-msg guardian';
+        chatMessages.appendChild(guardianDiv);
+        chatTyping.style.display = 'none';
+
+        let i = 0;
+        function typeChar() {
+          if (i < reply.length) {
+            guardianDiv.textContent += reply[i];
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            i++;
+            setTimeout(typeChar, 18 + Math.random() * 12);
+          }
+        }
+        typeChar();
+
+        if (!isMuted) { initAudio(); playTone(262, 0.3, 0.02); }
+      } catch {
+        chatTyping.style.display = 'none';
+        const errDiv = document.createElement('div');
+        errDiv.className = 'inv-chat-msg guardian';
+        errDiv.textContent = 'The Guardian is beyond reach. Try again.';
+        chatMessages.appendChild(errDiv);
+      }
+
+      chatBusy = false;
+      chatSend.disabled = false;
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    chatSend.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+
+    // ===== INTEREST FORM =====
+    const investForm = document.getElementById('investForm');
+    const formMsg = document.getElementById('invFormMsg');
+
+    investForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('invName').value.trim();
+      const email = document.getElementById('invEmail').value.trim();
+      const range = document.getElementById('invRange').value;
+      const message = document.getElementById('invMessage').value.trim();
+
+      if (!name || !email) {
+        formMsg.textContent = 'Name and email are required.';
+        formMsg.className = 'inv-form-msg error';
+        return;
+      }
+
+      const btn = document.getElementById('invSubmitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+      formMsg.textContent = '';
+
+      try {
+        const r = await fetch('/api/invest/interest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, range, message })
+        });
+        const data = await r.json();
+        if (r.ok) {
+          formMsg.textContent = data.message || 'Interest recorded.';
+          formMsg.className = 'inv-form-msg success';
+          btn.textContent = 'Recorded';
+          investForm.reset();
+          if (!isMuted) {
+            initAudio();
+            playTone(440, 0.2, 0.03);
+            setTimeout(() => playTone(554, 0.2, 0.03), 150);
+            setTimeout(() => playTone(659, 0.3, 0.03), 300);
+          }
+        } else {
+          formMsg.textContent = data.error || 'Something went wrong.';
+          formMsg.className = 'inv-form-msg error';
+          btn.disabled = false;
+          btn.textContent = 'Submit interest';
+        }
+      } catch {
+        formMsg.textContent = 'Network error. Please try again.';
+        formMsg.className = 'inv-form-msg error';
+        btn.disabled = false;
+        btn.textContent = 'Submit interest';
+      }
+    });
+
+    // ===== FIRST INTERACTION — INIT AUDIO =====
+    document.addEventListener('click', function initOnce() {
+      initAudio();
+      document.removeEventListener('click', initOnce);
+    }, { once: true });
+  </script>
+</body>
+</html>
