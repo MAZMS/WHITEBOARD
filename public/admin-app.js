@@ -328,28 +328,90 @@
       + (a.accounts.length > 0 ? '<div class="data-table-wrap"><table class="data-table" style="table-layout:fixed"><colgroup><col style="width:40%"><col style="width:20%"><col style="width:15%"><col style="width:25%"></colgroup><thead><tr><th>Email</th><th>Provider</th><th>Tomes</th><th>Joined</th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '<div class="empty-state">No accounts created yet. User data appears here after the first sign-in.</div>') + '</div>';
   }
 
-  function renderProviders(d) {
-    var p = d.providers || {};
-    function pc(name, label, info) {
-      if (!info) return '';
-      var sc = info.active ? 'active-provider' : (info.configured ? '' : 'not-configured');
-      var badge = info.active ? '<span class="provider-badge active">ACTIVE</span>' : info.configured ? '<span class="provider-badge configured">Ready</span>' : '<span class="provider-badge off">Not configured</span>';
-      return '<div class="provider-card '+sc+'">'+badge+'<div class="provider-name">'+label+'</div><div class="provider-detail">Model: '+escHtml(info.model)+'</div><div class="provider-detail">Auth: '+info.auth+'</div>'+(info.budget?'<div class="provider-detail">Budget: '+info.budget+'</div>':'')+(info.limits?'<div class="provider-detail">'+(info.limits.rpm?info.limits.rpm+' RPM':'')+(info.limits.tpm?' / '+fmtNum(info.limits.tpm)+' TPM':'')+(info.limits.tpd?' / '+fmtNum(info.limits.tpd)+' TPD':'')+'</div>':'')+'</div>';
+  function providerCard(name, label, info, budgetInfo) {
+    if (!info) return '';
+    var sc = info.active ? 'active-provider' : (info.configured ? '' : 'not-configured');
+    var badge = info.active ? '<span class="provider-badge active">ACTIVE</span>' : info.configured ? '<span class="provider-badge configured">Ready</span>' : '<span class="provider-badge off">Not configured</span>';
+    var limitsHtml = '';
+    if (info.limits) {
+      if (info.limits.premiumTpd && info.limits.miniTpd) {
+        limitsHtml = '<div class="provider-detail">' + (info.limits.rpm ? info.limits.rpm + ' RPM' : '') + (info.limits.tpm ? ' / ' + fmtNum(info.limits.tpm) + ' TPM' : '') + '</div>'
+          + '<div class="provider-detail">Premium: ' + fmtNum(info.limits.premiumTpd) + ' TPD</div>'
+          + '<div class="provider-detail">Mini/Nano: ' + fmtNum(info.limits.miniTpd) + ' TPD</div>';
+      } else {
+        limitsHtml = '<div class="provider-detail">' + (info.limits.rpm ? info.limits.rpm + ' RPM' : '') + (info.limits.tpm ? ' / ' + fmtNum(info.limits.tpm) + ' TPM' : '') + (info.limits.tpd ? ' / ' + fmtNum(info.limits.tpd) + ' TPD' : '') + '</div>';
+      }
     }
-    return '<div class="card card-full"><div class="card-title"><span class="pulse"></span>LLM Providers</div><div class="provider-grid">'+pc('gemini','Gemini',p.gemini)+pc('openai','OpenAI',p.openai)+pc('openrouter','OpenRouter',p.openrouter)+'</div></div>';
+    // Add live budget bars for OpenAI from budgetData
+    var budgetBars = '';
+    if (name === 'openai' && budgetInfo && budgetInfo.premium) {
+      var prem = budgetInfo.premium, mini = budgetInfo.mini;
+      var pPct = Math.min(100, Math.round(prem.pctUsed)); var mPct = Math.min(100, Math.round(mini.pctUsed));
+      var pColor = pPct>90?'red':pPct>70?'yellow':'green'; var mColor = mPct>90?'red':mPct>70?'yellow':'green';
+      budgetBars = '<div style="margin-top:8px">'
+        + '<div class="usage-bar-wrap" style="margin-bottom:4px"><div class="usage-bar-header"><span class="usage-bar-label" style="font-size:10px">Premium</span><span class="usage-bar-value" style="font-size:10px">'+fmtNum(prem.tokensUsedToday)+' / '+fmtNum(prem.dailyLimit)+'</span></div><div class="usage-bar-track" style="height:6px"><div class="usage-bar-fill '+pColor+'" style="width:'+pPct+'%"></div></div></div>'
+        + '<div class="usage-bar-wrap"><div class="usage-bar-header"><span class="usage-bar-label" style="font-size:10px">Mini/Nano</span><span class="usage-bar-value" style="font-size:10px">'+fmtNum(mini.tokensUsedToday)+' / '+fmtNum(mini.dailyLimit)+'</span></div><div class="usage-bar-track" style="height:6px"><div class="usage-bar-fill '+mColor+'" style="width:'+mPct+'%"></div></div></div>'
+        + '<div style="font-size:10px;color:#3a3528;margin-top:4px" id="openai-reset-countdown">Resets in '+escHtml(budgetInfo.resetInHuman || '--')+'</div>'
+        + '</div>';
+    }
+    return '<div class="provider-card '+sc+'">'+badge+'<div class="provider-name">'+label+'</div><div class="provider-detail">Model: '+escHtml(info.model)+'</div><div class="provider-detail">Auth: '+info.auth+'</div>'+(info.budget?'<div class="provider-detail">Budget: '+info.budget+'</div>':'')+limitsHtml+budgetBars+'</div>';
   }
 
-  function renderLlmUsage(u, d) {
-    if (!u) return '<div class="card card-full"><div class="card-title">API & Budget</div><div class="empty-state">Usage tracking data appears here once API calls are made.</div></div>';
+  function renderProviderCards(b, d) {
+    var p = d ? (d.providers || {}) : {};
+    var openaiB = b ? b.openai : null;
+    return providerCard('gemini','Gemini',p.gemini,null)+providerCard('openai','OpenAI',p.openai,openaiB)+providerCard('openrouter','OpenRouter',p.openrouter,null);
+  }
+
+  function renderProviders(d, b) {
+    var p = d.providers || {};
+    var openaiB = b ? b.openai : null;
+    return '<div class="card card-full"><div class="card-title"><span class="pulse"></span>LLM Providers</div><div class="provider-grid" id="budget-providers">'+providerCard('gemini','Gemini',p.gemini,null)+providerCard('openai','OpenAI',p.openai,openaiB)+providerCard('openrouter','OpenRouter',p.openrouter,null)+'</div></div>';
+  }
+
+  function buildOpenAiUsageBars(usage) {
+    var tb = '';
+    // Two-tier progress bars for OpenAI
+    var premiumUsed = usage.premiumTokens || 0, premiumLimit = 250000;
+    var miniUsed = usage.miniTokens || 0, miniLimit = 2500000;
+    var pPct = Math.min(100, Math.round(premiumUsed/premiumLimit*100));
+    var mPct = Math.min(100, Math.round(miniUsed/miniLimit*100));
+    var pColor = pPct>90?'red':pPct>70?'yellow':'green';
+    var mColor = mPct>90?'red':mPct>70?'yellow':'green';
+    tb = '<div class="usage-bar-wrap"><div class="usage-bar-header"><span class="usage-bar-label">Premium models (250K/day)</span><span class="usage-bar-value">'+fmtNum(premiumUsed)+' / '+fmtNum(premiumLimit)+' tokens</span></div><div class="usage-bar-track"><div class="usage-bar-fill '+pColor+'" style="width:'+pPct+'%"></div></div></div>';
+    tb += '<div class="usage-bar-wrap"><div class="usage-bar-header"><span class="usage-bar-label">Mini/Nano models (2.5M/day)</span><span class="usage-bar-value">'+fmtNum(miniUsed)+' / '+fmtNum(miniLimit)+' tokens</span></div><div class="usage-bar-track"><div class="usage-bar-fill '+mColor+'" style="width:'+mPct+'%"></div></div></div>';
+    // Per-model breakdown
+    var modelEntries = usage.models || {};
+    var modelList = Object.entries(modelEntries).sort(function(a,b){ return b[1]-a[1]; });
+    if (modelList.length > 0) {
+      var modelMax = Math.max.apply(null, modelList.map(function(e){ return e[1]; })) || 1;
+      tb += '<div style="margin-top:6px"><div class="section-label">Model breakdown (calls)</div>' + modelList.map(function(e) {
+        var modelLower = e[0].toLowerCase();
+        var tierTag = (modelLower.indexOf('mini')>=0 || modelLower.indexOf('nano')>=0) ? '<span style="color:#5a7a4a;font-size:10px"> [mini/nano]</span>' : '<span style="color:#8a7d55;font-size:10px"> [premium]</span>';
+        return '<div class="bar-item"><div class="bar-label" style="min-width:110px">'+escHtml(e[0])+tierTag+'</div><div class="bar-track"><div class="bar-fill" style="width:'+Math.round(e[1]/modelMax*100)+'%"></div></div><div class="bar-count">'+e[1]+'</div></div>';
+      }).join('') + '</div>';
+    }
+    // Available premium models (muted text)
+    var premiumModels = ['gpt-5.4','gpt-5.2','gpt-5.1','gpt-5.1-codex','gpt-5','gpt-5-codex','gpt-4.1','gpt-4o','o1','o3'];
+    tb += '<div style="margin-top:8px;font-size:10px;color:#3a3528;line-height:1.6">Available premium: '+premiumModels.join(', ')+'</div>';
+    return tb;
+  }
+
+  function buildLlmUsageContent(u, d) {
     var today = u.today || {}, allTime = u.allTime || {}, todayBars = '';
-    var pcs = { gemini:{label:'Gemini',tl:1000000}, openai:{label:'OpenAI',tl:2500000}, openrouter:{label:'OpenRouter',tl:null} };
+    var pcs = { gemini:{label:'Gemini',tl:1000000}, openai:{label:'OpenAI',tl:null}, openrouter:{label:'OpenRouter',tl:null} };
     for (var prov in pcs) {
       var cfg = pcs[prov], usage = today[prov]; if (!usage && !allTime[prov]) continue;
       var calls = usage?usage.calls:0, tokens = usage?usage.tokens:0, errors = usage?usage.errors:0;
       var avgLat = usage&&usage.calls>0?Math.round(usage.latencyMs/usage.calls):0;
       var atC = allTime[prov]?allTime[prov].calls:0, atT = allTime[prov]?allTime[prov].tokens:0, atE = allTime[prov]?allTime[prov].errors:0;
       var tb = '';
-      if (cfg.tl) { var pct = Math.min(100, Math.round(tokens/cfg.tl*100)); var bc = pct>90?'red':pct>70?'yellow':'green'; tb = '<div class="usage-bar-wrap"><div class="usage-bar-header"><span class="usage-bar-label">Tokens today</span><span class="usage-bar-value">'+fmtNum(tokens)+' / '+fmtNum(cfg.tl)+'</span></div><div class="usage-bar-track"><div class="usage-bar-fill '+bc+'" style="width:'+pct+'%"></div></div></div>'; }
+      if (prov === 'openai' && usage) {
+        tb = buildOpenAiUsageBars(usage);
+      } else if (cfg.tl) {
+        var pct = Math.min(100, Math.round(tokens/cfg.tl*100)); var bc = pct>90?'red':pct>70?'yellow':'green';
+        tb = '<div class="usage-bar-wrap"><div class="usage-bar-header"><span class="usage-bar-label">Tokens today</span><span class="usage-bar-value">'+fmtNum(tokens)+' / '+fmtNum(cfg.tl)+'</span></div><div class="usage-bar-track"><div class="usage-bar-fill '+bc+'" style="width:'+pct+'%"></div></div></div>';
+      }
       todayBars += '<div style="margin-bottom:16px"><div style="color:#8a7d55;font-size:13px;font-weight:bold;margin-bottom:8px">'+cfg.label+'</div><div class="stat-row" style="margin-bottom:8px"><div class="stat"><div class="stat-value small">'+calls+'</div><div class="stat-label">Calls today</div></div><div class="stat"><div class="stat-value small">'+fmtNum(tokens)+'</div><div class="stat-label">Tokens today</div></div><div class="stat"><div class="stat-value small'+(errors>0?' danger':'')+'">'+errors+'</div><div class="stat-label">Errors today</div></div><div class="stat"><div class="stat-value small">'+avgLat+'ms</div><div class="stat-label">Avg latency</div></div></div>'+tb+'<div style="font-size:11px;color:#3a3528;margin-top:4px">All time: '+fmtNum(atC)+' calls, '+fmtNum(atT)+' tokens, '+atE+' errors</div></div>';
     }
     var last7 = (u.last7Days||[]).slice().reverse(), ch = '';
@@ -359,7 +421,28 @@
     }
     var ah = '';
     if (u.alerts && u.alerts.length > 0) { ah = '<div style="margin-top:16px"><div class="section-label" style="color:#7a4a4a">Budget Alerts</div>' + u.alerts.slice(-5).reverse().map(function(a) { return '<div style="font-size:12px;color:'+(a.level==='critical'?'#9a5a5a':'#b8a86a')+';padding:4px 0;border-bottom:1px solid #0f0e0c">'+formatTime(a.timestamp)+' -- '+escHtml(a.message)+'</div>'; }).join('') + '</div>'; }
-    return '<div class="card card-full"><div class="card-title">API & Budget</div>' + (todayBars || '<div class="empty-state">No LLM calls tracked yet.</div>') + ch + ah + '</div>';
+    return (todayBars || '<div class="empty-state">No LLM calls tracked yet.</div>') + ch + ah;
+  }
+
+  function renderBudgetDetail(b, u) {
+    if (!u) return '';
+    return buildLlmUsageContent(u, null);
+  }
+
+  function updateResetCountdown() {
+    var el = document.getElementById('openai-reset-countdown');
+    if (!el || !budgetData || !budgetData.openai) return;
+    var resetAt = budgetData.openai.resetAt;
+    if (!resetAt) return;
+    var ms = new Date(resetAt).getTime() - Date.now();
+    if (ms <= 0) { el.textContent = 'Resets now (next UTC midnight)'; return; }
+    var h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+    el.textContent = 'Resets in ' + h + 'h ' + m + 'm';
+  }
+
+  function renderLlmUsage(u, d, b) {
+    if (!u) return '<div class="card card-full"><div class="card-title">API & Budget</div><div class="empty-state">Usage tracking data appears here once API calls are made.</div></div>';
+    return '<div class="card card-full"><div class="card-title">API & Budget</div><div id="budget-detail">' + buildLlmUsageContent(u, d) + '</div></div>';
   }
 
   function renderApiUsage(d) {
@@ -474,4 +557,6 @@
   // ==================== INIT ====================
   fetchAll();
   setInterval(fetchAll, 30000);
+  setInterval(fetchBudgetOnly, 15000);
+  setInterval(updateResetCountdown, 60000);
 })();
