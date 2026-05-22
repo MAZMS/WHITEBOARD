@@ -942,8 +942,13 @@
 
     // --- Funnel analytics ---
     const funnelEvents = [];
+    const funnelMap = { email_focus: 'emailFocus', email_submit: 'emailSubmit', survey_submit: 'surveyComplete' };
     function trackEvent(name) {
       funnelEvents.push({ event: name, ts: Date.now() });
+      // Send server-side funnel event (fire and forget)
+      if (funnelMap[name]) {
+        fetch('/api/track/funnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event: funnelMap[name] }) }).catch(() => {});
+      }
     }
     trackEvent('page_view');
 

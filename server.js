@@ -5,10 +5,14 @@ const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, Header, F
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const db = require('./db');
 
 const app = express();
 app.set('trust proxy', true); // Railway runs behind a proxy
 app.use(express.json());
+
+// Helper: is the PostgreSQL database available?
+const useDB = () => db.isConnected();
 
 // --- Metrics tracking (passive, non-blocking) ---
 const METRICS_FILE = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks/metrics.json' : path.join(__dirname, 'ebooks', 'metrics.json');
@@ -45,6 +49,9 @@ function createEmptyMetrics() {
     browsers: {},       // browser name -> count
     dailySignups: {},   // "YYYY-MM-DD" -> count
     dailyVisits: {},    // "YYYY-MM-DD" -> { total, unique, pages: { waitlist, library, ... } }
+    dailyApiCalls: {},  // "YYYY-MM-DD" -> { chat, greet, whisper, ... total }
+    dailyErrors: {},    // "YYYY-MM-DD" -> { total, e500, e429 }
+    dailyEbooks: {},    // "YYYY-MM-DD" -> { generated, failed }
     hourlyHeatmap: {},  // "0"-"23" -> { "0"-"6" (day of week) -> count }
     trafficSources: { direct: 0, search: 0, social: 0, referral: 0 },
     recentVisitors: [], // last 100 visitors [{ip, timestamp, page, country, city, ua, browser, isMobile}]
@@ -81,11 +88,13 @@ function saveMetrics() {
   catch (err) { console.error('Failed to save metrics:', err.message); }
   metricsDirty = false;
 
-  // Prune daily visit data older than 90 days
-  const cutoff90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
-  if (metrics.dailyVisits) {
-    for (const day of Object.keys(metrics.dailyVisits)) {
-      if (day < cutoff90) delete metrics.dailyVisits[day];
+  // Prune daily data older than 400 days (keep ~13 months for yearly comparisons)
+  const cutoff400 = new Date(Date.now() - 400 * 86400000).toISOString().slice(0, 10);
+  for (const store of [metrics.dailyVisits, metrics.dailySignups, metrics.dailyApiCalls, metrics.dailyErrors, metrics.dailyEbooks]) {
+    if (store && typeof store === 'object') {
+      for (const day of Object.keys(store)) {
+        if (day < cutoff400) delete store[day];
+      }
     }
   }
 }
@@ -96,6 +105,12 @@ setInterval(saveMetrics, 30000);
 function trackApiCall(endpoint) {
   if (metrics.apiCalls[endpoint] !== undefined) {
     metrics.apiCalls[endpoint]++;
+    // Track daily API calls
+    const today = new Date().toISOString().slice(0, 10);
+    if (!metrics.dailyApiCalls) metrics.dailyApiCalls = {};
+    if (!metrics.dailyApiCalls[today]) metrics.dailyApiCalls[today] = { total: 0 };
+    metrics.dailyApiCalls[today][endpoint] = (metrics.dailyApiCalls[today][endpoint] || 0) + 1;
+    metrics.dailyApiCalls[today].total++;
     metricsDirty = true;
   }
 }
@@ -104,6 +119,13 @@ function trackError(statusCode, context) {
   metrics.errors.total++;
   if (statusCode === 500) metrics.errors.e500++;
   if (statusCode === 429) metrics.errors.e429++;
+  // Track daily errors
+  const today = new Date().toISOString().slice(0, 10);
+  if (!metrics.dailyErrors) metrics.dailyErrors = {};
+  if (!metrics.dailyErrors[today]) metrics.dailyErrors[today] = { total: 0, e500: 0, e429: 0 };
+  metrics.dailyErrors[today].total++;
+  if (statusCode === 500) metrics.dailyErrors[today].e500++;
+  if (statusCode === 429) metrics.dailyErrors[today].e429++;
   // Record recent errors (last 50) for dashboard debugging
   if (!metrics.errors.recent) metrics.errors.recent = [];
   metrics.errors.recent.unshift({
@@ -238,6 +260,13 @@ function trackVisitor(req, page) {
   }
 
   metricsDirty = true;
+
+  // Also persist to database if available (non-blocking)
+  if (useDB()) {
+    const deviceType = isTablet ? 'tablet' : (isMobile ? 'mobile' : 'desktop');
+    db.trackVisit({ ip, page, userAgent: ua, referrer: ref, device: deviceType, country, city, region })
+      .catch(err => console.warn('[DB] trackVisit error:', err.message));
+  }
 }
 
 // IP helper that works before waitlist code defines getClientIP
@@ -254,7 +283,7 @@ function isAdminEmail(email) {
   return e === 'greatlibraryai@gmail.com' || e.endsWith('@greatlibrary.ai');
 }
 
-function requireAdmin(req, res, next) {
+async function requireAdmin(req, res, next) {
   // Parse auth cookie/header the same way optionalAuth does
   const token = req.headers.authorization?.replace('Bearer ', '') ||
     (req.headers.cookie || '').split(';').map(c => c.trim()).find(c => c.startsWith('gl_token='))?.split('=')[1];
@@ -262,7 +291,11 @@ function requireAdmin(req, res, next) {
   const payload = verifyToken(token);
   if (!payload) return res.status(403).json({ error: 'Access denied' });
   if (!isAdminEmail(payload.email)) return res.status(403).json({ error: 'Access denied' });
-  req.user = findAccountByEmail(payload.email);
+  if (useDB()) {
+    req.user = await db.findAccountByEmail(payload.email);
+  } else {
+    req.user = findAccountByEmail(payload.email);
+  }
   next();
 }
 
@@ -742,7 +775,7 @@ function getSystemPrompt() {
 
 const conversations = new Map();
 
-// Ebook job tracking — in-memory + file backup
+// Ebook job tracking — in-memory + file backup (+ database when available)
 const ebookJobs = new Map();
 const JOBS_FILE = path.join(EBOOKS_DIR, 'jobs.json');
 
@@ -752,6 +785,7 @@ function loadJobsFromDisk() {
 function saveJob(id, data) {
   console.log(`saveJob(${id}):`, data.status);
   ebookJobs.set(id, data);
+  // Always save to disk as local cache
   try {
     const diskJobs = loadJobsFromDisk();
     diskJobs[id] = data;
@@ -759,9 +793,23 @@ function saveJob(id, data) {
   } catch (err) {
     console.error('Failed to save job to disk:', err.message);
   }
+  // Also persist to database (non-blocking)
+  if (useDB()) {
+    db.saveJob(id, data).catch(err => console.warn('[DB] saveJob error:', err.message));
+  }
 }
 function getJob(id) {
+  // In-memory first, then disk — DB is used for download/serve via async paths
   return ebookJobs.get(id) || loadJobsFromDisk()[id];
+}
+// Async version for endpoints that can await
+async function getJobAsync(id) {
+  const memJob = ebookJobs.get(id) || loadJobsFromDisk()[id];
+  if (memJob) return memJob;
+  if (useDB()) {
+    return await db.getJob(id);
+  }
+  return null;
 }
 
 // --- Migrate existing ebooks to Tome Library on startup ---
@@ -770,6 +818,8 @@ function getJob(id) {
     const allJobs = loadJobsFromDisk();
     const tomesData = loadTomes();
     let migrated = 0;
+
+    // Phase 1: Migrate ebooks that have job metadata in jobs.json
     for (const [id, job] of Object.entries(allJobs)) {
       if (job.status !== 'ready') continue;
       if (tomesData.tomes.find(t => t.id === id)) continue;
@@ -792,6 +842,64 @@ function getJob(id) {
       });
       migrated++;
     }
+
+    // Phase 2: Scan for orphaned .docx files with no jobs.json entry
+    // Catches ebooks generated before job tracking existed
+    const docxFiles = fs.readdirSync(EBOOKS_DIR).filter(f => f.endsWith('.docx'));
+    for (const docxFile of docxFiles) {
+      const id = docxFile.replace('.docx', '');
+      if (allJobs[id] || tomesData.tomes.find(t => t.id === id)) continue;
+
+      // Derive title from filename: "Funny_Cat_Facts.docx" -> "Funny Cat Facts"
+      const title = id.replace(/_/g, ' ');
+      const docxPath = path.join(EBOOKS_DIR, docxFile);
+      const stats = fs.statSync(docxPath);
+
+      // Check for cover image
+      let coverPath = null;
+      const pngCover = path.join(COVERS_DIR, id + '.png');
+      const jpgCover = path.join(COVERS_DIR, id + '.jpg');
+      if (fs.existsSync(pngCover)) coverPath = pngCover;
+      else if (fs.existsSync(jpgCover)) coverPath = jpgCover;
+
+      // Create a jobs.json entry so download endpoints work
+      const jobData = {
+        status: 'ready',
+        title: title,
+        subtitle: '',
+        filename: docxFile,
+        path: docxPath,
+        generatedAt: stats.mtime.toISOString(),
+        chapters: 0,
+        chapterList: [],
+        coverPath: coverPath
+      };
+      const diskJobs = loadJobsFromDisk();
+      diskJobs[id] = jobData;
+      try { fs.writeFileSync(JOBS_FILE, JSON.stringify(diskJobs)); } catch {}
+      ebookJobs.set(id, jobData);
+
+      tomesData.tomes.push({
+        id,
+        title: title,
+        subtitle: '',
+        authorId: null,
+        authorName: 'Anonymous Seeker',
+        coverUrl: coverPath ? `/api/tomes/${id}/cover` : null,
+        fileUrl: `/api/ebook/${id}/download`,
+        chapters: [],
+        designConfig: null,
+        topicTags: generateTopicTags(title, ''),
+        status: 'published',
+        visibility: 'public',
+        likesCount: 0, dislikesCount: 0, viewsCount: 0, downloadsCount: 0, commentsCount: 0,
+        createdAt: stats.mtime.toISOString(),
+        updatedAt: stats.mtime.toISOString()
+      });
+      migrated++;
+      console.log(`  Discovered orphaned ebook: "${title}" (${id})`);
+    }
+
     if (migrated > 0) {
       saveTomes(tomesData);
       console.log(`Migrated ${migrated} existing ebooks to Tome Library`);
@@ -808,6 +916,18 @@ app.post('/api/chat', optionalAuth, async (req, res) => {
   if (!message) return res.status(400).json({ error: 'No message provided' });
 
   const id = sessionId || 'default';
+
+  // Load conversation history — from DB if available, else in-memory Map
+  if (!conversations.has(id) && useDB()) {
+    try {
+      const dbMessages = await db.getConversation(id);
+      if (dbMessages && dbMessages.length > 0) {
+        conversations.set(id, dbMessages);
+      }
+    } catch (err) {
+      console.warn('[DB] getConversation error:', err.message);
+    }
+  }
   if (!conversations.has(id)) {
     conversations.set(id, []);
   }
@@ -835,7 +955,13 @@ app.post('/api/chat', optionalAuth, async (req, res) => {
     reply = reply.replace('[TOME_READY]', '').trim();
 
     history.push({ role: 'assistant', content: reply });
-    conversations.set(id, trimmed.concat({ role: 'assistant', content: reply }));
+    const updatedHistory = trimmed.concat({ role: 'assistant', content: reply });
+    conversations.set(id, updatedHistory);
+
+    // Persist conversation to DB (non-blocking)
+    if (useDB()) {
+      db.saveConversation(id, updatedHistory).catch(err => console.warn('[DB] saveConversation error:', err.message));
+    }
 
     if (tomeReady) {
       // Start ebook generation in background
@@ -844,20 +970,29 @@ app.post('/api/chat', optionalAuth, async (req, res) => {
 
       // Link ebook to user account if signed in
       if (req.user) {
-        const data = loadAccounts();
-        const acc = data.accounts.find(a => a.email === req.user.email);
-        if (acc) {
-          if (!acc.ebookIds) acc.ebookIds = [];
-          acc.ebookIds.push(ebookId);
-          acc.tomesCount = (acc.tomesCount || 0) + 1;
-          saveAccounts(data);
+        if (useDB()) {
+          db.addEbookToAccount(req.user.email, ebookId).catch(err => console.warn('[DB] addEbookToAccount error:', err.message));
+        } else {
+          const data = loadAccounts();
+          const acc = data.accounts.find(a => a.email === req.user.email);
+          if (acc) {
+            if (!acc.ebookIds) acc.ebookIds = [];
+            acc.ebookIds.push(ebookId);
+            acc.tomesCount = (acc.tomesCount || 0) + 1;
+            saveAccounts(data);
+          }
         }
       }
 
       generateEbook(ebookId, trimmed).catch(err => {
         console.error('Ebook generation failed:', err.message, err.stack);
         saveJob(ebookId, { status: 'failed', sessionId: id, error: err.message });
-        metrics.ebooks.failed++; metricsDirty = true;
+        metrics.ebooks.failed++;
+        const failDay = new Date().toISOString().slice(0, 10);
+        if (!metrics.dailyEbooks) metrics.dailyEbooks = {};
+        if (!metrics.dailyEbooks[failDay]) metrics.dailyEbooks[failDay] = { generated: 0, failed: 0 };
+        metrics.dailyEbooks[failDay].failed++;
+        metricsDirty = true;
       });
       res.json({ reply, tomeGenerating: true, ebookId });
     } else {
@@ -1149,50 +1284,76 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
     coverPath: permanentCoverPath
   });
 
+  // Store DOCX binary and cover in database for persistence across redeploys
+  if (useDB()) {
+    try {
+      const docxBuf = fs.readFileSync(docxFilepath);
+      await db.saveJobFileData(ebookId, docxBuf);
+      if (permanentCoverPath && fs.existsSync(permanentCoverPath)) {
+        const coverBuf = fs.readFileSync(permanentCoverPath);
+        await db.saveJobCoverData(ebookId, coverBuf);
+      }
+      console.log('  DOCX + cover stored in database');
+    } catch (err) {
+      console.warn('  Failed to store ebook in DB:', err.message);
+    }
+  }
+
   // Auto-publish to the Tome Library
   try {
-    const tomesData = loadTomes();
-    // Avoid duplicates
-    if (!tomesData.tomes.find(t => t.id === ebookId)) {
-      // Determine author from the account linked to this job
-      let authorName = 'Anonymous Seeker';
-      let authorId = null;
+    let authorName = 'Anonymous Seeker';
+    let authorId = null;
+
+    // Find linked author account
+    if (useDB()) {
+      try {
+        const allAccounts = await db.getAllAccounts();
+        const linked = allAccounts.find(a => a.ebookIds && a.ebookIds.includes(ebookId));
+        if (linked) { authorName = linked.name || 'Anonymous Seeker'; authorId = linked.id; }
+      } catch (err) { console.warn('[DB] author lookup error:', err.message); }
+    }
+    if (!authorId) {
       const accountsData = loadAccounts();
-      const linkedAccount = accountsData.accounts.find(a => a.ebookIds && a.ebookIds.includes(ebookId));
-      if (linkedAccount) {
-        authorName = linkedAccount.name || 'Anonymous Seeker';
-        authorId = linkedAccount.id;
-      }
+      const linked = accountsData.accounts.find(a => a.ebookIds && a.ebookIds.includes(ebookId));
+      if (linked) { authorName = linked.name || 'Anonymous Seeker'; authorId = linked.id; }
+    }
 
-      // Generate topic tags from title and subtitle
-      const topicTags = generateTopicTags(outline.title, outline.subtitle);
+    const topicTags = generateTopicTags(outline.title, outline.subtitle);
 
+    const tomeObj = {
+      id: ebookId,
+      title: outline.title,
+      subtitle: outline.subtitle || '',
+      authorId, authorName,
+      chapters: chapters.map(ch => ({ title: ch.title, content: ch.content })),
+      designConfig, topicTags,
+      status: 'published', visibility: 'public',
+      likesCount: 0, dislikesCount: 0, viewsCount: 0, downloadsCount: 0, commentsCount: 0,
+      createdAt: new Date().toISOString()
+    };
+
+    // Save to database
+    if (useDB()) {
+      try {
+        await db.saveTome(tomeObj);
+        if (permanentCoverPath && fs.existsSync(permanentCoverPath)) {
+          await db.saveTomeCoverData(ebookId, fs.readFileSync(permanentCoverPath));
+        }
+        console.log('  Tome published to DB: ' + outline.title);
+      } catch (err) { console.warn('  DB tome publish error:', err.message); }
+    }
+
+    // Also save to JSON (backward compat)
+    const tomesData = loadTomes();
+    if (!tomesData.tomes.find(t => t.id === ebookId)) {
       tomesData.tomes.push({
-        id: ebookId,
-        title: outline.title,
-        subtitle: outline.subtitle || '',
-        authorId: authorId,
-        authorName: authorName,
+        ...tomeObj,
         coverUrl: permanentCoverPath ? `/api/tomes/${ebookId}/cover` : null,
         fileUrl: `/api/ebook/${ebookId}/download`,
-        chapters: chapters.map((ch, i) => ({
-          title: ch.title,
-          content: ch.content
-        })),
-        designConfig: designConfig,
-        topicTags: topicTags,
-        status: 'published',
-        visibility: 'public',
-        likesCount: 0,
-        dislikesCount: 0,
-        viewsCount: 0,
-        downloadsCount: 0,
-        commentsCount: 0,
-        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
       saveTomes(tomesData);
-      console.log('  Tome published to library: ' + outline.title);
+      console.log('  Tome published to JSON: ' + outline.title);
     }
   } catch (err) {
     console.warn('  Failed to publish tome to library:', err.message);
@@ -1200,6 +1361,11 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
 
   metrics.ebooks.generated++;
   metrics.ebooks.totalGenerationMs += genDuration;
+  // Track daily ebook generation
+  const ebookDay = new Date().toISOString().slice(0, 10);
+  if (!metrics.dailyEbooks) metrics.dailyEbooks = {};
+  if (!metrics.dailyEbooks[ebookDay]) metrics.dailyEbooks[ebookDay] = { generated: 0, failed: 0 };
+  metrics.dailyEbooks[ebookDay].generated++;
   metricsDirty = true;
   saveMetrics(); // Flush immediately on ebook completion
   console.log('Ebook "' + outline.title + '" ready: ' + ebookId + '.docx (' + Math.round(genDuration / 1000) + 's)');
@@ -1408,8 +1574,8 @@ async function createDocx(docxPath, outline, chapters, coverPath, design) {
 }
 
 // --- Ebook status + download ---
-app.get('/api/ebook/:id/status', (req, res) => {
-  const job = getJob(req.params.id);
+app.get('/api/ebook/:id/status', async (req, res) => {
+  const job = await getJobAsync(req.params.id);
   if (!job) return res.status(404).json({ error: 'Not found' });
   res.json({ status: job.status, title: job.title, progress: job.progress || 0, error: job.error });
 });
@@ -1465,12 +1631,29 @@ No quotes. No emojis. Just the fragment.` },
   }
 });
 
-app.get('/api/ebook/:id/download', (req, res) => {
-  const job = getJob(req.params.id);
+app.get('/api/ebook/:id/download', async (req, res) => {
+  const job = await getJobAsync(req.params.id);
   if (!job || job.status !== 'ready') {
     return res.status(404).json({ error: 'Ebook not ready' });
   }
-  res.download(job.path, `${job.title || 'ebook'}.docx`);
+  // Try filesystem first, then database
+  if (job.path && fs.existsSync(job.path)) {
+    return res.download(job.path, `${job.title || 'ebook'}.docx`);
+  }
+  // Serve from database if file not on disk
+  if (useDB()) {
+    try {
+      const fileData = await db.getJobFileData(req.params.id);
+      if (fileData && fileData.buffer) {
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', `attachment; filename="${(fileData.title || 'ebook').replace(/[^a-zA-Z0-9\s\-_.]/g, '')}.docx"`);
+        return res.send(fileData.buffer);
+      }
+    } catch (err) {
+      console.warn('[DB] getJobFileData error:', err.message);
+    }
+  }
+  res.status(404).json({ error: 'Ebook file not found' });
 });
 
 // --- Outro (seek again text) ---
@@ -1610,12 +1793,20 @@ function getClientIP(req) {
   return req.ip || req.connection?.remoteAddress || 'unknown';
 }
 
-app.get('/api/waitlist/count', (req, res) => {
+app.get('/api/waitlist/count', async (req, res) => {
+  if (useDB()) {
+    try {
+      const count = await db.getWaitlistCount();
+      return res.json({ count });
+    } catch (err) {
+      console.warn('[DB] getWaitlistCount error:', err.message);
+    }
+  }
   const data = loadWaitlist();
   res.json({ count: data.signups.length });
 });
 
-app.post('/api/waitlist/signup', (req, res) => {
+app.post('/api/waitlist/signup', async (req, res) => {
   const { email, utm, sourceReferrer, device, screen } = req.body;
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email required' });
@@ -1636,16 +1827,67 @@ app.post('/api/waitlist/signup', (req, res) => {
   // Rate limiting by IP
   const clientIP = getClientIP(req);
   const now = Date.now();
-  const rateEntry = signupRateLimit.get(clientIP);
-  if (rateEntry && now < rateEntry.resetTime) {
-    if (rateEntry.count >= RATE_LIMIT_MAX) {
-      return res.status(429).json({ error: 'The ledger does not accept haste. Try again later.' });
+
+  if (useDB()) {
+    // Database-backed rate limiting (survives restarts)
+    try {
+      const rateCheck = await db.checkRateLimit('signup:' + db.hashIP(clientIP), RATE_LIMIT_MAX, RATE_LIMIT_WINDOW);
+      if (!rateCheck.allowed) {
+        return res.status(429).json({ error: 'The ledger does not accept haste. Try again later.' });
+      }
+      await db.incrementRateLimit('signup:' + db.hashIP(clientIP), RATE_LIMIT_WINDOW);
+    } catch (err) {
+      console.warn('[DB] rate limit check error:', err.message);
+      // Fall through to in-memory rate limiting
     }
-    rateEntry.count++;
   } else {
-    signupRateLimit.set(clientIP, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    // In-memory rate limiting (lost on restart)
+    const rateEntry = signupRateLimit.get(clientIP);
+    if (rateEntry && now < rateEntry.resetTime) {
+      if (rateEntry.count >= RATE_LIMIT_MAX) {
+        return res.status(429).json({ error: 'The ledger does not accept haste. Try again later.' });
+      }
+      rateEntry.count++;
+    } else {
+      signupRateLimit.set(clientIP, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    }
   }
 
+  // Database path — insert into PostgreSQL
+  if (useDB()) {
+    try {
+      const result = await db.addWaitlistEntry({
+        email: normalized,
+        ip: clientIP,
+        userAgent: req.get('user-agent') || null,
+        referrer: req.get('referer') || null,
+        utm: utm || null,
+        sourceReferrer: sourceReferrer || null,
+        device: device || null,
+        screen: screen || null
+      });
+
+      if (!result.existing) {
+        // Track daily signups for the dashboard
+        const today = new Date().toISOString().slice(0, 10);
+        metrics.dailySignups[today] = (metrics.dailySignups[today] || 0) + 1;
+        metricsDirty = true;
+        console.log(`Waitlist signup: ${normalized} (#${result.position})`);
+      }
+
+      return res.json({
+        success: true,
+        count: result.count,
+        position: result.position,
+        existing: result.existing
+      });
+    } catch (err) {
+      console.warn('[DB] addWaitlistEntry error:', err.message);
+      // Fall through to JSON path
+    }
+  }
+
+  // JSON file fallback
   const data = loadWaitlist();
 
   // Deduplicate — return existing position
@@ -1702,9 +1944,20 @@ app.post('/api/waitlist/signup', (req, res) => {
   res.json({ success: true, count: position, position });
 });
 
-app.post('/api/waitlist/survey', (req, res) => {
+app.post('/api/waitlist/survey', async (req, res) => {
   const { email, topics, format, role, wouldPay, source } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
+
+  if (useDB()) {
+    try {
+      const found = await db.updateWaitlistSurvey(email, { topics, format, role, wouldPay, source });
+      if (!found) return res.status(404).json({ error: 'Email not found' });
+      return res.json({ success: true });
+    } catch (err) {
+      console.warn('[DB] updateWaitlistSurvey error:', err.message);
+      // Fall through to JSON
+    }
+  }
 
   const data = loadWaitlist();
   const normalized = email.trim().toLowerCase();
@@ -1786,7 +2039,7 @@ function findAccountByEmail(email) {
   return data.accounts.find(a => a.email === email.toLowerCase().trim());
 }
 
-function createOrUpdateAccount({ email, name, avatar, provider }) {
+function createOrUpdateAccountJSON({ email, name, avatar, provider }) {
   const data = loadAccounts();
   const normalized = email.toLowerCase().trim();
   let account = data.accounts.find(a => a.email === normalized);
@@ -1827,6 +2080,18 @@ function createOrUpdateAccount({ email, name, avatar, provider }) {
   return account;
 }
 
+// Async wrapper: uses DB when available, JSON fallback
+async function createOrUpdateAccount(opts) {
+  if (useDB()) {
+    try {
+      return await db.createOrUpdateAccount(opts);
+    } catch (err) {
+      console.warn('[DB] createOrUpdateAccount error:', err.message);
+    }
+  }
+  return createOrUpdateAccountJSON(opts);
+}
+
 function issueToken(account) {
   return jwt.sign({ id: account.id, email: account.email }, JWT_SECRET, { expiresIn: '30d' });
 }
@@ -1836,13 +2101,22 @@ function verifyToken(token) {
 }
 
 // Cookie-based session middleware
-function optionalAuth(req, res, next) {
+async function optionalAuth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '') ||
     (req.headers.cookie || '').split(';').map(c => c.trim()).find(c => c.startsWith('gl_token='))?.split('=')[1];
   if (token) {
     const payload = verifyToken(token);
     if (payload) {
-      req.user = findAccountByEmail(payload.email);
+      if (useDB()) {
+        try {
+          req.user = await db.findAccountByEmail(payload.email);
+        } catch (err) {
+          console.warn('[DB] findAccountByEmail error:', err.message);
+          req.user = findAccountByEmail(payload.email);
+        }
+      } else {
+        req.user = findAccountByEmail(payload.email);
+      }
     }
   }
   next();
@@ -1890,7 +2164,7 @@ app.post('/api/auth/google', async (req, res) => {
   const profile = await verifyGoogleToken(credential);
   if (!profile || !profile.email) return res.status(401).json({ error: 'Invalid token' });
 
-  const account = createOrUpdateAccount({ ...profile, provider: 'google' });
+  const account = await createOrUpdateAccount({ ...profile, provider: 'google' });
   const token = issueToken(account);
   setAuthCookie(res, token);
   res.json({ success: true, user: { id: account.id, email: account.email, name: account.name, avatar: account.avatar, tomesCount: account.tomesCount, membershipStatus: account.membershipStatus } });
@@ -1909,7 +2183,7 @@ app.post('/api/auth/google/token', async (req, res) => {
     const profile = await gRes.json();
     if (!profile.email) return res.status(401).json({ error: 'No email in token' });
 
-    const account = createOrUpdateAccount({ email: profile.email, name: profile.name, avatar: profile.picture, provider: 'google' });
+    const account = await createOrUpdateAccount({ email: profile.email, name: profile.name, avatar: profile.picture, provider: 'google' });
     const token = issueToken(account);
     setAuthCookie(res, token);
     res.json({ success: true, user: { id: account.id, email: account.email, name: account.name, avatar: account.avatar, tomesCount: account.tomesCount, membershipStatus: account.membershipStatus } });
@@ -1924,7 +2198,7 @@ app.post('/api/auth/microsoft', async (req, res) => {
   const profile = await verifyMicrosoftToken(accessToken);
   if (!profile || !profile.email) return res.status(401).json({ error: 'Invalid token' });
 
-  const account = createOrUpdateAccount({ ...profile, provider: 'microsoft' });
+  const account = await createOrUpdateAccount({ ...profile, provider: 'microsoft' });
   const token = issueToken(account);
   setAuthCookie(res, token);
   res.json({ success: true, user: { id: account.id, email: account.email, name: account.name, avatar: account.avatar, tomesCount: account.tomesCount, membershipStatus: account.membershipStatus } });
@@ -1941,7 +2215,11 @@ app.post('/api/auth/email/signup', async (req, res) => {
     return res.status(400).json({ error: 'Invalid email' });
   }
 
-  const existing = findAccountByEmail(normalized);
+  let existing;
+  if (useDB()) {
+    try { existing = await db.findAccountByEmail(normalized); } catch (err) { console.warn('[DB] findAccountByEmail error:', err.message); }
+  }
+  if (!existing) existing = findAccountByEmail(normalized);
   if (existing && existing.passwordHash) {
     return res.status(409).json({ error: 'Account already exists. Sign in instead.' });
   }
@@ -1950,6 +2228,19 @@ app.post('/api/auth/email/signup', async (req, res) => {
 
   // If account exists (from OAuth) but no password, add email auth
   if (existing) {
+    if (useDB()) {
+      try {
+        await db.setAccountPasswordHash(normalized, passwordHash);
+        await db.addProviderToAccount(normalized, 'email');
+        await db.updateAccountSignIn(normalized);
+        const acc = await db.findAccountByEmail(normalized);
+        const token = issueToken(acc);
+        setAuthCookie(res, token);
+        return res.json({ success: true, user: { id: acc.id, email: acc.email, name: acc.name, avatar: acc.avatar, tomesCount: acc.tomesCount, membershipStatus: acc.membershipStatus } });
+      } catch (err) {
+        console.warn('[DB] email signup update error:', err.message);
+      }
+    }
     const data = loadAccounts();
     const acc = data.accounts.find(a => a.email === normalized);
     acc.passwordHash = passwordHash;
@@ -1962,12 +2253,19 @@ app.post('/api/auth/email/signup', async (req, res) => {
     return res.json({ success: true, user: { id: acc.id, email: acc.email, name: acc.name, avatar: acc.avatar, tomesCount: acc.tomesCount, membershipStatus: acc.membershipStatus } });
   }
 
-  const account = createOrUpdateAccount({ email: normalized, name: name || null, avatar: null, provider: 'email' });
+  const account = await createOrUpdateAccount({ email: normalized, name: name || null, avatar: null, provider: 'email' });
   // Set password hash
-  const data = loadAccounts();
-  const acc = data.accounts.find(a => a.email === normalized);
-  acc.passwordHash = passwordHash;
-  saveAccounts(data);
+  if (useDB()) {
+    try {
+      await db.setAccountPasswordHash(normalized, passwordHash);
+    } catch (err) {
+      console.warn('[DB] setAccountPasswordHash error:', err.message);
+    }
+  } else {
+    const data = loadAccounts();
+    const acc = data.accounts.find(a => a.email === normalized);
+    if (acc) { acc.passwordHash = passwordHash; saveAccounts(data); }
+  }
 
   const token = issueToken(account);
   setAuthCookie(res, token);
@@ -1979,7 +2277,11 @@ app.post('/api/auth/email/signin', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-  const account = findAccountByEmail(email);
+  let account;
+  if (useDB()) {
+    try { account = await db.findAccountByEmail(email); } catch (err) { console.warn('[DB] findAccountByEmail error:', err.message); }
+  }
+  if (!account) account = findAccountByEmail(email);
   if (!account || !account.passwordHash) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
@@ -1988,10 +2290,13 @@ app.post('/api/auth/email/signin', async (req, res) => {
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
   // Update last sign-in
-  const data = loadAccounts();
-  const acc = data.accounts.find(a => a.email === account.email);
-  acc.lastSignIn = new Date().toISOString();
-  saveAccounts(data);
+  if (useDB()) {
+    db.updateAccountSignIn(account.email).catch(err => console.warn('[DB] updateAccountSignIn error:', err.message));
+  } else {
+    const data = loadAccounts();
+    const acc = data.accounts.find(a => a.email === account.email);
+    if (acc) { acc.lastSignIn = new Date().toISOString(); saveAccounts(data); }
+  }
 
   const token = issueToken(account);
   setAuthCookie(res, token);
@@ -2020,9 +2325,13 @@ app.get('/api/auth/access', optionalAuth, (req, res) => {
 });
 
 // GET /api/auth/ebooks — user's ebook history
-app.get('/api/auth/ebooks', optionalAuth, (req, res) => {
+app.get('/api/auth/ebooks', optionalAuth, async (req, res) => {
   if (!req.user) return res.status(401).json({ error: 'Not signed in' });
-  const allJobs = loadJobsFromDisk();
+  let allJobs;
+  if (useDB()) {
+    try { allJobs = await db.getAllJobs(); } catch (err) { console.warn('[DB] getAllJobs error:', err.message); }
+  }
+  if (!allJobs) allJobs = loadJobsFromDisk();
   const userEbooks = (req.user.ebookIds || []).map(id => {
     const job = allJobs[id];
     if (!job || job.status !== 'ready') return null;
@@ -2042,17 +2351,32 @@ app.get('/api/auth/config', (req, res) => {
 // --- Tome Library API endpoints ---
 
 // GET /api/tomes — browse tomes with filters, sort, pagination
-app.get('/api/tomes', (req, res) => {
+app.get('/api/tomes', async (req, res) => {
+  // Database path
+  if (useDB()) {
+    try {
+      const result = await db.getTomes({
+        topic: req.query.topic,
+        q: (req.query.q || '').trim(),
+        sort: req.query.sort || 'newest',
+        page: req.query.page,
+        limit: req.query.limit
+      });
+      return res.json(result);
+    } catch (err) {
+      console.warn('[DB] getTomes error:', err.message);
+    }
+  }
+
+  // JSON fallback
   const data = loadTomes();
   let tomes = data.tomes.filter(t => t.status === 'published' && t.visibility === 'public');
 
-  // Filter by topic tag
   const topic = req.query.topic;
   if (topic && topic !== 'all') {
     tomes = tomes.filter(t => t.topicTags && t.topicTags.includes(topic));
   }
 
-  // Search by title or subtitle
   const q = (req.query.q || '').toLowerCase().trim();
   if (q) {
     tomes = tomes.filter(t =>
@@ -2062,54 +2386,34 @@ app.get('/api/tomes', (req, res) => {
     );
   }
 
-  // Sort
   const sort = req.query.sort || 'newest';
-  if (sort === 'newest') {
-    tomes.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  } else if (sort === 'oldest') {
-    tomes.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-  } else if (sort === 'most-liked') {
-    tomes.sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
-  } else if (sort === 'most-viewed') {
-    tomes.sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0));
-  } else if (sort === 'trending') {
-    // Trending = most views + likes in recent time, weighted by recency
+  if (sort === 'newest') tomes.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  else if (sort === 'oldest') tomes.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  else if (sort === 'most-liked') tomes.sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
+  else if (sort === 'most-viewed') tomes.sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0));
+  else if (sort === 'trending') {
     const now = Date.now();
     tomes.sort((a, b) => {
-      const ageA = (now - new Date(a.createdAt).getTime()) / 3600000; // hours
+      const ageA = (now - new Date(a.createdAt).getTime()) / 3600000;
       const ageB = (now - new Date(b.createdAt).getTime()) / 3600000;
-      const scoreA = ((a.likesCount || 0) * 3 + (a.viewsCount || 0)) / Math.max(1, Math.sqrt(ageA));
-      const scoreB = ((b.likesCount || 0) * 3 + (b.viewsCount || 0)) / Math.max(1, Math.sqrt(ageB));
-      return scoreB - scoreA;
+      return ((b.likesCount || 0) * 3 + (b.viewsCount || 0)) / Math.max(1, Math.sqrt(ageB)) -
+             ((a.likesCount || 0) * 3 + (a.viewsCount || 0)) / Math.max(1, Math.sqrt(ageA));
     });
   }
 
-  // Pagination
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
   const total = tomes.length;
-  const start = (page - 1) * limit;
-  const paged = tomes.slice(start, start + limit);
-
-  // Return lightweight card data (no chapter content)
+  const paged = tomes.slice((page - 1) * limit, (page - 1) * limit + limit);
   const cards = paged.map(t => ({
-    id: t.id,
-    title: t.title,
-    subtitle: t.subtitle || '',
-    authorName: t.authorName || 'Anonymous Seeker',
-    authorId: t.authorId,
-    coverUrl: t.coverUrl,
-    topicTags: t.topicTags || [],
-    likesCount: t.likesCount || 0,
-    viewsCount: t.viewsCount || 0,
-    commentsCount: t.commentsCount || 0,
-    chapterCount: (t.chapters || []).length,
+    id: t.id, title: t.title, subtitle: t.subtitle || '',
+    authorName: t.authorName || 'Anonymous Seeker', authorId: t.authorId,
+    coverUrl: t.coverUrl, topicTags: t.topicTags || [],
+    likesCount: t.likesCount || 0, viewsCount: t.viewsCount || 0,
+    commentsCount: t.commentsCount || 0, chapterCount: (t.chapters || []).length,
     createdAt: t.createdAt
   }));
-
-  // Collect all available tags
   const allTags = [...new Set(data.tomes.filter(t => t.status === 'published').flatMap(t => t.topicTags || []))].sort();
-
   res.json({ tomes: cards, total, page, limit, totalPages: Math.ceil(total / limit), tags: allTags });
 });
 
@@ -2845,6 +3149,73 @@ app.get('/api/admin/analytics', requireAdmin, (req, res) => {
     recentErrors,
     pageVisits: metrics.pageVisits || {}
   });
+});
+
+
+// Admin: time-period analytics (Today / Week / Month / Year / All Time)
+app.get('/api/admin/periods', requireAdmin, (req, res) => {
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  function daysAgo(n) { return new Date(now - n * 86400000).toISOString().slice(0, 10); }
+  function mkRange(s, e) {
+    const r = []; let d = new Date(s + 'T00:00:00Z'); const end = new Date(e + 'T00:00:00Z');
+    while (d <= end) { r.push(d.toISOString().slice(0, 10)); d = new Date(d.getTime() + 86400000); }
+    return r;
+  }
+  const dow = now.getUTCDay(), dom = now.getUTCDate();
+  const mStart = todayStr.slice(0, 8) + '01', yStart = todayStr.slice(0, 5) + '01-01';
+  const mo = dow === 0 ? 6 : dow - 1;
+  const ws = daysAgo(mo), pws = daysAgo(mo + 7), pwe = daysAgo(mo + 1);
+  const pme = new Date(new Date(mStart + 'T00:00:00Z').getTime() - 86400000).toISOString().slice(0, 10);
+  const pms = new Date(new Date(pme + 'T00:00:00Z').getTime() - (dom - 1) * 86400000).toISOString().slice(0, 10);
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const monNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const periods = {
+    today: { current: [todayStr], previous: [daysAgo(1)], bars: [todayStr], barLabel: () => 'Today' },
+    week: { current: mkRange(ws, todayStr), previous: mkRange(pws, pwe), bars: mkRange(ws, todayStr), barLabel: d => dayNames[(new Date(d+'T00:00:00Z').getUTCDay() + 6) % 7] },
+    month: { current: mkRange(mStart, todayStr), previous: mkRange(pms, pme), bars: mkRange(mStart, todayStr), barLabel: d => d.slice(8) },
+    year: {
+      current: mkRange(yStart, todayStr),
+      previous: mkRange((parseInt(todayStr.slice(0, 4)) - 1) + '-01-01', (parseInt(todayStr.slice(0, 4)) - 1) + '-12-31'),
+      bars: (() => { const m = []; for (let i = 1; i <= parseInt(todayStr.slice(5, 7)); i++) m.push(todayStr.slice(0, 5) + String(i).padStart(2, '0')); return m; })(),
+      barLabel: d => monNames[parseInt(d.slice(5, 7)) - 1],
+      isMonthly: true
+    }
+  };
+  const wlData2 = loadWaitlist(); const signups2 = wlData2.signups || [];
+  const sbd = {}, svd = {};
+  signups2.forEach(s => { if (s.timestamp) { const d = s.timestamp.slice(0, 10); sbd[d] = (sbd[d] || 0) + 1; if (s.survey) svd[d] = (svd[d] || 0) + 1; } });
+  const allJobs2 = loadJobsFromDisk(); const ebd = {};
+  for (const [, j] of Object.entries(allJobs2)) { const d2 = (j.generatedAt || '').slice(0, 10); if (!d2) continue; if (!ebd[d2]) ebd[d2] = { generated: 0, failed: 0 }; if (j.status === 'ready') ebd[d2].generated++; else if (j.status === 'failed') ebd[d2].failed++; }
+  function sumD(dates, g) { let t = 0; for (const d of dates) t += g(d) || 0; return t; }
+  function getUF(d) { const v = (metrics.dailyVisits || {})[d]; if (!v || !v.unique) return 0; return Array.isArray(v.unique) ? v.unique.length : (v.unique.size || 0); }
+  function dimDates(mp) { const y = parseInt(mp.slice(0, 4)), m = parseInt(mp.slice(5, 7)); const dm = new Date(y, m, 0).getDate(); const ld = (m === parseInt(todayStr.slice(5, 7)) && y === parseInt(todayStr.slice(0, 4))) ? parseInt(todayStr.slice(8, 10)) : dm; return mkRange(mp + '-01', mp + '-' + String(ld).padStart(2, '0')); }
+  const result = {};
+  for (const [pn, p] of Object.entries(periods)) {
+    const cu = p.current, pr = p.previous;
+    const cV = sumD(cu, d => ((metrics.dailyVisits || {})[d] || {}).total || 0);
+    const pV = sumD(pr, d => ((metrics.dailyVisits || {})[d] || {}).total || 0);
+    const cU = sumD(cu, getUF), pU = sumD(pr, getUF);
+    const cS = sumD(cu, d => sbd[d] || 0), pS = sumD(pr, d => sbd[d] || 0);
+    const cSv = sumD(cu, d => svd[d] || 0), pSv = sumD(pr, d => svd[d] || 0);
+    const cEg = sumD(cu, d => (ebd[d] || {}).generated || 0), pEg = sumD(pr, d => (ebd[d] || {}).generated || 0);
+    const cEf = sumD(cu, d => (ebd[d] || {}).failed || 0), pEf = sumD(pr, d => (ebd[d] || {}).failed || 0);
+    const cCr = cV > 0 ? Math.round(cS / cV * 1000) / 10 : 0, pCr = pV > 0 ? Math.round(pS / pV * 1000) / 10 : 0;
+    const cSr = cS > 0 ? Math.round(cSv / cS * 100) : 0, pSr = pS > 0 ? Math.round(pSv / pS * 100) : 0;
+    const cA = sumD(cu, d => ((metrics.dailyApiCalls || {})[d] || {}).total || 0), pA = sumD(pr, d => ((metrics.dailyApiCalls || {})[d] || {}).total || 0);
+    const cE = sumD(cu, d => ((metrics.dailyErrors || {})[d] || {}).total || 0), pE = sumD(pr, d => ((metrics.dailyErrors || {})[d] || {}).total || 0);
+    const bars = [];
+    for (const b of p.bars) {
+      const ds = p.isMonthly ? dimDates(b) : [b];
+      bars.push({ label: p.barLabel(b), visits: sumD(ds, d => ((metrics.dailyVisits || {})[d] || {}).total || 0), unique: sumD(ds, getUF), signups: sumD(ds, d => sbd[d] || 0), ebooks: sumD(ds, d => (ebd[d] || {}).generated || 0), errors: sumD(ds, d => ((metrics.dailyErrors || {})[d] || {}).total || 0) });
+    }
+    result[pn] = { visits: { current: cV, previous: pV }, unique: { current: cU, previous: pU }, signups: { current: cS, previous: pS }, surveys: { current: cSv, previous: pSv }, ebooksGenerated: { current: cEg, previous: pEg }, ebooksFailed: { current: cEf, previous: pEf }, conversionRate: { current: cCr, previous: pCr }, surveyRate: { current: cSr, previous: pSr }, apiCalls: { current: cA, previous: pA }, errors: { current: cE, previous: pE }, bars };
+  }
+  const tS2 = signups2.length, tSv2 = signups2.filter(s => s.survey).length;
+  const tV2 = Object.values(metrics.dailyVisits || {}).reduce((s, d) => s + (d.total || 0), 0) || (metrics.pageVisits.waitlist || 0) + (metrics.pageVisits.library || 0);
+  const tU2 = Object.keys(metrics.visitors || {}).length;
+  result.allTime = { visits: { current: tV2, previous: null }, unique: { current: tU2, previous: null }, signups: { current: tS2, previous: null }, surveys: { current: tSv2, previous: null }, ebooksGenerated: { current: metrics.ebooks.generated || 0, previous: null }, ebooksFailed: { current: metrics.ebooks.failed || 0, previous: null }, conversionRate: { current: tV2 > 0 ? Math.round(tS2 / tV2 * 1000) / 10 : 0, previous: null }, surveyRate: { current: tS2 > 0 ? Math.round(tSv2 / tS2 * 100) : 0, previous: null }, apiCalls: { current: Object.values(metrics.apiCalls || {}).reduce((s, v) => s + v, 0), previous: null }, errors: { current: metrics.errors.total || 0, previous: null }, bars: [] };
+  res.json(result);
 });
 
 // Funnel event tracking (called from frontend to track micro-conversions)
