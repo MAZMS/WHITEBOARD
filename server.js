@@ -2353,18 +2353,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
   const expiry = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
 
-  // Store hashed token in the account
-  if (useDB()) {
-    try {
-      await db.query(
-        `UPDATE accounts SET reset_token_hash = $1, reset_token_expiry = $2 WHERE email = $3`,
-        [tokenHash, expiry, normalized]
-      );
-    } catch (err) {
-      console.warn('[DB] forgot-password update error:', err.message);
-    }
-  }
-  // Always update JSON (fallback or primary)
+  // Store hashed token in JSON (reset tokens are short-lived, JSON is sufficient)
   const data = loadAccounts();
   const acc = data.accounts.find(a => a.email === normalized);
   if (acc) {
@@ -2390,23 +2379,23 @@ app.post('/api/auth/reset-password', async (req, res) => {
   const normalized = email.toLowerCase().trim();
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
-  let account;
-  if (useDB()) {
-    try { account = await db.findAccountByEmail(normalized); } catch (err) { console.warn('[DB] findAccountByEmail error:', err.message); }
-  }
-  if (!account) account = findAccountByEmail(normalized);
+  // Always check JSON for reset tokens (they're stored here, not in DB)
+  const jsonAccount = findAccountByEmail(normalized);
 
-  if (!account) {
+  if (!jsonAccount) {
     return res.status(400).json({ error: 'Invalid or expired reset link' });
   }
 
-  // Check token match and expiry
-  if (!account.resetTokenHash || account.resetTokenHash !== tokenHash) {
+  // Check token match and expiry (token is always in JSON)
+  if (!jsonAccount.resetTokenHash || jsonAccount.resetTokenHash !== tokenHash) {
     return res.status(400).json({ error: 'Invalid or expired reset link' });
   }
-  if (!account.resetTokenExpiry || new Date(account.resetTokenExpiry) < new Date()) {
+  if (!jsonAccount.resetTokenExpiry || new Date(jsonAccount.resetTokenExpiry) < new Date()) {
     return res.status(400).json({ error: 'Reset link has expired. Request a new one.' });
   }
+
+  // Use either DB or JSON account for provider check
+  const account = jsonAccount;
 
   // Hash new password and update
   const passwordHash = await bcrypt.hash(password, 10);
@@ -2414,10 +2403,6 @@ app.post('/api/auth/reset-password', async (req, res) => {
   if (useDB()) {
     try {
       await db.setAccountPasswordHash(normalized, passwordHash);
-      await db.query(
-        `UPDATE accounts SET reset_token_hash = NULL, reset_token_expiry = NULL WHERE email = $1`,
-        [normalized]
-      );
       if (!account.providers || !account.providers.includes('email')) {
         await db.addProviderToAccount(normalized, 'email');
       }
@@ -2426,7 +2411,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     }
   }
 
-  // Always update JSON
+  // Update JSON (reset token is always stored here)
   const data = loadAccounts();
   const acc = data.accounts.find(a => a.email === normalized);
   if (acc) {

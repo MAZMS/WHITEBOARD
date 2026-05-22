@@ -521,6 +521,8 @@
       animation: wl-shake 0.4s ease-in-out;
     }
 
+    #wlSkipPassword:hover { color: #5a5040; }
+
     /* Final done view */
     .wl-final { display: none; text-align: center; }
     .wl-final.visible { display: block; animation: wl-fade-up 0.8s ease-out; }
@@ -708,6 +710,8 @@
     body.light-mode .wl-confirmed-text { color: #3a3020; }
     body.light-mode .wl-confirmed-sub { color: #8a7860; }
     body.light-mode .wl-confirmed-pos { color: #6a5a40; }
+    body.light-mode #wlSkipPassword { color: #b0a890; }
+    body.light-mode #wlSkipPassword:hover { color: #6a5a40; }
     body.light-mode .wl-final-text { color: #8a7860; }
     body.light-mode .wl-enter-reward-text { color: #8a7860; }
     body.light-mode .wl-enter-link { color: #6a5a30; text-shadow: none; }
@@ -960,6 +964,20 @@
             <button type="button" class="wl-nav-btn" onclick="wizardSubmit()">Record my preferences</button>
           </div>
         </div>
+
+        <!-- Step 6: Set a password (optional, shown after survey submit) -->
+        <div class="wl-step" id="step-6" data-step="6">
+          <label class="wl-step-label">Secure your account with a password</label>
+          <div style="color:#5a5040;font-size:12px;font-style:italic;margin-bottom:14px;text-align:center;">So you can sign in at the Library later. You can also use Google or Microsoft.</div>
+          <input type="password" class="wl-survey-input" id="wlSetPassword" placeholder="Choose a password (8+ characters)" autocomplete="new-password">
+          <input type="password" class="wl-survey-input" id="wlConfirmPassword" placeholder="Confirm password" autocomplete="new-password" style="margin-top:8px;">
+          <div id="wlPasswordHint" style="color:#5a5040;font-size:11px;margin-top:4px;font-style:italic;text-align:center;display:none;transition:opacity 0.3s;"></div>
+          <div class="wl-validation-msg" id="validation-6"></div>
+          <div class="wl-nav">
+            <a href="#" id="wlSkipPassword" style="color:#3a3528;font-size:11px;font-style:italic;text-decoration:none;transition:color 0.3s;align-self:center;">skip for now</a>
+            <button type="button" class="wl-nav-btn" id="wlSetPasswordBtn">Set Password</button>
+          </div>
+        </div>
       </div>
 
       <div class="wl-final" id="wlFinal">
@@ -982,7 +1000,7 @@
   <script>
     let userEmail = null;
     let currentStep = 0;
-    const totalSteps = 6; // 0=email, 1=topics, 2=format, 3=role, 4=pay, 5=source
+    const totalSteps = 7; // 0=email, 1=topics, 2=format, 3=role, 4=pay, 5=source, 6=password(optional)
     let isExistingUser = false;
     let isTransitioning = false; // Debounce lock for wizard navigation
 
@@ -1209,6 +1227,8 @@
       }
     }
 
+    let userSignedUpViaOAuth = false; // Track if user came via OAuth (no password needed)
+
     async function wizardSubmit() {
       if (isTransitioning) return;
       if (!validateStep(currentStep)) {
@@ -1228,14 +1248,25 @@
         });
       } catch {}
 
-      // Hide wizard, show final + enter reward
+      // If user signed up via OAuth, skip password step — they already have an account
+      if (userSignedUpViaOAuth) {
+        showFinalScreen();
+        return;
+      }
+
+      // Show password step (step 6) instead of going to final
+      isTransitioning = false;
+      showStep(6, 1);
+    }
+
+    function showFinalScreen() {
       const wizardEl = document.getElementById('wlWizard');
       wizardEl.style.opacity = '0';
       wizardEl.style.transition = 'opacity 0.5s ease';
       setTimeout(() => {
         wizardEl.style.display = 'none';
         finalEl.classList.add('visible');
-        // Reveal "Enter the Library" as reward after survey
+        // Reveal "Enter the Library" as reward after survey/password
         setTimeout(() => {
           document.getElementById('wlEnterReward').classList.add('visible');
         }, 600);
@@ -1327,6 +1358,69 @@
       };
     }
 
+    // --- Password step (step 6) handlers ---
+    document.getElementById('wlSetPassword').addEventListener('input', () => {
+      const hint = document.getElementById('wlPasswordHint');
+      const pw = document.getElementById('wlSetPassword').value;
+      if (pw.length > 0 && pw.length < 8) {
+        hint.textContent = pw.length + '/8 characters';
+        hint.style.color = '#a04040';
+        hint.style.display = 'block';
+      } else if (pw.length >= 8) {
+        hint.textContent = 'Password length OK';
+        hint.style.color = '#5a8040';
+        hint.style.display = 'block';
+        setTimeout(() => { if (document.getElementById('wlSetPassword').value.length >= 8) hint.style.display = 'none'; }, 1500);
+      } else {
+        hint.style.display = 'none';
+      }
+      clearValidation(6);
+    });
+
+    document.getElementById('wlConfirmPassword').addEventListener('input', () => { clearValidation(6); });
+
+    document.getElementById('wlSetPasswordBtn').addEventListener('click', async () => {
+      const pw = document.getElementById('wlSetPassword').value;
+      const confirm = document.getElementById('wlConfirmPassword').value;
+      const msgEl = document.getElementById('validation-6');
+
+      if (!pw || pw.length < 8) {
+        msgEl.textContent = 'Password must be at least 8 characters';
+        msgEl.classList.add('visible');
+        return;
+      }
+      if (pw !== confirm) {
+        msgEl.textContent = 'Passwords do not match';
+        msgEl.classList.add('visible');
+        return;
+      }
+
+      // Create account with email + password
+      try {
+        const res = await fetch('/api/auth/email/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: userEmail, password: pw })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          msgEl.textContent = data.error || 'Failed to set password';
+          msgEl.classList.add('visible');
+          return;
+        }
+        // Success — show final screen
+        showFinalScreen();
+      } catch {
+        msgEl.textContent = 'Connection failed. Try again.';
+        msgEl.classList.add('visible');
+      }
+    });
+
+    document.getElementById('wlSkipPassword').addEventListener('click', (e) => {
+      e.preventDefault();
+      showFinalScreen();
+    });
+
     // --- Fetch waitlist count ---
     (async function() {
       try {
@@ -1339,12 +1433,41 @@
     })();
 
     // --- Shared post-signup handler ---
-    function handleSignupSuccess(email, data) {
+    async function handleSignupSuccess(email, data) {
       trackEvent('signup_success');
       userEmail = email;
 
       if (data.position) {
         posEl.textContent = '#' + data.position + ' in the ledger';
+      }
+
+      // Check if this email already has an account (from a previous OAuth sign-in)
+      let accountInfo = null;
+      try {
+        const checkRes = await fetch('/api/auth/check-email', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        if (checkRes.ok) accountInfo = await checkRes.json();
+      } catch {}
+
+      // If email has an existing account with OAuth providers, show "Welcome back"
+      if (accountInfo && accountInfo.exists) {
+        isExistingUser = true;
+        userSignedUpViaOAuth = accountInfo.hasPassword || (accountInfo.providers && accountInfo.providers.some(p => p !== 'email'));
+        const name = accountInfo.name || 'Seeker';
+        const wizardEl = document.getElementById('wlWizard');
+        wizardEl.style.opacity = '0';
+        wizardEl.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => {
+          wizardEl.style.display = 'none';
+          finalEl.querySelector('.wl-final-text').textContent = 'Welcome back, ' + name + '. The Library remembers you.';
+          finalEl.classList.add('visible');
+          setTimeout(() => {
+            document.getElementById('wlEnterReward').classList.add('visible');
+          }, 600);
+        }, 500);
+        return;
       }
 
       if (data.existing) {
@@ -1354,7 +1477,7 @@
       }
 
       if (data.existing) {
-        // For existing users, skip survey — go to final
+        // For existing waitlist users (no account yet), skip survey — go to final
         const wizardEl = document.getElementById('wlWizard');
         wizardEl.style.opacity = '0';
         wizardEl.style.transition = 'opacity 0.5s ease';
@@ -1420,6 +1543,8 @@
     fetch('/api/auth/config').then(r => r.json()).then(c => { authConfig = c; }).catch(() => {});
 
     async function signupViaOAuth(email) {
+      // OAuth users already have an account — skip password step later
+      userSignedUpViaOAuth = true;
       // Register the OAuth email on the waitlist
       try {
         const payload = { email };

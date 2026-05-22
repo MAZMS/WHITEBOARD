@@ -804,6 +804,8 @@
     }
     .auth-input:focus { border-color: #5a5038; }
     .auth-input::placeholder { color: #3a3528; }
+    #forgotPasswordLink:hover { color: #c8b88a; }
+    #forgotBackLink:hover { color: #c8b88a; }
     #tomeLibraryList::-webkit-scrollbar { display: none; }
     .tome-history-item {
       padding: 8px 0;
@@ -924,6 +926,10 @@
     body.light-mode .auth-microsoft { background: rgba(0, 164, 239, 0.05); }
     body.light-mode .auth-input { background: #faf8f2; border-color: #d8d0c0; color: #3a3020; }
     body.light-mode .auth-input::placeholder { color: #b0a890; }
+    body.light-mode #forgotPasswordLink { color: #a09060; }
+    body.light-mode #forgotPasswordLink:hover { color: #5a4a20; }
+    body.light-mode #forgotBackLink { color: #a09060; }
+    body.light-mode #forgotBackLink:hover { color: #5a4a20; }
 
     /* Sleeping in light mode */
     body.light-mode.phase-sleeping .chat-area { opacity: 0.5; }
@@ -1151,11 +1157,37 @@
           <div id="emailAuthForm" style="margin-top:10px;">
             <input type="email" id="authEmail" class="auth-input" placeholder="Email" autocomplete="email">
             <input type="password" id="authPassword" class="auth-input" placeholder="Password" autocomplete="current-password" style="margin-top:6px;">
+            <div id="authPasswordHint" style="color:#5a5040;font-size:10px;margin-top:3px;font-style:italic;display:none;transition:opacity 0.3s;">Minimum 8 characters</div>
             <div style="display:flex;gap:8px;margin-top:8px;">
               <button class="settings-action" id="emailSignInBtn" style="flex:1;">Sign In</button>
               <button class="settings-action" id="emailSignUpBtn" style="flex:1;">Register</button>
             </div>
+            <div style="text-align:right;margin-top:6px;">
+              <a href="#" id="forgotPasswordLink" style="color:#5a5040;font-size:10px;font-style:italic;text-decoration:none;transition:color 0.3s;">Forgot password?</a>
+            </div>
             <div id="authError" style="color:#a04040;font-size:11px;margin-top:6px;font-style:italic;display:none;"></div>
+          </div>
+          <!-- Forgot password flow -->
+          <div id="forgotPasswordForm" style="display:none;margin-top:10px;">
+            <div style="color:#c8b88a;font-size:12px;font-style:italic;margin-bottom:10px;">Enter your email to receive a reset link.</div>
+            <input type="email" id="forgotEmail" class="auth-input" placeholder="Email" autocomplete="email">
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button class="settings-action" id="forgotSendBtn" style="flex:1;">Send Reset Link</button>
+            </div>
+            <div style="text-align:right;margin-top:6px;">
+              <a href="#" id="forgotBackLink" style="color:#5a5040;font-size:10px;font-style:italic;text-decoration:none;transition:color 0.3s;">Back to sign in</a>
+            </div>
+            <div id="forgotStatus" style="font-size:11px;margin-top:6px;font-style:italic;display:none;"></div>
+          </div>
+          <!-- Reset password flow (shown when resetToken is in URL) -->
+          <div id="resetPasswordForm" style="display:none;margin-top:10px;">
+            <div style="color:#c8b88a;font-size:12px;font-style:italic;margin-bottom:10px;">Set your new password.</div>
+            <input type="password" id="resetNewPassword" class="auth-input" placeholder="New password (8+ characters)" autocomplete="new-password">
+            <input type="password" id="resetConfirmPassword" class="auth-input" placeholder="Confirm password" autocomplete="new-password" style="margin-top:6px;">
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button class="settings-action" id="resetSubmitBtn" style="flex:1;">Set New Password</button>
+            </div>
+            <div id="resetStatus" style="font-size:11px;margin-top:6px;font-style:italic;display:none;"></div>
           </div>
         </div>
         <!-- Signed-in state -->
@@ -3507,6 +3539,13 @@
       } else {
         signedOut.style.display = 'block';
         signedIn.style.display = 'none';
+        // Reset to default sign-in view (hide forgot/reset forms)
+        document.getElementById('emailAuthForm').style.display = 'block';
+        document.getElementById('authButtons').style.display = 'flex';
+        const orDiv = document.querySelector('#authSignedOut > div[style*="text-align:center"]');
+        if (orDiv) orDiv.style.display = '';
+        document.getElementById('forgotPasswordForm').style.display = 'none';
+        document.getElementById('resetPasswordForm').style.display = 'none';
         document.getElementById('tomeLibraryEmpty').style.display = 'block';
         document.getElementById('tomeLibraryList').innerHTML = '';
       }
@@ -3572,7 +3611,7 @@
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value;
       if (!email || !password) return showAuthError('Email and password required');
-      if (password.length < 6) return showAuthError('Password must be 6+ characters');
+      if (password.length < 8) return showAuthError('Password must be at least 8 characters');
       try {
         const res = await fetch('/api/auth/email/signup', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -3591,6 +3630,158 @@
       currentUser = null;
       renderAuthState();
     });
+
+    // Password validation hint — show when password field is focused
+    document.getElementById('authPassword').addEventListener('focus', () => {
+      document.getElementById('authPasswordHint').style.display = 'block';
+    });
+    document.getElementById('authPassword').addEventListener('blur', () => {
+      const pw = document.getElementById('authPassword').value;
+      if (!pw) document.getElementById('authPasswordHint').style.display = 'none';
+    });
+    document.getElementById('authPassword').addEventListener('input', () => {
+      const hint = document.getElementById('authPasswordHint');
+      const pw = document.getElementById('authPassword').value;
+      if (pw.length > 0 && pw.length < 8) {
+        hint.style.display = 'block';
+        hint.style.color = '#a04040';
+        hint.textContent = pw.length + '/8 characters';
+      } else if (pw.length >= 8) {
+        hint.style.color = '#5a8040';
+        hint.textContent = 'Password length OK';
+        setTimeout(() => { if (document.getElementById('authPassword').value.length >= 8) hint.style.display = 'none'; }, 1500);
+      } else {
+        hint.style.display = 'none';
+      }
+    });
+
+    // Forgot password flow
+    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      const currentEmail = document.getElementById('authEmail').value.trim();
+      document.getElementById('emailAuthForm').style.display = 'none';
+      document.getElementById('authButtons').style.display = 'none';
+      document.querySelector('#authSignedOut > div[style*="text-align:center"]').style.display = 'none';
+      document.getElementById('forgotPasswordForm').style.display = 'block';
+      if (currentEmail) document.getElementById('forgotEmail').value = currentEmail;
+      document.getElementById('forgotStatus').style.display = 'none';
+    });
+
+    document.getElementById('forgotBackLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('forgotPasswordForm').style.display = 'none';
+      document.getElementById('emailAuthForm').style.display = 'block';
+      document.getElementById('authButtons').style.display = 'flex';
+      document.querySelector('#authSignedOut > div[style*="text-align:center"]').style.display = '';
+    });
+
+    document.getElementById('forgotSendBtn').addEventListener('click', async () => {
+      const email = document.getElementById('forgotEmail').value.trim();
+      const statusEl = document.getElementById('forgotStatus');
+      if (!email) {
+        statusEl.textContent = 'Enter your email address';
+        statusEl.style.color = '#a04040';
+        statusEl.style.display = 'block';
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          statusEl.textContent = 'If an account exists for this email, a reset link has been generated. Check the server console.';
+          statusEl.style.color = '#5a8040';
+        } else {
+          statusEl.textContent = data.error || 'Something went wrong';
+          statusEl.style.color = '#a04040';
+        }
+        statusEl.style.display = 'block';
+      } catch {
+        statusEl.textContent = 'Connection failed';
+        statusEl.style.color = '#a04040';
+        statusEl.style.display = 'block';
+      }
+    });
+
+    // Reset password flow (when URL contains resetToken)
+    document.getElementById('resetSubmitBtn').addEventListener('click', async () => {
+      const pw = document.getElementById('resetNewPassword').value;
+      const confirm = document.getElementById('resetConfirmPassword').value;
+      const statusEl = document.getElementById('resetStatus');
+
+      if (!pw || pw.length < 8) {
+        statusEl.textContent = 'Password must be at least 8 characters';
+        statusEl.style.color = '#a04040';
+        statusEl.style.display = 'block';
+        return;
+      }
+      if (pw !== confirm) {
+        statusEl.textContent = 'Passwords do not match';
+        statusEl.style.color = '#a04040';
+        statusEl.style.display = 'block';
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('resetToken');
+      const email = params.get('email');
+
+      if (!token || !email) {
+        statusEl.textContent = 'Invalid reset link';
+        statusEl.style.color = '#a04040';
+        statusEl.style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, token, password: pw })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          statusEl.textContent = 'Password updated. You can now sign in.';
+          statusEl.style.color = '#5a8040';
+          statusEl.style.display = 'block';
+          // Clean URL params
+          window.history.replaceState({}, '', window.location.pathname);
+          // After a moment, switch to the sign-in form
+          setTimeout(() => {
+            document.getElementById('resetPasswordForm').style.display = 'none';
+            document.getElementById('emailAuthForm').style.display = 'block';
+            document.getElementById('authButtons').style.display = 'flex';
+            const orDiv = document.querySelector('#authSignedOut > div[style*="text-align:center"]');
+            if (orDiv) orDiv.style.display = '';
+            document.getElementById('authEmail').value = email;
+          }, 2000);
+        } else {
+          statusEl.textContent = data.error || 'Reset failed';
+          statusEl.style.color = '#a04040';
+        }
+        statusEl.style.display = 'block';
+      } catch {
+        statusEl.textContent = 'Connection failed';
+        statusEl.style.color = '#a04040';
+        statusEl.style.display = 'block';
+      }
+    });
+
+    // Check URL for reset token on page load — auto-open settings and show reset form
+    (function checkResetToken() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('resetToken') && params.get('email')) {
+        // Open settings panel
+        document.getElementById('settingsOverlay').classList.add('open');
+        // Show reset password form, hide everything else
+        document.getElementById('authButtons').style.display = 'none';
+        document.querySelector('#authSignedOut > div[style*="text-align:center"]').style.display = 'none';
+        document.getElementById('emailAuthForm').style.display = 'none';
+        document.getElementById('forgotPasswordForm').style.display = 'none';
+        document.getElementById('resetPasswordForm').style.display = 'block';
+      }
+    })();
 
     // Auth config (client IDs from server)
     let authConfig = { googleClientId: null, microsoftClientId: null };
