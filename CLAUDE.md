@@ -128,8 +128,34 @@ Clients are constructed at startup from whichever API keys are present; `activeP
 - `public/index.html` — entire frontend (HTML/CSS/JS in one file)
 - `public/favicon.jpg`
 - `fonts/*.ttf` — bundled fonts (more downloaded on demand into this dir)
-- `.claude/agents/` — project subagents: `code-guardian` (build/fix/review), `guardian-designer` (UI/UX), `tome-writer` (ebook + prompts), `vibe-check` (end-to-end QA)
+- `public/waitlist.html` — waitlist landing page with step-by-step survey wizard
+- `public/legal.html` — legal pages template (Terms, Privacy, Cookies, etc.)
+- `public/admin.html` — admin dashboard (privileged access only)
+- `.claude/agents/` — project subagents: `code-guardian` (build/fix/review), `guardian-designer` (UI/UX), `tome-writer` (ebook + prompts), `vibe-check` (end-to-end QA), `waitlist-architect` (waitlist/signup), `admin-dashboard` (metrics/analytics), `legal-scribe` (legal pages), `account-keeper` (auth/identity)
 - `.env` (gitignored) holds API keys; `ebooks/` and `node_modules/` are gitignored
+
+## Privileged Accounts
+These emails have admin/privileged access everywhere (library gate, admin dashboard, any gated feature):
+- `greatlibraryai@gmail.com`
+- Any email ending in `@greatlibrary.ai` (e.g., `z@greatlibrary.ai`)
+- Server-side check: `email === 'greatlibraryai@gmail.com' || email.endsWith('@greatlibrary.ai')`
+- ALWAYS enforce server-side, never client-only
+
+## Provider Budgets (track and alert)
+- **OpenRouter**: $8 credits, model `nousresearch/hermes-4-405b`, $1/1M input + $3/1M output. Alert at < $2.
+- **OpenAI**: Free tier (shared data), 250K tokens/day premium, 2.5M tokens/day mini/nano. Alert at > 80% daily.
+- **Gemini**: GCP $300 credits via service account. Alert at < $50 remaining.
+- Alert emails go to `greatlibraryai@gmail.com` and `z@greatlibrary.ai`
+
+## Mohamed's Preferences (don't make him repeat these)
+- **Screenshots ARE the spec** — when he shares a screenshot, understand the issue from the visual
+- **Delegate to agents** — launch in background, parallel when possible, give full context
+- **Wizard > wall of options** — multi-step forms should show one question at a time (Back/Next/Skip)
+- **Always include "Other"** — any multiple-choice must have an Other option with text input
+- **No clutter in locked states** — show normal UI but disabled, not overlay text/gates
+- **Rewards for completion** — gate features behind completing flows (e.g., survey → library access)
+- **Simple > fancy** — if something gets complex and buggy, strip it back
+- **Don't fight the tools** — if a library resists a design, simplify the design
 
 ## Workflow
 - Run locally with `npm start` (needs `.env` with at least one provider key)
