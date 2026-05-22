@@ -144,10 +144,13 @@
     .data-table-wrap {
       overflow-x: auto;
       margin-top: 12px;
-      -ms-overflow-style: none;
-      scrollbar-width: none;
+      scrollbar-width: thin;
+      scrollbar-color: #2a2520 transparent;
     }
-    .data-table-wrap::-webkit-scrollbar { display: none; }
+    .data-table-wrap::-webkit-scrollbar { height: 6px; }
+    .data-table-wrap::-webkit-scrollbar-track { background: transparent; }
+    .data-table-wrap::-webkit-scrollbar-thumb { background: #2a2520; border-radius: 3px; }
+    .data-table-wrap::-webkit-scrollbar-thumb:hover { background: #3a3528; }
     .data-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
     .data-table th {
       text-align: left; padding: 8px 12px; color: #5a5038; font-weight: normal;
@@ -669,14 +672,33 @@
         <div class="bar-count">${count}</div>
       </div>
     `).join('');
+    const roleEntries = Object.entries(stats.roles || {});
+    const roleBars = roleEntries.map(([role, count]) => `
+      <div class="bar-item">
+        <div class="bar-label">${role}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / Math.max(...roleEntries.map(e => e[1]), 1) * 100)}%"></div></div>
+        <div class="bar-count">${count}</div>
+      </div>
+    `).join('');
+    const srcEntries = Object.entries(stats.sources || {});
+    const srcBars = srcEntries.map(([src, count]) => `
+      <div class="bar-item">
+        <div class="bar-label">${src}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / Math.max(...srcEntries.map(e => e[1]), 1) * 100)}%"></div></div>
+        <div class="bar-count">${count}</div>
+      </div>
+    `).join('');
+    const hasData = topics.length > 0 || payEntries.length > 0 || fmtEntries.length > 0 || roleEntries.length > 0 || srcEntries.length > 0;
     return `
     <div class="card card-full">
       <div class="card-title">Survey Insights</div>
-      ${topics.length === 0 && payEntries.length === 0 ? '<div class="empty-state">No survey data yet.</div>' : ''}
+      ${!hasData ? '<div class="empty-state">No survey data yet.</div>' : ''}
       ${topics.length > 0 ? `<div style="margin-bottom:20px"><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Top Topics</div><div class="bar-group">${topicBars}</div></div>` : ''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
-        ${payEntries.length > 0 ? `<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Would Pay?</div><div class="bar-group">${payBars}</div></div>` : ''}
+        ${roleEntries.length > 0 ? `<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Seeker Role</div><div class="bar-group">${roleBars}</div></div>` : ''}
         ${fmtEntries.length > 0 ? `<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Preferred Format</div><div class="bar-group">${fmtBars}</div></div>` : ''}
+        ${payEntries.length > 0 ? `<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Would Pay?</div><div class="bar-group">${payBars}</div></div>` : ''}
+        ${srcEntries.length > 0 ? `<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Discovery Source</div><div class="bar-group">${srcBars}</div></div>` : ''}
       </div>
     </div>`;
   }
@@ -693,7 +715,10 @@
         <td>${s.referrer ? escHtml(tryHostname(s.referrer)) : '--'}</td>
         <td>${s.hasSurvey ? '<span class="tag tag-yes">yes</span>' : '<span class="tag tag-no">no</span>'}</td>
         <td title="${s.survey ? escHtml(s.survey.topics || '') : ''}">${s.survey ? escHtml(s.survey.topics || '--') : '--'}</td>
+        <td>${s.survey ? escHtml(s.survey.format || '--') : '--'}</td>
+        <td>${s.survey ? escHtml(s.survey.role || '--') : '--'}</td>
         <td>${s.survey ? escHtml(s.survey.wouldPay || '--') : '--'}</td>
+        <td>${s.survey ? escHtml(s.survey.source || '--') : '--'}</td>
       </tr>
     `).join('');
     return `
@@ -701,11 +726,17 @@
       <div class="card-title">Waitlist Signups (${signups.length})<button class="btn-export" data-export="waitlist">Export JSON</button></div>
       <input class="search-input" type="text" placeholder="Search emails..." data-search="waitlist-table">
       <div class="data-table-wrap">
-        <table class="data-table" id="waitlist-table" style="table-layout:fixed;">
-          <colgroup><col style="width:25%"><col style="width:15%"><col style="width:15%"><col style="width:10%"><col style="width:20%"><col style="width:15%"></colgroup>
+        <table class="data-table" id="waitlist-table" style="table-layout:auto;min-width:900px;">
           <thead><tr>
-            <th data-sort="0">Email</th><th data-sort="1">Date</th><th data-sort="2">Referrer</th>
-            <th data-sort="3">Survey</th><th data-sort="4">Topics</th><th data-sort="5">Would Pay</th>
+            <th data-sort="0" style="min-width:180px">Email</th>
+            <th data-sort="1" style="min-width:110px">Date</th>
+            <th data-sort="2" style="min-width:100px">Referrer</th>
+            <th data-sort="3" style="min-width:70px">Survey</th>
+            <th data-sort="4" style="min-width:150px">Topics</th>
+            <th data-sort="5" style="min-width:90px">Format</th>
+            <th data-sort="6" style="min-width:90px">Role</th>
+            <th data-sort="7" style="min-width:90px">Would Pay</th>
+            <th data-sort="8" style="min-width:110px">Source</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
