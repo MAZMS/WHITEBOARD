@@ -544,6 +544,7 @@
           <label class="wl-step-label">What knowledge would you seek from the Library?</label>
           <input type="text" class="wl-survey-input" id="surveyTopics" placeholder="Philosophy, coding, history, fitness...">
           <div class="wl-nav">
+            <button type="button" class="wl-nav-btn back" onclick="wizardBack()">Back</button>
             <button type="button" class="wl-skip-btn" onclick="wizardSkip()">Skip</button>
             <button type="button" class="wl-nav-btn" onclick="wizardNext()">Next</button>
           </div>
@@ -770,7 +771,14 @@
 
     function wizardBack() {
       if (isTransitioning) return;
-      if (currentStep > 1) { // Can't go back past step 1 (email is done)
+      if (currentStep === 1) {
+        // Going back to email step — restore the email so user can edit it
+        emailEl.value = userEmail || '';
+        btnEl.disabled = false;
+        btnEl.textContent = 'Join the Vigil';
+        errorEl.textContent = '';
+        showStep(0, -1);
+      } else if (currentStep > 1) {
         showStep(currentStep - 1, -1);
       }
     }
