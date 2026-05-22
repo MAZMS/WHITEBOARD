@@ -407,7 +407,7 @@
 
     .input-area textarea::placeholder { color: #5a5040; }
     .input-area textarea:focus { border-color: #4a4030; box-shadow: 0 0 20px rgba(180, 160, 100, 0.05); }
-    .input-area textarea:disabled { opacity: 0.5; }
+    .input-area textarea:disabled { opacity: 0.4; cursor: not-allowed; }
 
     #sendBtn {
       background: rgba(180, 160, 100, 0.08);
@@ -3628,8 +3628,46 @@
     // Check auth on page load
     checkAuth();
 
-    // Start the Guardian awakening on page load
-    setTimeout(() => enterPhase('awakening'), 600);
+    // ===== LIBRARY ACCESS GATE =====
+    let libraryAccessGranted = false;
+    const guardianInput = document.getElementById('guardianInput');
+
+    function isPrivileged(email) {
+      if (!email) return false;
+      const e = email.toLowerCase();
+      return e === 'greatlibraryai@gmail.com' || e.endsWith('@greatlibrary.ai');
+    }
+
+    function grantLibraryAccess() {
+      if (libraryAccessGranted) return;
+      libraryAccessGranted = true;
+      guardianInput.disabled = false;
+      guardianInput.placeholder = 'Speak unto the Guardian...';
+      setTimeout(() => enterPhase('awakening'), 600);
+    }
+
+    function denyLibraryAccess() {
+      guardianInput.disabled = true;
+      guardianInput.placeholder = 'Sign in to awaken the Guardian...';
+    }
+
+    // Hook into auth state changes to check access
+    const origRenderAuth = renderAuthState;
+    renderAuthState = function() {
+      origRenderAuth();
+      if (currentUser && isPrivileged(currentUser.email)) {
+        grantLibraryAccess();
+      } else if (!libraryAccessGranted) {
+        denyLibraryAccess();
+      }
+    };
+
+    // Initial check — if already signed in with a privileged account
+    if (currentUser && isPrivileged(currentUser.email)) {
+      grantLibraryAccess();
+    } else {
+      denyLibraryAccess();
+    }
 
     // ===== START: BORDER SIZING =====
     sizeBorderLoader();
