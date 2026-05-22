@@ -119,7 +119,7 @@ app.get('/library', (req, res) => {
   metricsDirty = true;
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
 
 // Use /tmp for ebooks — always writable on Railway
 const EBOOKS_DIR = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks' : path.join(__dirname, 'ebooks');
