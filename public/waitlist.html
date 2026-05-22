@@ -289,6 +289,18 @@
     .wl-final.visible { display: block; animation: wl-fade-up 0.8s ease-out; }
     .wl-final-text { color: #5a5040; font-size: 14px; font-style: italic; }
 
+    .wl-enter-link {
+      display: inline-block;
+      margin-top: 40px;
+      color: #3a3528;
+      font-size: 13px;
+      font-style: italic;
+      text-decoration: none;
+      letter-spacing: 0.5px;
+      transition: color 0.4s;
+    }
+    .wl-enter-link:hover { color: #c8b88a; }
+
     @media (max-width: 600px) {
       .waitlist-inner { padding: 32px 20px; }
       .wl-headline { font-size: 22px; }
@@ -391,6 +403,8 @@
       <div class="wl-final" id="wlFinal">
         <div class="wl-final-text">The Guardian notes your preferences. Patience... the halls are vast.</div>
       </div>
+
+      <a href="/library" class="wl-enter-link">Enter the Library</a>
     </div>
   </div>
 
