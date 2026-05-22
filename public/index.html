@@ -3716,7 +3716,11 @@
         });
         const data = await res.json();
         if (res.ok) {
-          statusEl.textContent = 'If an account exists for this email, a reset link has been generated. Check the server console.';
+          if (data.resetLink) {
+            statusEl.innerHTML = 'Reset link: <a href="' + data.resetLink + '" style="color:#c8b88a;text-decoration:underline;">Click here to reset your password</a>';
+          } else {
+            statusEl.textContent = 'If an account exists for this email, a reset link has been sent.';
+          }
           statusEl.style.color = '#5a8040';
         } else {
           statusEl.textContent = data.error || 'Something went wrong';

@@ -66,6 +66,11 @@ function createEmptyMetrics() {
       spent: 0,          // total spent (calculated from token usage)
       lastChecked: null
     },
+    geminiCredits: {
+      starting: 300.00,  // $300 GCP credits
+      spent: 0,          // estimated spend from token pricing
+      lastChecked: null
+    },
     budgetAlerts: [],   // [{timestamp, provider, message, level}]
     lastUpdated: null
   };
@@ -549,6 +554,27 @@ function trackLlmUsage(provider, model, tokenInfo, latencyMs, error) {
   allTime.totalLatencyMs += latencyMs || 0;
   if (error) allTime.errors++;
 
+  // Track OpenAI per-tier tokens (premium vs mini/nano)
+  if (provider === 'openai') {
+    if (!daily.premiumTokens) daily.premiumTokens = 0;
+    if (!daily.miniTokens) daily.miniTokens = 0;
+    if (!daily.premiumModels) daily.premiumModels = {};
+    if (!daily.miniModels) daily.miniModels = {};
+    const modelLower = (model || '').toLowerCase();
+    const isMiniNano = modelLower.includes('mini') || modelLower.includes('nano');
+    if (isMiniNano) {
+      daily.miniTokens += total;
+      if (!daily.miniModels[model]) daily.miniModels[model] = { calls: 0, tokens: 0 };
+      daily.miniModels[model].calls++;
+      daily.miniModels[model].tokens += total;
+    } else {
+      daily.premiumTokens += total;
+      if (!daily.premiumModels[model]) daily.premiumModels[model] = { calls: 0, tokens: 0 };
+      daily.premiumModels[model].calls++;
+      daily.premiumModels[model].tokens += total;
+    }
+  }
+
   // Track OpenRouter spend
   if (provider === 'openrouter') {
     if (!metrics.openRouterCredits) metrics.openRouterCredits = { starting: 8.00, spent: 0, lastChecked: null };
@@ -556,6 +582,14 @@ function trackLlmUsage(provider, model, tokenInfo, latencyMs, error) {
     const cost = (input * 1.0 / 1000000) + (output * 3.0 / 1000000);
     metrics.openRouterCredits.spent += cost;
     metrics.openRouterCredits.lastChecked = new Date().toISOString();
+  }
+
+  // Track Gemini estimated spend (Gemini 2.5 Flash: $0.15/1M input, $0.60/1M output)
+  if (provider === 'gemini') {
+    if (!metrics.geminiCredits) metrics.geminiCredits = { starting: 300.00, spent: 0, lastChecked: null };
+    const cost = (input * 0.15 / 1000000) + (output * 0.60 / 1000000);
+    metrics.geminiCredits.spent += cost;
+    metrics.geminiCredits.lastChecked = new Date().toISOString();
   }
 
   // Prune daily data older than 30 days
@@ -583,19 +617,38 @@ function checkBudgetAlerts() {
   const todayUsage = metrics.llmUsage.daily[today] || {};
   if (!metrics.budgetAlerts) metrics.budgetAlerts = [];
 
-  // OpenAI daily token limits (mini models: 2.5M TPD)
+  // OpenAI daily token limits — two tiers
   const openaiToday = todayUsage.openai;
-  if (openaiToday && openaiToday.tokens > 2000000) {
-    const existing = metrics.budgetAlerts.find(a => a.provider === 'openai' && a.date === today);
-    if (!existing) {
-      metrics.budgetAlerts.push({
-        timestamp: new Date().toISOString(),
-        date: today,
-        provider: 'openai',
-        level: openaiToday.tokens > 2250000 ? 'critical' : 'warning',
-        message: `OpenAI daily token usage at ${Math.round(openaiToday.tokens / 1000)}K / 2,500K limit`
-      });
-      metricsDirty = true;
+  if (openaiToday) {
+    // Tier 1: Premium models — 250K tokens/day
+    const premiumUsed = openaiToday.premiumTokens || 0;
+    if (premiumUsed > 200000) {
+      const existing = metrics.budgetAlerts.find(a => a.provider === 'openai-premium' && a.date === today);
+      if (!existing) {
+        metrics.budgetAlerts.push({
+          timestamp: new Date().toISOString(),
+          date: today,
+          provider: 'openai-premium',
+          level: premiumUsed > 225000 ? 'critical' : 'warning',
+          message: `OpenAI PREMIUM daily tokens at ${Math.round(premiumUsed / 1000)}K / 250K limit`
+        });
+        metricsDirty = true;
+      }
+    }
+    // Tier 2: Mini/Nano models — 2.5M tokens/day
+    const miniUsed = openaiToday.miniTokens || 0;
+    if (miniUsed > 2000000) {
+      const existing = metrics.budgetAlerts.find(a => a.provider === 'openai-mini' && a.date === today);
+      if (!existing) {
+        metrics.budgetAlerts.push({
+          timestamp: new Date().toISOString(),
+          date: today,
+          provider: 'openai-mini',
+          level: miniUsed > 2250000 ? 'critical' : 'warning',
+          message: `OpenAI MINI/NANO daily tokens at ${Math.round(miniUsed / 1000)}K / 2,500K limit`
+        });
+        metricsDirty = true;
+      }
     }
   }
 
@@ -611,6 +664,24 @@ function checkBudgetAlerts() {
           provider: 'openrouter',
           level: remaining < 0.50 ? 'critical' : 'warning',
           message: `OpenRouter credits: $${remaining.toFixed(2)} remaining of $${metrics.openRouterCredits.starting.toFixed(2)}`
+        });
+        metricsDirty = true;
+      }
+    }
+  }
+
+  // Gemini GCP credit alerts ($300 starting)
+  if (metrics.geminiCredits) {
+    const remaining = metrics.geminiCredits.starting - metrics.geminiCredits.spent;
+    if (remaining < 50.00) {
+      const existing = metrics.budgetAlerts.find(a => a.provider === 'gemini' && a.date === today);
+      if (!existing) {
+        metrics.budgetAlerts.push({
+          timestamp: new Date().toISOString(),
+          date: today,
+          provider: 'gemini',
+          level: remaining < 10.00 ? 'critical' : 'warning',
+          message: `Gemini GCP credits: $${remaining.toFixed(2)} remaining of $${metrics.geminiCredits.starting.toFixed(2)}`
         });
         metricsDirty = true;
       }
@@ -2371,12 +2442,13 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     saveAccounts(data);
   }
 
-  // Log the reset link (no email service yet)
+  // Build the reset link
   const resetLink = `${req.protocol}://${req.get('host')}/library?resetToken=${rawToken}&email=${encodeURIComponent(normalized)}`;
   console.log(`[Auth] Password reset requested for ${normalized}`);
   console.log(`[Auth] Reset link: ${resetLink}`);
 
-  res.json({ success: true });
+  // Return the link directly (no email service yet — will add email later)
+  res.json({ success: true, resetLink });
 });
 
 // POST /api/auth/reset-password — validate token and set new password
@@ -3052,8 +3124,8 @@ app.get('/api/admin/metrics', requireAdmin, async (req, res) => {
         active: activeProvider === 'openai',
         model: getModelFor('openai'),
         auth: process.env.OPENAI_API_KEY ? 'api-key' : 'none',
-        limits: { rpm: 500, tpm: 200000, tpd: 2500000 },
-        budget: 'Free tier (2.5M TPD mini)'
+        limits: { rpm: 500, tpm: 200000, premiumTpd: 250000, miniTpd: 2500000 },
+        budget: 'Free tier (250K premium + 2.5M mini/nano TPD)'
       },
       openrouter: {
         configured: !!clients.openrouter,
@@ -3268,6 +3340,148 @@ app.get('/api/admin/usage', requireAdmin, (req, res) => {
     today: todayUsage,
     allTime: usage.allTime || {},
     last7Days,
+    alerts: (metrics.budgetAlerts || []).slice(-20)
+  });
+});
+
+// Admin: real-time budget and token usage for all LLM providers
+app.get('/api/admin/budget', requireAdmin, (req, res) => {
+  const usage = metrics.llmUsage || { daily: {}, allTime: {} };
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const todayUsage = usage.daily[today] || {};
+
+  // --- Gemini ($300 GCP credits) ---
+  const geminiCredits = metrics.geminiCredits || { starting: 300.00, spent: 0 };
+  const geminiToday = todayUsage.gemini || { calls: 0, inputTokens: 0, outputTokens: 0, tokens: 0, errors: 0, latencyMs: 0 };
+  const geminiAllTime = usage.allTime?.gemini || { calls: 0, inputTokens: 0, outputTokens: 0, tokens: 0, errors: 0, totalLatencyMs: 0 };
+  const geminiTodayCost = (geminiToday.inputTokens * 0.15 / 1000000) + (geminiToday.outputTokens * 0.60 / 1000000);
+  const geminiRemaining = geminiCredits.starting - geminiCredits.spent;
+  const geminiPctUsed = geminiCredits.starting > 0 ? (geminiCredits.spent / geminiCredits.starting) * 100 : 0;
+
+  // --- OpenAI (Free tier, two tiers: premium 250K/day + mini/nano 2.5M/day) ---
+  const openaiToday = todayUsage.openai || { calls: 0, inputTokens: 0, outputTokens: 0, tokens: 0, errors: 0, latencyMs: 0, premiumTokens: 0, miniTokens: 0, premiumModels: {}, miniModels: {} };
+  const openaiAllTime = usage.allTime?.openai || { calls: 0, inputTokens: 0, outputTokens: 0, tokens: 0, errors: 0, totalLatencyMs: 0 };
+  const openaiPremiumLimit = 250000;
+  const openaiMiniLimit = 2500000;
+  const premiumTokensUsed = openaiToday.premiumTokens || 0;
+  const miniTokensUsed = openaiToday.miniTokens || 0;
+  const premiumPctUsed = (premiumTokensUsed / openaiPremiumLimit) * 100;
+  const miniPctUsed = (miniTokensUsed / openaiMiniLimit) * 100;
+  // Time until midnight UTC
+  const nextReset = new Date(now);
+  nextReset.setUTCDate(nextReset.getUTCDate() + 1);
+  nextReset.setUTCHours(0, 0, 0, 0);
+  const resetInMs = nextReset.getTime() - now.getTime();
+  const resetHours = Math.floor(resetInMs / 3600000);
+  const resetMinutes = Math.floor((resetInMs % 3600000) / 60000);
+
+  // --- OpenRouter ($8 credits) ---
+  const orCredits = metrics.openRouterCredits || { starting: 8.00, spent: 0 };
+  const orToday = todayUsage.openrouter || { calls: 0, inputTokens: 0, outputTokens: 0, tokens: 0, errors: 0, latencyMs: 0 };
+  const orAllTime = usage.allTime?.openrouter || { calls: 0, inputTokens: 0, outputTokens: 0, tokens: 0, errors: 0, totalLatencyMs: 0 };
+  const orTodayCost = (orToday.inputTokens * 1.0 / 1000000) + (orToday.outputTokens * 3.0 / 1000000);
+  const orRemaining = orCredits.starting - orCredits.spent;
+  const orPctUsed = orCredits.starting > 0 ? (orCredits.spent / orCredits.starting) * 100 : 0;
+  const orAvgCost = orAllTime.calls > 0 ? orCredits.spent / orAllTime.calls : 0;
+
+  res.json({
+    timestamp: now.toISOString(),
+    gemini: {
+      budget: geminiCredits.starting,
+      spent: geminiCredits.spent,
+      remaining: geminiRemaining,
+      pctUsed: Math.round(geminiPctUsed * 100) / 100,
+      todayCost: geminiTodayCost,
+      lastChecked: geminiCredits.lastChecked,
+      pricing: { inputPerMillion: 0.15, outputPerMillion: 0.60 },
+      today: {
+        calls: geminiToday.calls,
+        inputTokens: geminiToday.inputTokens,
+        outputTokens: geminiToday.outputTokens,
+        totalTokens: geminiToday.tokens,
+        errors: geminiToday.errors,
+        avgLatencyMs: geminiToday.calls > 0 ? Math.round(geminiToday.latencyMs / geminiToday.calls) : 0
+      },
+      allTime: {
+        calls: geminiAllTime.calls,
+        inputTokens: geminiAllTime.inputTokens,
+        outputTokens: geminiAllTime.outputTokens,
+        totalTokens: geminiAllTime.tokens,
+        errors: geminiAllTime.errors,
+        avgLatencyMs: geminiAllTime.calls > 0 ? Math.round(geminiAllTime.totalLatencyMs / geminiAllTime.calls) : 0
+      },
+      status: geminiPctUsed > 90 ? 'critical' : geminiPctUsed > 60 ? 'warning' : 'healthy'
+    },
+    openai: {
+      premium: {
+        dailyLimit: openaiPremiumLimit,
+        tokensUsedToday: premiumTokensUsed,
+        tokensRemaining: Math.max(0, openaiPremiumLimit - premiumTokensUsed),
+        pctUsed: Math.round(premiumPctUsed * 100) / 100,
+        models: openaiToday.premiumModels || {},
+        availableModels: ['gpt-5.4', 'gpt-5.2', 'gpt-5.1', 'gpt-5.1-codex', 'gpt-5', 'gpt-5-codex', 'gpt-5-chat-latest', 'gpt-4.1', 'gpt-4o', 'o1', 'o3'],
+        status: premiumPctUsed > 90 ? 'critical' : premiumPctUsed > 60 ? 'warning' : 'healthy'
+      },
+      mini: {
+        dailyLimit: openaiMiniLimit,
+        tokensUsedToday: miniTokensUsed,
+        tokensRemaining: Math.max(0, openaiMiniLimit - miniTokensUsed),
+        pctUsed: Math.round(miniPctUsed * 100) / 100,
+        models: openaiToday.miniModels || {},
+        status: miniPctUsed > 90 ? 'critical' : miniPctUsed > 60 ? 'warning' : 'healthy'
+      },
+      resetInMs,
+      resetInHuman: `${resetHours}h ${resetMinutes}m`,
+      resetAt: nextReset.toISOString(),
+      today: {
+        calls: openaiToday.calls,
+        inputTokens: openaiToday.inputTokens,
+        outputTokens: openaiToday.outputTokens,
+        totalTokens: openaiToday.tokens,
+        premiumTokens: premiumTokensUsed,
+        miniTokens: miniTokensUsed,
+        errors: openaiToday.errors,
+        avgLatencyMs: openaiToday.calls > 0 ? Math.round(openaiToday.latencyMs / openaiToday.calls) : 0,
+        modelBreakdown: openaiToday.models || {}
+      },
+      allTime: {
+        calls: openaiAllTime.calls,
+        inputTokens: openaiAllTime.inputTokens,
+        outputTokens: openaiAllTime.outputTokens,
+        totalTokens: openaiAllTime.tokens,
+        errors: openaiAllTime.errors,
+        avgLatencyMs: openaiAllTime.calls > 0 ? Math.round(openaiAllTime.totalLatencyMs / openaiAllTime.calls) : 0
+      },
+      status: premiumPctUsed > 90 || miniPctUsed > 90 ? 'critical' : premiumPctUsed > 60 || miniPctUsed > 60 ? 'warning' : 'healthy'
+    },
+    openrouter: {
+      budget: orCredits.starting,
+      spent: orCredits.spent,
+      remaining: orRemaining,
+      pctUsed: Math.round(orPctUsed * 100) / 100,
+      todayCost: orTodayCost,
+      avgCostPerRequest: orAvgCost,
+      lastChecked: orCredits.lastChecked,
+      pricing: { inputPerMillion: 1.00, outputPerMillion: 3.00 },
+      today: {
+        calls: orToday.calls,
+        inputTokens: orToday.inputTokens,
+        outputTokens: orToday.outputTokens,
+        totalTokens: orToday.tokens,
+        errors: orToday.errors,
+        avgLatencyMs: orToday.calls > 0 ? Math.round(orToday.latencyMs / orToday.calls) : 0
+      },
+      allTime: {
+        calls: orAllTime.calls,
+        inputTokens: orAllTime.inputTokens,
+        outputTokens: orAllTime.outputTokens,
+        totalTokens: orAllTime.tokens,
+        errors: orAllTime.errors,
+        avgLatencyMs: orAllTime.calls > 0 ? Math.round(orAllTime.totalLatencyMs / orAllTime.calls) : 0
+      },
+      status: orPctUsed > 90 ? 'critical' : (orRemaining < 2.00 ? 'warning' : 'healthy')
+    },
     alerts: (metrics.budgetAlerts || []).slice(-20)
   });
 });
