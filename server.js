@@ -1779,9 +1779,16 @@ app.get('/api/status', async (req, res) => {
   trackApiCall('status');
   try {
     const models = await openai.models.list();
-    res.json({ provider: activeProvider, model: getModel(), status: 'connected', models: models.data.map(m => m.id) });
+    res.json({
+      provider: activeProvider, model: getModel(), status: 'connected',
+      models: models.data.map(m => m.id),
+      database: { connected: useDB(), type: useDB() ? 'postgresql' : 'json-files' }
+    });
   } catch (err) {
-    res.json({ provider: activeProvider, model: getModel(), status: 'unreachable', error: err.message });
+    res.json({
+      provider: activeProvider, model: getModel(), status: 'unreachable', error: err.message,
+      database: { connected: useDB(), type: useDB() ? 'postgresql' : 'json-files' }
+    });
   }
 });
 
@@ -2224,7 +2231,7 @@ app.post('/api/auth/microsoft', async (req, res) => {
 app.post('/api/auth/email/signup', async (req, res) => {
   const { email, password, name } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
   const normalized = email.toLowerCase().trim();
   if (!normalized.match(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/)) {
@@ -2595,26 +2602,34 @@ app.get('/api/tomes/:id/cover', async (req, res) => {
 });
 
 // POST /api/tomes/:id/like — toggle like
-app.post('/api/tomes/:id/like', optionalAuth, (req, res) => {
+app.post('/api/tomes/:id/like', optionalAuth, async (req, res) => {
+  const userId = req.user ? req.user.id : null;
+  const ip = getClientIPEarly(req);
+  const anonId = 'anon_' + crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16);
+  const likerId = userId || anonId;
+
+  if (useDB()) {
+    try {
+      const result = await db.toggleTomeLike(req.params.id, likerId, 'like');
+      const tome = await db.getTome(req.params.id);
+      return res.json({ liked: result.toggled, likesCount: tome ? tome.likesCount : 0 });
+    } catch (err) {
+      console.warn('[DB] toggleTomeLike error:', err.message);
+    }
+  }
+
+  // JSON fallback
   const data = loadTomes();
   const tome = data.tomes.find(t => t.id === req.params.id);
   if (!tome) return res.status(404).json({ error: 'Tome not found' });
-
-  // Use user ID or IP hash for anonymous likes
-  const userId = req.user ? req.user.id : null;
-  const ip = getClientIPEarly(req);
-  const anonId = crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16);
-  const likerId = userId || 'anon_' + anonId;
 
   if (!data.likes) data.likes = [];
   const existing = data.likes.find(l => l.tomeId === req.params.id && l.userId === likerId && l.type === 'like');
 
   if (existing) {
-    // Remove like (toggle off)
     data.likes = data.likes.filter(l => !(l.tomeId === req.params.id && l.userId === likerId && l.type === 'like'));
     tome.likesCount = Math.max(0, (tome.likesCount || 0) - 1);
   } else {
-    // Remove any dislike first
     const hadDislike = data.likes.find(l => l.tomeId === req.params.id && l.userId === likerId && l.type === 'dislike');
     if (hadDislike) {
       data.likes = data.likes.filter(l => !(l.tomeId === req.params.id && l.userId === likerId && l.type === 'dislike'));
@@ -3022,8 +3037,12 @@ app.get('/api/admin/waitlist', requireAdmin, (req, res) => {
   });
 });
 
-app.get('/api/admin/ebooks', requireAdmin, (req, res) => {
-  const allJobs = loadJobsFromDisk();
+app.get('/api/admin/ebooks', requireAdmin, async (req, res) => {
+  let allJobs;
+  if (useDB()) {
+    try { allJobs = await db.getAllJobs(); } catch (err) { console.warn('[DB] getAllJobs error:', err.message); }
+  }
+  if (!allJobs) allJobs = loadJobsFromDisk();
   const jobs = Object.entries(allJobs).map(([id, j]) => ({
     id,
     status: j.status,
@@ -3054,9 +3073,19 @@ app.get('/api/admin/ebooks', requireAdmin, (req, res) => {
 });
 
 // Admin: accounts overview
-app.get('/api/admin/accounts', requireAdmin, (req, res) => {
-  const data = loadAccounts();
-  const accounts = data.accounts || [];
+app.get('/api/admin/accounts', requireAdmin, async (req, res) => {
+  let accounts;
+  if (useDB()) {
+    try {
+      accounts = await db.getAllAccounts();
+    } catch (err) {
+      console.warn('[DB] getAllAccounts error:', err.message);
+    }
+  }
+  if (!accounts) {
+    const data = loadAccounts();
+    accounts = data.accounts || [];
+  }
   res.json({
     total: accounts.length,
     accounts: accounts.map(a => ({
@@ -3092,6 +3121,80 @@ app.get('/api/admin/usage', requireAdmin, (req, res) => {
     last7Days,
     alerts: (metrics.budgetAlerts || []).slice(-20)
   });
+});
+
+// Admin: recent visitors (DB-powered)
+app.get('/api/admin/visitors', requireAdmin, async (req, res) => {
+  if (!useDB()) {
+    // Fallback: return from in-memory metrics
+    return res.json({
+      visitors: metrics.recentVisitors || [],
+      source: 'json'
+    });
+  }
+  try {
+    const limit = Math.min(100, parseInt(req.query.limit) || 50);
+    const visitors = await db.getRecentVisitors(limit);
+    res.json({ visitors, source: 'database' });
+  } catch (err) {
+    console.warn('[DB] getRecentVisitors error:', err.message);
+    res.json({ visitors: metrics.recentVisitors || [], source: 'json-fallback' });
+  }
+});
+
+// Admin: retention — new vs returning visitors (DB-powered)
+app.get('/api/admin/retention', requireAdmin, async (req, res) => {
+  if (!useDB()) {
+    // Compute from in-memory visitors
+    const visitors = metrics.visitors || {};
+    const total = Object.keys(visitors).length;
+    const returning = Object.values(visitors).filter(v => v.hits > 1).length;
+    return res.json({
+      singleVisit: total - returning,
+      returning,
+      total,
+      returnRate: total > 0 ? Math.round(returning / total * 100) : 0,
+      source: 'json'
+    });
+  }
+  try {
+    const stats = await db.getRetentionStats();
+    res.json({ ...stats, source: 'database' });
+  } catch (err) {
+    console.warn('[DB] getRetentionStats error:', err.message);
+    res.json({ singleVisit: 0, returning: 0, total: 0, returnRate: 0, source: 'error' });
+  }
+});
+
+// Admin: geographic breakdown (DB-powered)
+app.get('/api/admin/geo', requireAdmin, async (req, res) => {
+  if (!useDB()) {
+    // Compute from in-memory visitors
+    const countryCounts = {};
+    const cityCounts = {};
+    for (const v of Object.values(metrics.visitors || {})) {
+      if (v.country) countryCounts[v.country] = (countryCounts[v.country] || 0) + 1;
+      if (v.city && v.country) {
+        const key = `${v.city}, ${v.country}`;
+        cityCounts[key] = (cityCounts[key] || 0) + 1;
+      }
+    }
+    return res.json({
+      countries: Object.entries(countryCounts).map(([country, count]) => ({ country, uniqueVisitors: count })).sort((a, b) => b.uniqueVisitors - a.uniqueVisitors),
+      cities: Object.entries(cityCounts).map(([key, count]) => {
+        const [city, country] = key.split(', ');
+        return { city, country, uniqueVisitors: count };
+      }).sort((a, b) => b.uniqueVisitors - a.uniqueVisitors).slice(0, 30),
+      source: 'json'
+    });
+  }
+  try {
+    const stats = await db.getGeoStats();
+    res.json({ ...stats, source: 'database' });
+  } catch (err) {
+    console.warn('[DB] getGeoStats error:', err.message);
+    res.json({ countries: [], cities: [], source: 'error' });
+  }
 });
 
 // Admin: analytics — retention, sessions, heatmap, daily trends, traffic sources
@@ -3287,11 +3390,37 @@ function formatUptime(ms) {
   return `${m}m ${s % 60}s`;
 }
 
-// Flush metrics on shutdown to avoid data loss
-process.on('SIGTERM', () => { metricsDirty = true; saveMetrics(); process.exit(0); });
-process.on('SIGINT', () => { metricsDirty = true; saveMetrics(); process.exit(0); });
+// Flush metrics and close DB on shutdown to avoid data loss
+async function gracefulShutdown() {
+  metricsDirty = true;
+  saveMetrics();
+  if (useDB()) {
+    // Persist cumulative metrics to DB before shutdown
+    try {
+      await db.setMetricsValue('metrics_snapshot', metrics);
+    } catch (err) {
+      console.warn('[DB] Failed to save metrics snapshot:', err.message);
+    }
+    await db.close();
+  }
+  process.exit(0);
+}
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
+// --- Start server with database initialization ---
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`The Great Library awakens on port ${PORT}`);
-});
+
+(async function startServer() {
+  // Initialize database connection (non-blocking — falls back to JSON if unavailable)
+  await db.initialize();
+
+  app.listen(PORT, () => {
+    console.log(`The Great Library awakens on port ${PORT}`);
+    if (useDB()) {
+      console.log('[DB] All data operations will use PostgreSQL (with JSON fallback)');
+    } else {
+      console.log('[DB] Using JSON file storage (set DATABASE_URL for PostgreSQL)');
+    }
+  });
+})();

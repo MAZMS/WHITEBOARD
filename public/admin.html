@@ -21,21 +21,54 @@
       text-align: center;
       padding: 40px 20px 20px;
       border-bottom: 1px solid #1a1814;
-      position: relative;
     }
     .admin-title { font-size: 28px; font-weight: normal; color: #c8b88a; letter-spacing: 2px; }
     .admin-subtitle { font-size: 13px; color: #4a4030; margin-top: 8px; font-style: italic; }
     .admin-refresh-info { font-size: 11px; color: #3a3528; margin-top: 12px; }
     .admin-refresh-info span { color: #5a5038; }
 
-    /* Live visitors badge in header */
-    .live-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(90, 122, 74, 0.1); border: 1px solid rgba(90, 122, 74, 0.25);
-      border-radius: 20px; padding: 4px 14px; margin-top: 12px;
-      font-size: 13px; color: #6a9a5a;
+    /* Time period selector */
+    .period-selector {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      margin-top: 20px;
+      padding: 0 20px;
     }
-    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #5a7a4a; animation: pulse-anim 2s ease-in-out infinite; }
+    .period-btn {
+      background: transparent;
+      border: 1px solid #1a1814;
+      color: #4a4030;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 13px;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 0.5px;
+      position: relative;
+    }
+    .period-btn:first-child { border-radius: 6px 0 0 6px; }
+    .period-btn:last-child { border-radius: 0 6px 6px 0; }
+    .period-btn + .period-btn { border-left: none; }
+    .period-btn:hover {
+      color: #8a7d55;
+      background: rgba(200, 184, 138, 0.04);
+    }
+    .period-btn.active {
+      color: #c8b88a;
+      background: rgba(200, 184, 138, 0.08);
+      border-color: #3a3528;
+      z-index: 1;
+    }
+    .period-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #c8b88a, transparent);
+    }
 
     /* Budget alert banner */
     .alert-banner {
@@ -51,7 +84,7 @@
     .alert-banner.warning { background: rgba(138, 125, 85, 0.15); border-color: rgba(184, 168, 106, 0.3); color: #c8b06a; }
 
     .admin-grid {
-      max-width: 1400px;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 24px 20px 60px;
       display: grid;
@@ -78,40 +111,114 @@
       margin-bottom: 20px;
       padding-bottom: 10px;
       border-bottom: 1px solid #1a1814;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .card-title-left { display: flex; align-items: center; gap: 0; }
-
-    .section-label {
-      font-size: 12px; color: #5a5038; text-transform: uppercase;
-      letter-spacing: 1px; margin-bottom: 8px;
     }
 
     .stat-row { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 16px; }
     .stat-row:last-child { margin-bottom: 0; }
-    .stat { flex: 1; min-width: 80px; }
+    .stat { flex: 1; min-width: 100px; }
     .stat-value { font-size: 32px; color: #c8b88a; line-height: 1.2; }
     .stat-value.accent { color: #8a7d55; }
     .stat-value.success { color: #5a7a4a; }
     .stat-value.danger { color: #7a4a4a; }
     .stat-value.small { font-size: 20px; }
-    .stat-value.live { color: #6a9a5a; }
     .stat-label { font-size: 12px; color: #4a4030; margin-top: 4px; }
+
+    /* Trend delta badges */
+    .trend-delta {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+      font-weight: normal;
+      letter-spacing: 0;
+    }
+    .trend-delta.up { background: rgba(90, 122, 74, 0.15); color: #6a9a5a; }
+    .trend-delta.down { background: rgba(122, 74, 74, 0.15); color: #9a5a5a; }
+    .trend-delta.neutral { background: rgba(138, 125, 85, 0.1); color: #6a6050; }
+
+    .vs-label { font-size: 11px; color: #3a3528; margin-top: 2px; }
+
+    /* Trend chart */
+    .trend-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 60px;
+      margin-top: 12px;
+      padding-top: 4px;
+    }
+    .trend-chart-bar {
+      flex: 1;
+      min-width: 0;
+      border-radius: 2px 2px 0 0;
+      transition: height 0.4s ease, background 0.3s;
+      position: relative;
+      cursor: default;
+    }
+    .trend-chart-bar:hover { opacity: 0.85; }
+    .trend-chart-bar .bar-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1814;
+      border: 1px solid #2a2520;
+      color: #c8b88a;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .trend-chart-bar:hover .bar-tooltip { display: block; }
+    .trend-chart-labels {
+      display: flex;
+      gap: 3px;
+      margin-top: 4px;
+    }
+    .trend-chart-labels span {
+      flex: 1;
+      text-align: center;
+      font-size: 10px;
+      color: #3a3528;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Series selector tabs */
+    .series-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 12px;
+    }
+    .series-tab {
+      background: transparent;
+      border: 1px solid #141210;
+      color: #4a4030;
+      font-family: Georgia, serif;
+      font-size: 11px;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .series-tab:first-child { border-radius: 4px 0 0 4px; }
+    .series-tab:last-child { border-radius: 0 4px 4px 0; }
+    .series-tab + .series-tab { border-left: none; }
+    .series-tab:hover { color: #6a6050; }
+    .series-tab.active { color: #c8b88a; background: rgba(200, 184, 138, 0.06); border-color: #2a2520; }
 
     .bar-group { margin-top: 16px; }
     .bar-item { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .bar-label { font-size: 12px; color: #6a6050; min-width: 80px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .bar-track { flex: 1; height: 18px; background: #141210; border-radius: 3px; overflow: hidden; }
     .bar-fill { height: 100%; background: linear-gradient(90deg, #3a3528, #5a5038); border-radius: 3px; transition: width 0.6s ease; min-width: 2px; }
-    .bar-fill.green { background: linear-gradient(90deg, #2a4a28, #3a6a3a); }
-    .bar-fill.blue { background: linear-gradient(90deg, #28364a, #3a5a7a); }
-    .bar-fill.orange { background: linear-gradient(90deg, #4a3a28, #7a5a3a); }
-    .bar-fill.red { background: linear-gradient(90deg, #4a2828, #7a3a3a); }
     .bar-count { font-size: 12px; color: #5a5038; min-width: 36px; }
 
-    /* Provider cards */
     .provider-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
     .provider-card {
       background: #121110;
@@ -137,8 +244,7 @@
     .provider-badge.off { background: rgba(80, 70, 60, 0.2); color: #4a4030; }
     .provider-detail { font-size: 11px; color: #5a5038; margin-top: 3px; }
 
-    /* Visitor feed */
-    .visitor-feed { max-height: 500px; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none; }
+    .visitor-feed { max-height: 400px; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none; }
     .visitor-feed::-webkit-scrollbar { display: none; }
     .visitor-item {
       display: flex; align-items: center; gap: 10px;
@@ -152,14 +258,7 @@
     .visitor-geo { color: #5a5038; flex: 1; }
     .visitor-time { color: #3a3528; white-space: nowrap; }
     .visitor-device { color: #4a4030; font-size: 11px; }
-    .visitor-source-tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; }
-    .visitor-source-tag.search { background: rgba(58, 90, 122, 0.2); color: #5a8aaa; }
-    .visitor-source-tag.social { background: rgba(122, 74, 104, 0.2); color: #aa5a8a; }
-    .visitor-source-tag.referral { background: rgba(122, 100, 58, 0.2); color: #aa8a5a; }
-    .visitor-source-tag.direct { background: rgba(80, 80, 80, 0.15); color: #6a6a6a; }
-    .visitor-returning { font-size: 10px; color: #5a7a4a; }
 
-    /* Usage progress bars */
     .usage-bar-wrap { margin-bottom: 12px; }
     .usage-bar-header { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
     .usage-bar-label { color: #6a6050; }
@@ -170,53 +269,16 @@
     .usage-bar-fill.yellow { background: linear-gradient(90deg, #5a4a28, #7a6a3a); }
     .usage-bar-fill.red { background: linear-gradient(90deg, #5a2828, #7a3a3a); }
 
-    /* Mini chart (CSS-only bar chart for daily trends) */
-    .mini-chart { display: flex; align-items: flex-end; gap: 2px; height: 80px; margin-top: 8px; }
-    .mini-chart-bar {
-      flex: 1; min-width: 4px; border-radius: 2px 2px 0 0;
-      background: linear-gradient(180deg, #5a5038, #3a3528);
-      transition: height 0.4s ease; position: relative; cursor: default;
-    }
-    .mini-chart-bar:hover { background: linear-gradient(180deg, #8a7d55, #5a5038); }
-    .mini-chart-bar .tooltip {
-      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
-      background: #1a1814; border: 1px solid #2a2520; border-radius: 4px; padding: 4px 8px;
-      font-size: 10px; color: #c8b88a; white-space: nowrap; z-index: 10; pointer-events: none;
-    }
-    .mini-chart-bar:hover .tooltip { display: block; }
-
-    /* Heatmap grid */
-    .heatmap { display: grid; grid-template-columns: 40px repeat(7, 1fr); gap: 2px; margin-top: 8px; }
-    .heatmap-cell {
-      aspect-ratio: 1; border-radius: 3px; position: relative; cursor: default;
-      transition: background 0.3s;
-    }
-    .heatmap-cell .tooltip {
-      display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%);
-      background: #1a1814; border: 1px solid #2a2520; border-radius: 4px; padding: 3px 6px;
-      font-size: 9px; color: #c8b88a; white-space: nowrap; z-index: 10; pointer-events: none;
-    }
-    .heatmap-cell:hover .tooltip { display: block; }
-    .heatmap-label { font-size: 10px; color: #3a3528; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; }
-    .heatmap-header { font-size: 10px; color: #3a3528; text-align: center; padding: 2px 0; }
-
-    /* Funnel */
-    .funnel { margin-top: 12px; }
-    .funnel-step { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-    .funnel-bar-wrap { flex: 1; position: relative; }
-    .funnel-bar {
-      height: 32px; border-radius: 4px; display: flex; align-items: center; padding: 0 12px;
-      font-size: 12px; color: #c8b88a; transition: width 0.6s ease;
-    }
-    .funnel-label { font-size: 12px; color: #6a6050; min-width: 120px; text-align: right; }
-    .funnel-pct { font-size: 11px; color: #3a3528; min-width: 40px; }
-
-    /* Data table */
     .data-table-wrap {
-      overflow-x: auto; margin-top: 12px;
-      -ms-overflow-style: none; scrollbar-width: none;
+      overflow-x: auto;
+      margin-top: 12px;
+      scrollbar-width: thin;
+      scrollbar-color: #2a2520 transparent;
     }
-    .data-table-wrap::-webkit-scrollbar { display: none; }
+    .data-table-wrap::-webkit-scrollbar { height: 6px; }
+    .data-table-wrap::-webkit-scrollbar-track { background: transparent; }
+    .data-table-wrap::-webkit-scrollbar-thumb { background: #2a2520; border-radius: 3px; }
+    .data-table-wrap::-webkit-scrollbar-thumb:hover { background: #3a3528; }
     .data-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
     .data-table th {
       text-align: left; padding: 8px 12px; color: #5a5038; font-weight: normal;
@@ -249,6 +311,7 @@
       background: rgba(180, 160, 100, 0.06); border: 1px solid #1a1814; border-radius: 4px;
       color: #5a5038; font-family: Georgia, serif; font-size: 12px; padding: 6px 14px;
       cursor: pointer; transition: background 0.3s, border-color 0.3s, color 0.3s;
+      float: right; margin-top: -6px;
     }
     .btn-export:hover { background: rgba(180, 160, 100, 0.12); border-color: #2a2520; color: #8a7d55; }
 
@@ -265,16 +328,6 @@
     .loading { text-align: center; padding: 40px; color: #3a3528; font-style: italic; }
     .empty-state { text-align: center; padding: 20px; color: #2a2520; font-style: italic; font-size: 13px; }
 
-    /* Two-col grid inside cards */
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-
-    /* Error log */
-    .error-item { padding: 6px 0; border-bottom: 1px solid #0f0e0c; font-size: 12px; }
-    .error-item:last-child { border-bottom: none; }
-    .error-status { display: inline-block; min-width: 30px; color: #9a5a5a; font-weight: bold; }
-    .error-context { color: #6a6050; }
-    .error-time { color: #3a3528; float: right; }
-
     @media (max-width: 720px) {
       .admin-grid { grid-template-columns: 1fr; padding: 16px 12px 40px; }
       .card { padding: 18px; }
@@ -282,9 +335,14 @@
       .stat-row { gap: 16px; }
       .card-full { grid-column: 1; }
       .provider-grid { grid-template-columns: 1fr; }
-      .two-col { grid-template-columns: 1fr; }
-      .funnel-label { min-width: 80px; font-size: 11px; }
-      .heatmap { grid-template-columns: 30px repeat(7, 1fr); }
+      .period-selector { flex-wrap: wrap; }
+      .period-btn { padding: 8px 14px; font-size: 12px; flex: 1; min-width: 0; }
+      .period-btn:first-child { border-radius: 6px 0 0 0; }
+      .period-btn:last-child { border-radius: 0 0 6px 0; }
+      .period-btn:nth-child(3) { border-radius: 0 6px 0 0; }
+      .period-btn:nth-child(4) { border-left: 1px solid #1a1814; border-top: none; border-radius: 0 0 0 6px; }
+      .period-btn:nth-child(5) { border-top: none; }
+      .series-tabs { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -295,8 +353,14 @@
   <div class="admin-header">
     <div class="admin-title">The Great Library -- Admin</div>
     <div class="admin-subtitle">Every metric. One scroll.</div>
-    <div class="live-badge"><span class="live-dot"></span> <span id="liveCount">--</span> live now</div>
-    <div class="admin-refresh-info">Auto-refreshes every <span>15s</span> -- Last: <span id="lastRefresh">--</span></div>
+    <div class="admin-refresh-info">Auto-refreshes every <span>30s</span> -- Last: <span id="lastRefresh">--</span></div>
+    <div class="period-selector" id="periodSelector">
+      <button class="period-btn active" data-period="today">Today</button>
+      <button class="period-btn" data-period="week">This Week</button>
+      <button class="period-btn" data-period="month">This Month</button>
+      <button class="period-btn" data-period="year">This Year</button>
+      <button class="period-btn" data-period="allTime">All Time</button>
+    </div>
   </div>
 
   <div class="admin-grid" id="dashboard">
@@ -305,1045 +369,448 @@
 
 <script>
 (function() {
-  const $ = (sel, ctx) => (ctx || document).querySelector(sel);
-  const $$ = (sel, ctx) => [...(ctx || document).querySelectorAll(sel)];
+  var $ = function(sel, ctx) { return (ctx || document).querySelector(sel); };
+  var $$ = function(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); };
 
-  let metricsData = null;
-  let waitlistData = null;
-  let ebooksData = null;
-  let accountsData = null;
-  let usageData = null;
-  let analyticsData = null;
-  let sortState = {};
+  var metricsData = null, waitlistData = null, ebooksData = null, accountsData = null, usageData = null, periodsData = null;
+  var activePeriod = 'today';
+  var activeChartSeries = 'visits';
+  var sortState = {};
 
-  async function fetchAll() {
-    try {
-      const [mRes, wRes, eRes, aRes, uRes, anRes] = await Promise.all([
-        fetch('/api/admin/metrics'),
-        fetch('/api/admin/waitlist'),
-        fetch('/api/admin/ebooks'),
-        fetch('/api/admin/accounts'),
-        fetch('/api/admin/usage'),
-        fetch('/api/admin/analytics')
-      ]);
-      if (mRes.status === 403 || wRes.status === 403) {
+  // Period selector
+  $$('#periodSelector .period-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      $$('#periodSelector .period-btn').forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      activePeriod = this.dataset.period;
+      render();
+    });
+  });
+
+  function fetchAll() {
+    Promise.all([
+      fetch('/api/admin/metrics'),
+      fetch('/api/admin/waitlist'),
+      fetch('/api/admin/ebooks'),
+      fetch('/api/admin/accounts'),
+      fetch('/api/admin/usage'),
+      fetch('/api/admin/periods')
+    ]).then(function(responses) {
+      if (responses[0].status === 403 || responses[1].status === 403) {
         window.location.href = '/';
         return;
       }
-      metricsData = await mRes.json();
-      waitlistData = await wRes.json();
-      ebooksData = await eRes.json();
-      accountsData = await aRes.json();
-      usageData = await uRes.json();
-      analyticsData = await anRes.json();
+      return Promise.all(responses.map(function(r) { return r.json(); }));
+    }).then(function(data) {
+      if (!data) return;
+      metricsData = data[0];
+      waitlistData = data[1];
+      ebooksData = data[2];
+      accountsData = data[3];
+      usageData = data[4];
+      periodsData = data[5];
       render();
       $('#lastRefresh').textContent = new Date().toLocaleTimeString();
-    } catch (err) {
+    }).catch(function(err) {
       console.error('Dashboard fetch failed:', err);
-    }
+    });
   }
 
   function render() {
     if (!metricsData || !waitlistData || !ebooksData) return;
-    const d = metricsData;
-    const w = waitlistData;
-    const e = ebooksData;
-    const a = accountsData;
-    const u = usageData;
-    const an = analyticsData || {};
-    const grid = $('#dashboard');
+    var d = metricsData, w = waitlistData, e = ebooksData, a = accountsData, u = usageData;
+    var grid = $('#dashboard');
 
     renderAlertBanner(u);
-    $('#liveCount').textContent = an.liveVisitors || 0;
 
-    grid.innerHTML = `
-      ${renderRealtimeOverview(an, d)}
-      ${renderWaitlistOverview(w, d)}
-      ${renderEbookOverview(e)}
-      ${renderRetention(an)}
-      ${renderTrafficSources(an)}
-      ${renderDevicesAndBrowsers(an)}
-      ${renderDailyTrends(an)}
-      ${renderConversionFunnel(an, w)}
-      ${renderGeography(an)}
-      ${renderHeatmap(an)}
-      ${renderVisitorFeed(d)}
-      ${renderProviders(d)}
-      ${renderLlmUsage(u, d)}
-      ${renderAccountsOverview(a)}
-      ${renderSystem(d)}
-      ${renderApiUsage(d)}
-      ${renderCoverStats(d)}
-      ${renderErrorLog(an)}
-      ${renderSignupTrend(w)}
-      ${renderSurveyInsights(w)}
-      ${renderUtmCampaigns(w)}
-      ${renderWaitlistTable(w)}
-      ${renderEbookTable(e)}
-      ${renderReferrers(d)}
-    `;
+    grid.innerHTML =
+      renderPeriodOverview() +
+      renderPeriodChart() +
+      renderWaitlistOverview(w, d) +
+      renderEbookOverview(e) +
+      renderAccountsOverview(a) +
+      renderProviders(d) +
+      renderLlmUsage(u, d) +
+      renderSystem(d) +
+      renderTraffic(d) +
+      renderVisitorFeed(d) +
+      renderApiUsage(d) +
+      renderCoverStats(d) +
+      renderSurveyInsights(w) +
+      renderWaitlistTable(w) +
+      renderEbookTable(e) +
+      renderReferrers(d);
+
     bindTableSort();
     bindSearch();
     bindExport();
+    bindSeriesTabs();
   }
 
-  // --- ALERT BANNER ---
-
+  // --- Alert Banner ---
   function renderAlertBanner(u) {
-    const banner = $('#alertBanner');
-    if (!u || !u.alerts || u.alerts.length === 0) {
-      banner.classList.remove('active');
-      return;
-    }
-    const latest = u.alerts[u.alerts.length - 1];
+    var banner = $('#alertBanner');
+    if (!u || !u.alerts || u.alerts.length === 0) { banner.classList.remove('active'); return; }
+    var latest = u.alerts[u.alerts.length - 1];
     banner.textContent = latest.message;
     banner.className = 'alert-banner active ' + (latest.level === 'critical' ? '' : 'warning');
   }
 
-  // --- REAL-TIME OVERVIEW ---
+  // --- Period helpers ---
+  var periodLabels = { today: 'Today', week: 'This Week', month: 'This Month', year: 'This Year', allTime: 'All Time' };
+  var vsLabels = { today: 'vs yesterday', week: 'vs last week', month: 'vs last month', year: 'vs last year', allTime: '' };
 
-  function renderRealtimeOverview(an, d) {
-    return `
-    <div class="card card-full">
-      <div class="card-title"><span class="card-title-left"><span class="pulse"></span>Real-Time Overview</span></div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value live">${an.liveVisitors || 0}</div><div class="stat-label"><span class="pulse"></span>Active now (5 min)</div></div>
-        <div class="stat"><div class="stat-value">${an.uniqueTotal || 0}</div><div class="stat-label">Unique visitors (all time)</div></div>
-        <div class="stat"><div class="stat-value accent">${an.totalHits || 0}</div><div class="stat-label">Total page views</div></div>
-        <div class="stat"><div class="stat-value small">${d.system?.activeSessions || 0}</div><div class="stat-label">Chat sessions</div></div>
-      </div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value small">${d.pageVisits?.waitlist || 0}</div><div class="stat-label">Waitlist page</div></div>
-        <div class="stat"><div class="stat-value small">${d.pageVisits?.library || 0}</div><div class="stat-label">Library page</div></div>
-        <div class="stat"><div class="stat-value small">${d.pageVisits?.tomes || 0}</div><div class="stat-label">Tomes page</div></div>
-        <div class="stat"><div class="stat-value small">${d.pageVisits?.legal || 0}</div><div class="stat-label">Legal pages</div></div>
-        <div class="stat"><div class="stat-value small">${d.pageVisits?.admin || 0}</div><div class="stat-label">Admin page</div></div>
-      </div>
-    </div>`;
+  function trendBadge(current, previous) {
+    if (previous === null || previous === undefined) return '';
+    if (previous === 0 && current === 0) return '<span class="trend-delta neutral">--</span>';
+    if (previous === 0) return '<span class="trend-delta up">+' + current + '</span>';
+    var diff = current - previous;
+    var pctChange = Math.round((diff / previous) * 100);
+    if (diff > 0) return '<span class="trend-delta up">+' + diff + ' (+' + pctChange + '%)</span>';
+    if (diff < 0) return '<span class="trend-delta down">' + diff + ' (' + pctChange + '%)</span>';
+    return '<span class="trend-delta neutral">0</span>';
   }
 
-  // --- WAITLIST ---
+  function trendBadgeRate(current, previous, suffix) {
+    if (previous === null || previous === undefined) return '';
+    var diff = Math.round((current - previous) * 10) / 10;
+    if (diff > 0) return '<span class="trend-delta up">+' + diff + (suffix || '') + '</span>';
+    if (diff < 0) return '<span class="trend-delta down">' + diff + (suffix || '') + '</span>';
+    return '<span class="trend-delta neutral">0' + (suffix || '') + '</span>';
+  }
+
+  // --- Period Overview Card ---
+  function renderPeriodOverview() {
+    if (!periodsData) return '';
+    var p = periodsData[activePeriod];
+    if (!p) return '';
+    var label = periodLabels[activePeriod];
+    var vs = vsLabels[activePeriod];
+
+    return '<div class="card card-full">' +
+      '<div class="card-title">' + label + ' Overview' + (vs ? ' <span style="font-size:11px;color:#3a3528;text-transform:none;letter-spacing:0;font-style:italic">' + vs + '</span>' : '') + '</div>' +
+      '<div class="stat-row">' +
+        '<div class="stat"><div class="stat-value">' + p.visits.current + trendBadge(p.visits.current, p.visits.previous) + '</div><div class="stat-label">Page Views</div>' + (p.visits.previous !== null ? '<div class="vs-label">prev: ' + p.visits.previous + '</div>' : '') + '</div>' +
+        '<div class="stat"><div class="stat-value">' + p.unique.current + trendBadge(p.unique.current, p.unique.previous) + '</div><div class="stat-label">Unique Visitors</div>' + (p.unique.previous !== null ? '<div class="vs-label">prev: ' + p.unique.previous + '</div>' : '') + '</div>' +
+        '<div class="stat"><div class="stat-value">' + p.signups.current + trendBadge(p.signups.current, p.signups.previous) + '</div><div class="stat-label">New Signups</div>' + (p.signups.previous !== null ? '<div class="vs-label">prev: ' + p.signups.previous + '</div>' : '') + '</div>' +
+      '</div>' +
+      '<div class="stat-row">' +
+        '<div class="stat"><div class="stat-value small success">' + p.ebooksGenerated.current + trendBadge(p.ebooksGenerated.current, p.ebooksGenerated.previous) + '</div><div class="stat-label">Ebooks Completed</div></div>' +
+        '<div class="stat"><div class="stat-value small danger">' + p.ebooksFailed.current + trendBadge(p.ebooksFailed.current, p.ebooksFailed.previous) + '</div><div class="stat-label">Ebooks Failed</div></div>' +
+        '<div class="stat"><div class="stat-value small">' + p.conversionRate.current + '%' + trendBadgeRate(p.conversionRate.current, p.conversionRate.previous, '%') + '</div><div class="stat-label">Conversion Rate</div></div>' +
+        '<div class="stat"><div class="stat-value small">' + p.surveyRate.current + '%' + trendBadgeRate(p.surveyRate.current, p.surveyRate.previous, '%') + '</div><div class="stat-label">Survey Rate</div></div>' +
+      '</div>' +
+      '<div class="stat-row">' +
+        '<div class="stat"><div class="stat-value small">' + p.apiCalls.current + trendBadge(p.apiCalls.current, p.apiCalls.previous) + '</div><div class="stat-label">API Calls</div></div>' +
+        '<div class="stat"><div class="stat-value small' + (p.errors.current > 0 ? ' danger' : '') + '">' + p.errors.current + trendBadge(p.errors.current, p.errors.previous) + '</div><div class="stat-label">Errors</div></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // --- Period Chart Card ---
+  function renderPeriodChart() {
+    if (!periodsData) return '';
+    var p = periodsData[activePeriod];
+    if (!p || !p.bars || p.bars.length === 0) return '';
+
+    var seriesOptions = [
+      { key: 'visits', label: 'Visits', color: '#5a5038' },
+      { key: 'unique', label: 'Unique', color: '#4a6040' },
+      { key: 'signups', label: 'Signups', color: '#6a8a4a' },
+      { key: 'ebooks', label: 'Ebooks', color: '#8a7d55' },
+      { key: 'errors', label: 'Errors', color: '#7a4a4a' }
+    ];
+
+    var currentSeries = seriesOptions.find(function(s) { return s.key === activeChartSeries; }) || seriesOptions[0];
+    var values = p.bars.map(function(b) { return b[currentSeries.key] || 0; });
+    var maxVal = Math.max.apply(null, values.concat([1]));
+
+    var barsHtml = p.bars.map(function(b, i) {
+      var val = values[i];
+      var pct = Math.max(2, Math.round(val / maxVal * 100));
+      return '<div class="trend-chart-bar" style="height:' + pct + '%;background:linear-gradient(180deg,' + currentSeries.color + ',' + currentSeries.color + '88)"><div class="bar-tooltip">' + escHtml(b.label) + ': ' + val + '</div></div>';
+    }).join('');
+
+    var labelsHtml = p.bars.map(function(b) { return '<span>' + escHtml(b.label) + '</span>'; }).join('');
+
+    var tabsHtml = seriesOptions.map(function(s) {
+      return '<button class="series-tab' + (s.key === activeChartSeries ? ' active' : '') + '" data-series="' + s.key + '">' + s.label + '</button>';
+    }).join('');
+
+    return '<div class="card card-full">' +
+      '<div class="card-title">Trends -- ' + periodLabels[activePeriod] + '</div>' +
+      '<div class="series-tabs">' + tabsHtml + '</div>' +
+      '<div class="trend-chart">' + barsHtml + '</div>' +
+      '<div class="trend-chart-labels">' + labelsHtml + '</div>' +
+    '</div>';
+  }
+
+  function bindSeriesTabs() {
+    $$('.series-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        activeChartSeries = this.dataset.series;
+        render();
+      });
+    });
+  }
+
+  // --- Card renderers ---
 
   function renderWaitlistOverview(w, d) {
-    const convRate = d.pageVisits?.waitlist > 0
-      ? Math.round(w.total / d.pageVisits.waitlist * 100) : 0;
-    const surveyRate = w.surveyStats.completionRate;
-    return `
-    <div class="card">
-      <div class="card-title">Waitlist</div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value">${w.total}</div><div class="stat-label">Total signups</div></div>
-        <div class="stat"><div class="stat-value accent">${w.rate.today}</div><div class="stat-label">Today</div></div>
-        <div class="stat"><div class="stat-value accent">${w.rate.thisWeek}</div><div class="stat-label">This week</div></div>
-      </div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value small">${convRate}%</div><div class="stat-label">Visit-to-signup</div></div>
-        <div class="stat"><div class="stat-value small">${surveyRate}%</div><div class="stat-label">Survey completion</div></div>
-        <div class="stat"><div class="stat-value small">${w.surveyStats.completed}</div><div class="stat-label">Surveys done</div></div>
-      </div>
-    </div>`;
+    var convRate = d.pageVisits.waitlist > 0 ? Math.round(w.total / d.pageVisits.waitlist * 100) : 0;
+    var surveyRate = w.surveyStats.completionRate;
+    return '<div class="card">' +
+      '<div class="card-title">Waitlist</div>' +
+      '<div class="stat-row">' +
+        '<div class="stat"><div class="stat-value">' + w.total + '</div><div class="stat-label">Total signups</div></div>' +
+        '<div class="stat"><div class="stat-value accent">' + w.rate.today + '</div><div class="stat-label">Today</div></div>' +
+        '<div class="stat"><div class="stat-value accent">' + w.rate.thisWeek + '</div><div class="stat-label">This week</div></div>' +
+      '</div>' +
+      '<div class="stat-row">' +
+        '<div class="stat"><div class="stat-value small">' + convRate + '%</div><div class="stat-label">Visit-to-signup rate</div></div>' +
+        '<div class="stat"><div class="stat-value small">' + surveyRate + '%</div><div class="stat-label">Survey completion</div></div>' +
+        '<div class="stat"><div class="stat-value small">' + w.surveyStats.completed + '</div><div class="stat-label">Surveys done</div></div>' +
+      '</div>' +
+    '</div>';
   }
-
-  // --- EBOOK GENERATION ---
 
   function renderEbookOverview(e) {
-    return `
-    <div class="card">
-      <div class="card-title">Ebook Generation</div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value">${e.completed}</div><div class="stat-label">Completed</div></div>
-        <div class="stat"><div class="stat-value${e.active > 0 ? ' accent' : ''}">${e.active}</div><div class="stat-label">${e.active > 0 ? '<span class="pulse warn"></span>' : ''}In progress</div></div>
-        <div class="stat"><div class="stat-value danger">${e.failed}</div><div class="stat-label">Failed</div></div>
-      </div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value small">${e.avgDurationSeconds}s</div><div class="stat-label">Avg gen time</div></div>
-        <div class="stat"><div class="stat-value small">${e.successRate}%</div><div class="stat-label">Success rate</div></div>
-        <div class="stat"><div class="stat-value small">${e.total}</div><div class="stat-label">Total attempts</div></div>
-      </div>
-    </div>`;
+    return '<div class="card">' +
+      '<div class="card-title">Ebook Generation</div>' +
+      '<div class="stat-row">' +
+        '<div class="stat"><div class="stat-value">' + e.completed + '</div><div class="stat-label">Completed</div></div>' +
+        '<div class="stat"><div class="stat-value' + (e.active > 0 ? ' accent' : '') + '">' + e.active + '</div><div class="stat-label">' + (e.active > 0 ? '<span class="pulse warn"></span>' : '') + 'In progress</div></div>' +
+        '<div class="stat"><div class="stat-value danger">' + e.failed + '</div><div class="stat-label">Failed</div></div>' +
+      '</div>' +
+      '<div class="stat-row">' +
+        '<div class="stat"><div class="stat-value small">' + e.avgDurationSeconds + 's</div><div class="stat-label">Avg generation time</div></div>' +
+        '<div class="stat"><div class="stat-value small">' + e.successRate + '%</div><div class="stat-label">Success rate</div></div>' +
+        '<div class="stat"><div class="stat-value small">' + e.total + '</div><div class="stat-label">Total attempts</div></div>' +
+      '</div>' +
+    '</div>';
   }
-
-  // --- RETENTION ---
-
-  function renderRetention(an) {
-    const total = (an.newVisitors || 0) + (an.returningVisitors || 0);
-    const retRate = total > 0 ? Math.round(an.returningVisitors / total * 100) : 0;
-    const newPct = total > 0 ? Math.round(an.newVisitors / total * 100) : 0;
-    return `
-    <div class="card">
-      <div class="card-title">Retention</div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value success small">${an.newVisitors || 0}</div><div class="stat-label">New visitors</div></div>
-        <div class="stat"><div class="stat-value accent small">${an.returningVisitors || 0}</div><div class="stat-label">Returning</div></div>
-        <div class="stat"><div class="stat-value small">${an.bounceRate || 0}%</div><div class="stat-label">Bounce rate</div></div>
-      </div>
-      <div style="margin-top:12px;">
-        <div class="usage-bar-wrap">
-          <div class="usage-bar-header">
-            <span class="usage-bar-label">New vs returning</span>
-            <span class="usage-bar-value">${newPct}% new / ${retRate}% returning</span>
-          </div>
-          <div class="usage-bar-track" style="display:flex;overflow:hidden;border-radius:5px;">
-            <div style="height:10px;background:linear-gradient(90deg,#2a4a28,#3a6a3a);width:${newPct}%;border-radius:5px 0 0 5px;transition:width 0.6s"></div>
-            <div style="height:10px;background:linear-gradient(90deg,#4a3a28,#6a5a38);width:${retRate}%;border-radius:0 5px 5px 0;transition:width 0.6s"></div>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  }
-
-  // --- TRAFFIC SOURCES ---
-
-  function renderTrafficSources(an) {
-    const src = an.trafficSources || { direct: 0, search: 0, social: 0, referral: 0 };
-    const total = src.direct + src.search + src.social + src.referral;
-    if (total === 0) {
-      return `<div class="card"><div class="card-title">Traffic Sources</div><div class="empty-state">No traffic data yet.</div></div>`;
-    }
-    const items = [
-      { label: 'Direct', count: src.direct, color: '#5a5038' },
-      { label: 'Search', count: src.search, color: '#3a5a7a' },
-      { label: 'Social', count: src.social, color: '#7a4a6a' },
-      { label: 'Referral', count: src.referral, color: '#6a5a3a' }
-    ].sort((a, b) => b.count - a.count);
-    const maxSrc = items[0].count || 1;
-
-    return `
-    <div class="card">
-      <div class="card-title">Traffic Sources</div>
-      ${items.map(item => {
-        const pct = Math.round(item.count / total * 100);
-        return `<div class="bar-item">
-          <div class="bar-label" style="min-width:60px">${item.label}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(item.count / maxSrc * 100)}%;background:${item.color}"></div></div>
-          <div class="bar-count">${item.count} (${pct}%)</div>
-        </div>`;
-      }).join('')}
-    </div>`;
-  }
-
-  // --- DEVICES & BROWSERS ---
-
-  function renderDevicesAndBrowsers(an) {
-    const dev = an.devices || { mobile: 0, desktop: 0, tablet: 0 };
-    const totalDev = dev.mobile + dev.desktop + (dev.tablet || 0);
-    const browsers = an.browsers || [];
-    const maxBrowser = browsers.length > 0 ? browsers[0][1] : 1;
-
-    let deviceBars = '';
-    if (totalDev > 0) {
-      const devItems = [
-        { label: 'Desktop', count: dev.desktop },
-        { label: 'Mobile', count: dev.mobile },
-        { label: 'Tablet', count: dev.tablet || 0 }
-      ].filter(d => d.count > 0).sort((a, b) => b.count - a.count);
-      const maxDev = devItems[0]?.count || 1;
-      deviceBars = devItems.map(item => `
-        <div class="bar-item">
-          <div class="bar-label" style="min-width:60px">${item.label}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(item.count / maxDev * 100)}%"></div></div>
-          <div class="bar-count">${item.count} (${Math.round(item.count / totalDev * 100)}%)</div>
-        </div>
-      `).join('');
-    }
-
-    let browserBars = browsers.slice(0, 6).map(([name, count]) => `
-      <div class="bar-item">
-        <div class="bar-label" style="min-width:60px">${name}</div>
-        <div class="bar-track"><div class="bar-fill blue" style="width:${Math.round(count / maxBrowser * 100)}%"></div></div>
-        <div class="bar-count">${count}</div>
-      </div>
-    `).join('');
-
-    return `
-    <div class="card card-full">
-      <div class="card-title">Devices & Browsers</div>
-      <div class="two-col">
-        <div>
-          <div class="section-label">Device Breakdown</div>
-          ${deviceBars || '<div class="empty-state">No data yet.</div>'}
-        </div>
-        <div>
-          <div class="section-label">Browser Breakdown</div>
-          ${browserBars || '<div class="empty-state">No data yet.</div>'}
-        </div>
-      </div>
-    </div>`;
-  }
-
-  // --- DAILY TRENDS (30-day chart) ---
-
-  function renderDailyTrends(an) {
-    const trends = an.dailyTrends || [];
-    if (trends.length === 0) {
-      return `<div class="card card-full"><div class="card-title">Daily Trends</div><div class="empty-state">No trend data yet.</div></div>`;
-    }
-    const maxTotal = Math.max(...trends.map(t => t.total), 1);
-
-    const bars = trends.map(t => {
-      const h = Math.max(2, Math.round(t.total / maxTotal * 100));
-      const label = t.date.slice(5);
-      return `<div class="mini-chart-bar" style="height:${h}%">
-        <div class="tooltip">${label}: ${t.total} views, ${t.unique} unique, ${t.signups} signups</div>
-      </div>`;
-    }).join('');
-
-    const totalViews = trends.reduce((s, t) => s + t.total, 0);
-    const totalUnique = trends.reduce((s, t) => s + t.unique, 0);
-    const totalSignups = trends.reduce((s, t) => s + t.signups, 0);
-    const avgDaily = Math.round(totalViews / trends.length);
-
-    return `
-    <div class="card card-full">
-      <div class="card-title">Daily Trends (30 Days)</div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value small">${totalViews}</div><div class="stat-label">Total views</div></div>
-        <div class="stat"><div class="stat-value small">${totalUnique}</div><div class="stat-label">Total unique</div></div>
-        <div class="stat"><div class="stat-value small">${avgDaily}</div><div class="stat-label">Avg daily views</div></div>
-        <div class="stat"><div class="stat-value small">${totalSignups}</div><div class="stat-label">Total signups</div></div>
-      </div>
-      <div class="section-label" style="margin-top:16px">Page Views Per Day</div>
-      <div class="mini-chart">${bars}</div>
-    </div>`;
-  }
-
-  // --- CONVERSION FUNNEL ---
-
-  function renderConversionFunnel(an) {
-    const f = an.funnel || {};
-    const steps = [
-      { label: 'Page view', count: f.pageView || 0, color: '#3a3528' },
-      { label: 'Email focus', count: f.emailFocus || 0, color: '#3a4530' },
-      { label: 'Signup', count: f.emailSubmit || 0, color: '#3a5530' },
-      { label: 'Survey done', count: f.surveyComplete || 0, color: '#3a6530' }
-    ];
-    const maxCount = steps[0].count || 1;
-
-    if (maxCount === 0) {
-      return `<div class="card"><div class="card-title">Conversion Funnel</div><div class="empty-state">No funnel data yet.</div></div>`;
-    }
-
-    const funnelSteps = steps.map((step, i) => {
-      const pct = Math.max(5, Math.round(step.count / maxCount * 100));
-      const dropoff = i > 0 && steps[i - 1].count > 0
-        ? Math.round((1 - step.count / steps[i - 1].count) * 100) + '% drop'
-        : '';
-      return `<div class="funnel-step">
-        <div class="funnel-label">${step.label}</div>
-        <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:${pct}%;background:${step.color}">${step.count}</div></div>
-        <div class="funnel-pct">${dropoff}</div>
-      </div>`;
-    }).join('');
-
-    return `
-    <div class="card">
-      <div class="card-title">Conversion Funnel</div>
-      <div class="funnel">${funnelSteps}</div>
-    </div>`;
-  }
-
-  // --- GEOGRAPHY ---
-
-  function renderGeography(an) {
-    const countries = an.topCountries || [];
-    const cities = an.topCities || [];
-
-    if (countries.length === 0 && cities.length === 0) {
-      return `<div class="card card-full"><div class="card-title">Geography</div><div class="empty-state">No geographic data yet. Country/city data comes from proxy headers (Cloudflare/Railway).</div></div>`;
-    }
-
-    const maxCountry = countries.length > 0 ? countries[0][1] : 1;
-    const countryBars = countries.map(([country, count]) => `
-      <div class="bar-item">
-        <div class="bar-label" style="min-width:80px">${countryFlag(country)} ${country}</div>
-        <div class="bar-track"><div class="bar-fill green" style="width:${Math.round(count / maxCountry * 100)}%"></div></div>
-        <div class="bar-count">${count}</div>
-      </div>
-    `).join('');
-
-    const maxCity = cities.length > 0 ? cities[0][1] : 1;
-    const cityBars = cities.slice(0, 10).map(([city, count]) => `
-      <div class="bar-item">
-        <div class="bar-label" style="min-width:100px">${escHtml(city)}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / maxCity * 100)}%"></div></div>
-        <div class="bar-count">${count}</div>
-      </div>
-    `).join('');
-
-    return `
-    <div class="card card-full">
-      <div class="card-title">Geography</div>
-      <div class="two-col">
-        <div>
-          <div class="section-label">Visitors by Country</div>
-          ${countryBars || '<div class="empty-state">No country data.</div>'}
-        </div>
-        <div>
-          <div class="section-label">Top Cities</div>
-          ${cityBars || '<div class="empty-state">No city data.</div>'}
-        </div>
-      </div>
-    </div>`;
-  }
-
-  // --- HOURLY HEATMAP ---
-
-  function renderHeatmap(an) {
-    const heatmap = an.heatmap || [];
-    if (heatmap.length === 0) {
-      return `<div class="card"><div class="card-title">Activity Heatmap</div><div class="empty-state">No heatmap data yet.</div></div>`;
-    }
-
-    let maxVal = 0;
-    for (let h = 0; h < 24; h++) {
-      for (let d = 0; d < 7; d++) {
-        const v = heatmap[h]?.[d] || 0;
-        if (v > maxVal) maxVal = v;
-      }
-    }
-    if (maxVal === 0) maxVal = 1;
-
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    let headerCells = '<div class="heatmap-label"></div>';
-    for (let d = 0; d < 7; d++) {
-      headerCells += `<div class="heatmap-header">${dayNames[d]}</div>`;
-    }
-
-    let rows = '';
-    for (let h = 0; h < 24; h += 2) {
-      const hourLabel = String(h).padStart(2, '0') + ':00';
-      rows += `<div class="heatmap-label">${hourLabel}</div>`;
-      for (let d = 0; d < 7; d++) {
-        const v = (heatmap[h]?.[d] || 0) + (heatmap[h + 1]?.[d] || 0);
-        const intensity = v / (maxVal * 2);
-        const r = Math.round(58 + intensity * 40);
-        const g = Math.round(53 + intensity * 60);
-        const b = Math.round(40 + intensity * 10);
-        const a = Math.max(0.1, Math.min(1, 0.15 + intensity * 0.85));
-        rows += `<div class="heatmap-cell" style="background:rgba(${r},${g},${b},${a})">
-          <div class="tooltip">${dayNames[d]} ${hourLabel} UTC: ${v} visits</div>
-        </div>`;
-      }
-    }
-
-    return `
-    <div class="card">
-      <div class="card-title">Activity Heatmap (UTC)</div>
-      <div class="heatmap">
-        ${headerCells}
-        ${rows}
-      </div>
-    </div>`;
-  }
-
-  // --- VISITOR FEED ---
-
-  function renderVisitorFeed(d) {
-    const visitors = d.recentVisitors || [];
-    if (visitors.length === 0) {
-      return `<div class="card card-full"><div class="card-title"><span class="card-title-left"><span class="pulse"></span>Live Visitor Feed</span></div><div class="empty-state">No visitor data yet.</div></div>`;
-    }
-
-    const now = Date.now();
-    const feedItems = visitors.slice(0, 50).map(v => {
-      const ago = now - new Date(v.timestamp).getTime();
-      const isRecent = ago < 300000;
-      const timeAgo = ago < 60000 ? 'just now' : ago < 3600000 ? Math.floor(ago/60000) + 'm ago' : ago < 86400000 ? Math.floor(ago/3600000) + 'h ago' : Math.floor(ago/86400000) + 'd ago';
-      const geo = [v.city, v.region, v.country].filter(Boolean).join(', ') || v.ip;
-      const srcClass = v.source || 'direct';
-      return `<div class="visitor-item">
-        <div class="visitor-dot${isRecent ? ' recent' : ''}"></div>
-        <div class="visitor-page">${escHtml(v.page)}</div>
-        <div class="visitor-geo">${v.country ? countryFlag(v.country) + ' ' : ''}${escHtml(geo)}</div>
-        <span class="visitor-source-tag ${srcClass}">${srcClass}</span>
-        <div class="visitor-device">${v.browser || (v.isMobile ? 'Mobile' : 'Desktop')}</div>
-        ${v.isReturning ? '<span class="visitor-returning">returning</span>' : ''}
-        <div class="visitor-time">${timeAgo}</div>
-      </div>`;
-    }).join('');
-
-    return `
-    <div class="card card-full">
-      <div class="card-title"><span class="card-title-left"><span class="pulse"></span>Live Visitor Feed</span></div>
-      <div class="visitor-feed">${feedItems}</div>
-    </div>`;
-  }
-
-  // --- PROVIDERS ---
-
-  function renderProviders(d) {
-    const p = d.providers || {};
-    function providerCard(name, label, info) {
-      if (!info) return '';
-      const statusClass = info.active ? 'active-provider' : (info.configured ? '' : 'not-configured');
-      const badge = info.active ? '<span class="provider-badge active">ACTIVE</span>' :
-                    info.configured ? '<span class="provider-badge configured">Ready</span>' :
-                    '<span class="provider-badge off">Not configured</span>';
-      return `<div class="provider-card ${statusClass}">
-        ${badge}
-        <div class="provider-name">${label}</div>
-        <div class="provider-detail">Model: ${escHtml(info.model)}</div>
-        <div class="provider-detail">Auth: ${info.auth}</div>
-        ${info.budget ? `<div class="provider-detail">Budget: ${info.budget}</div>` : ''}
-        ${info.limits ? `<div class="provider-detail">${info.limits.rpm ? info.limits.rpm + ' RPM' : ''}${info.limits.tpm ? ' / ' + fmtNum(info.limits.tpm) + ' TPM' : ''}${info.limits.tpd ? ' / ' + fmtNum(info.limits.tpd) + ' TPD' : ''}</div>` : ''}
-      </div>`;
-    }
-
-    const orc = d.openRouterCosts || {};
-    let orBudgetHtml = '';
-    if (orc.creditsStarting) {
-      const remaining = orc.creditsRemaining || 0;
-      const pct = Math.round((orc.creditsSpent || 0) / orc.creditsStarting * 100);
-      const barColor = pct > 80 ? 'red' : pct > 60 ? 'yellow' : 'green';
-      orBudgetHtml = `<div style="margin-top:16px;">
-        <div class="section-label">OpenRouter Budget</div>
-        <div class="usage-bar-wrap">
-          <div class="usage-bar-header">
-            <span class="usage-bar-label">Credits spent</span>
-            <span class="usage-bar-value">$${(orc.creditsSpent || 0).toFixed(4)} / $${orc.creditsStarting.toFixed(2)} ($${remaining.toFixed(4)} left)</span>
-          </div>
-          <div class="usage-bar-track"><div class="usage-bar-fill ${barColor}" style="width:${pct}%"></div></div>
-        </div>
-        <div style="font-size:11px;color:#3a3528;margin-top:4px;">
-          Avg cost/request: $${(orc.avgCostPerRequest || 0).toFixed(6)}
-          ${orc.estimatedRequestsRemaining !== 'unlimited' ? ' -- ~' + orc.estimatedRequestsRemaining + ' requests remaining' : ''}
-        </div>
-      </div>`;
-    }
-
-    return `
-    <div class="card card-full">
-      <div class="card-title"><span class="card-title-left"><span class="pulse"></span>LLM Providers</span></div>
-      <div class="provider-grid">
-        ${providerCard('gemini', 'Gemini', p.gemini)}
-        ${providerCard('openai', 'OpenAI', p.openai)}
-        ${providerCard('openrouter', 'OpenRouter', p.openrouter)}
-      </div>
-      ${orBudgetHtml}
-    </div>`;
-  }
-
-  // --- LLM USAGE ---
-
-  function renderLlmUsage(u) {
-    if (!u) return '';
-    const today = u.today || {};
-    const allTime = u.allTime || {};
-
-    let todayBars = '';
-    const providerConfigs = {
-      gemini: { label: 'Gemini', tokenLimit: 1000000 },
-      openai: { label: 'OpenAI', tokenLimit: 2500000 },
-      openrouter: { label: 'OpenRouter', tokenLimit: null }
-    };
-
-    for (const [prov, config] of Object.entries(providerConfigs)) {
-      const usage = today[prov];
-      if (!usage && !allTime[prov]) continue;
-      const calls = usage ? usage.calls : 0;
-      const tokens = usage ? usage.tokens : 0;
-      const errors = usage ? usage.errors : 0;
-      const avgLatency = usage && usage.calls > 0 ? Math.round(usage.latencyMs / usage.calls) : 0;
-      const atCalls = allTime[prov] ? allTime[prov].calls : 0;
-      const atTokens = allTime[prov] ? allTime[prov].tokens : 0;
-      const atErrors = allTime[prov] ? allTime[prov].errors : 0;
-
-      let tokenBar = '';
-      if (config.tokenLimit) {
-        const pct = Math.min(100, Math.round(tokens / config.tokenLimit * 100));
-        const barColor = pct > 90 ? 'red' : pct > 70 ? 'yellow' : 'green';
-        tokenBar = `
-          <div class="usage-bar-wrap">
-            <div class="usage-bar-header">
-              <span class="usage-bar-label">Tokens today</span>
-              <span class="usage-bar-value">${fmtNum(tokens)} / ${fmtNum(config.tokenLimit)}</span>
-            </div>
-            <div class="usage-bar-track"><div class="usage-bar-fill ${barColor}" style="width:${pct}%"></div></div>
-          </div>`;
-      }
-
-      todayBars += `
-        <div style="margin-bottom:16px;">
-          <div style="color:#8a7d55;font-size:13px;font-weight:bold;margin-bottom:8px;">${config.label}</div>
-          <div class="stat-row" style="margin-bottom:8px;">
-            <div class="stat"><div class="stat-value small">${calls}</div><div class="stat-label">Calls today</div></div>
-            <div class="stat"><div class="stat-value small">${fmtNum(tokens)}</div><div class="stat-label">Tokens today</div></div>
-            <div class="stat"><div class="stat-value small${errors > 0 ? ' danger' : ''}">${errors}</div><div class="stat-label">Errors today</div></div>
-            <div class="stat"><div class="stat-value small">${avgLatency}ms</div><div class="stat-label">Avg latency</div></div>
-          </div>
-          ${tokenBar}
-          <div style="font-size:11px;color:#3a3528;margin-top:4px;">All time: ${fmtNum(atCalls)} calls, ${fmtNum(atTokens)} tokens, ${atErrors} errors</div>
-        </div>`;
-    }
-
-    const last7 = (u.last7Days || []).reverse();
-    let chartHtml = '';
-    if (last7.length > 0) {
-      const maxCalls = Math.max(...last7.map(dy => {
-        let total = 0;
-        for (const p of Object.values(dy.usage || {})) total += p.calls || 0;
-        return total;
-      }), 1);
-      chartHtml = `<div style="margin-top:16px;">
-        <div class="section-label">Last 7 Days (API Calls)</div>
-        ${last7.map(day => {
-          let total = 0;
-          for (const p of Object.values(day.usage || {})) total += p.calls || 0;
-          const pct = Math.round(total / maxCalls * 100);
-          const label = day.date.slice(5);
-          return `<div class="bar-item">
-            <div class="bar-label" style="min-width:50px">${label}</div>
-            <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-            <div class="bar-count">${total}</div>
-          </div>`;
-        }).join('')}
-      </div>`;
-    }
-
-    let alertsHtml = '';
-    if (u.alerts && u.alerts.length > 0) {
-      alertsHtml = `<div style="margin-top:16px;">
-        <div class="section-label" style="color:#7a4a4a">Budget Alerts</div>
-        ${u.alerts.slice(-5).reverse().map(a => `
-          <div style="font-size:12px;color:${a.level === 'critical' ? '#9a5a5a' : '#b8a86a'};padding:4px 0;border-bottom:1px solid #0f0e0c;">
-            ${formatTime(a.timestamp)} -- ${escHtml(a.message)}
-          </div>
-        `).join('')}
-      </div>`;
-    }
-
-    return `
-    <div class="card card-full">
-      <div class="card-title">LLM Usage & Budget</div>
-      ${todayBars || '<div class="empty-state">No LLM calls tracked yet.</div>'}
-      ${chartHtml}
-      ${alertsHtml}
-    </div>`;
-  }
-
-  // --- ACCOUNTS ---
 
   function renderAccountsOverview(a) {
     if (!a || !a.accounts) return '';
-    const members = a.accounts.filter(x => x.membershipStatus === 'member').length;
-    const withGoogle = a.accounts.filter(x => x.providers?.includes('google')).length;
-    const withMs = a.accounts.filter(x => x.providers?.includes('microsoft')).length;
-    const withEmail = a.accounts.filter(x => x.providers?.includes('email')).length;
-    const withWaitlist = a.accounts.filter(x => x.waitlistLinked).length;
-    const totalTomes = a.accounts.reduce((s, x) => s + (x.tomesCount || 0), 0);
-    const rows = a.accounts.slice(0, 50).map(u => `<tr>
-      <td title="${escHtml(u.email)}">${escHtml(u.email)}</td>
-      <td>${(u.providers||[]).join(', ')}</td>
-      <td>${u.tomesCount||0}</td>
-      <td>${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-'}</td>
-    </tr>`).join('');
-    return `<div class="card card-full">
-      <div class="card-title">Accounts (${a.total})</div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value">${a.total}</div><div class="stat-label">Total</div></div>
-        <div class="stat"><div class="stat-value accent">${members}</div><div class="stat-label">Members</div></div>
-        <div class="stat"><div class="stat-value small">${withGoogle}</div><div class="stat-label">Google</div></div>
-        <div class="stat"><div class="stat-value small">${withMs}</div><div class="stat-label">Microsoft</div></div>
-        <div class="stat"><div class="stat-value small">${withEmail}</div><div class="stat-label">Email</div></div>
-        <div class="stat"><div class="stat-value small">${withWaitlist}</div><div class="stat-label">Waitlist-linked</div></div>
-        <div class="stat"><div class="stat-value small">${totalTomes}</div><div class="stat-label">Total tomes</div></div>
-      </div>
-      ${a.accounts.length > 0 ? `<div class="data-table-wrap"><table class="data-table" style="table-layout:fixed;">
-        <colgroup><col style="width:40%"><col style="width:20%"><col style="width:15%"><col style="width:25%"></colgroup>
-        <thead><tr><th>Email</th><th>Provider</th><th>Tomes</th><th>Joined</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>` : ''}
-    </div>`;
+    var members = a.accounts.filter(function(x) { return x.membershipStatus === 'member'; }).length;
+    var withGoogle = a.accounts.filter(function(x) { return x.providers && x.providers.indexOf('google') >= 0; }).length;
+    var withMs = a.accounts.filter(function(x) { return x.providers && x.providers.indexOf('microsoft') >= 0; }).length;
+    var withEmail = a.accounts.filter(function(x) { return x.providers && x.providers.indexOf('email') >= 0; }).length;
+    var withWaitlist = a.accounts.filter(function(x) { return x.waitlistLinked; }).length;
+    var totalTomes = a.accounts.reduce(function(s, x) { return s + (x.tomesCount || 0); }, 0);
+    var rows = a.accounts.slice(0, 50).map(function(u) { return '<tr><td title="' + escHtml(u.email) + '">' + escHtml(u.email) + '</td><td>' + (u.providers||[]).join(', ') + '</td><td>' + (u.tomesCount||0) + '</td><td>' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-') + '</td></tr>'; }).join('');
+    return '<div class="card card-full"><div class="card-title">Accounts (' + a.total + ')</div>' +
+      '<div class="stat-row"><div class="stat"><div class="stat-value">' + a.total + '</div><div class="stat-label">Total</div></div><div class="stat"><div class="stat-value accent">' + members + '</div><div class="stat-label">Members ($49)</div></div><div class="stat"><div class="stat-value small">' + withGoogle + '</div><div class="stat-label">Google</div></div><div class="stat"><div class="stat-value small">' + withMs + '</div><div class="stat-label">Microsoft</div></div><div class="stat"><div class="stat-value small">' + withEmail + '</div><div class="stat-label">Email</div></div><div class="stat"><div class="stat-value small">' + withWaitlist + '</div><div class="stat-label">Waitlist-linked</div></div><div class="stat"><div class="stat-value small">' + totalTomes + '</div><div class="stat-label">Total tomes</div></div></div>' +
+      (a.accounts.length > 0 ? '<div class="data-table-wrap"><table class="data-table" style="table-layout:fixed;"><colgroup><col style="width:40%"><col style="width:20%"><col style="width:15%"><col style="width:25%"></colgroup><thead><tr><th>Email</th><th>Provider</th><th>Tomes</th><th>Joined</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '') +
+    '</div>';
   }
 
-  // --- SYSTEM ---
-
-  function renderSystem(d) {
-    const sys = d.system;
-    const mem = sys.memoryMB;
-    return `
-    <div class="card">
-      <div class="card-title"><span class="card-title-left"><span class="pulse"></span>System</span></div>
-      <div class="sys-row"><span class="sys-label">Uptime</span><span class="sys-value">${sys.uptimeHuman}</span></div>
-      <div class="sys-row"><span class="sys-label">Active provider</span><span class="sys-value">${sys.activeProvider}</span></div>
-      <div class="sys-row"><span class="sys-label">Active model</span><span class="sys-value">${sys.activeModel}</span></div>
-      <div class="sys-row"><span class="sys-label">Active sessions</span><span class="sys-value">${sys.activeSessions}</span></div>
-      <div class="sys-row"><span class="sys-label">Memory (RSS)</span><span class="sys-value">${mem.rss} MB</span></div>
-      <div class="sys-row"><span class="sys-label">Heap</span><span class="sys-value">${mem.heapUsed} / ${mem.heapTotal} MB</span></div>
-      <div class="sys-row"><span class="sys-label">Node</span><span class="sys-value">${sys.nodeVersion}</span></div>
-      <div class="sys-row"><span class="sys-label">Platform</span><span class="sys-value">${sys.platform}</span></div>
-      <div class="sys-row"><span class="sys-label">Started</span><span class="sys-value">${formatTime(d.serverStartTime)}</span></div>
-    </div>`;
+  function renderProviders(d) {
+    var p = d.providers || {};
+    function pc(name, label, info) {
+      if (!info) return '';
+      var sc = info.active ? 'active-provider' : (info.configured ? '' : 'not-configured');
+      var badge = info.active ? '<span class="provider-badge active">ACTIVE</span>' : info.configured ? '<span class="provider-badge configured">Ready</span>' : '<span class="provider-badge off">Not configured</span>';
+      return '<div class="provider-card ' + sc + '">' + badge + '<div class="provider-name">' + label + '</div><div class="provider-detail">Model: ' + escHtml(info.model) + '</div><div class="provider-detail">Auth: ' + info.auth + '</div>' + (info.budget ? '<div class="provider-detail">Budget: ' + info.budget + '</div>' : '') + (info.limits ? '<div class="provider-detail">' + (info.limits.rpm ? info.limits.rpm + ' RPM' : '') + (info.limits.tpm ? ' / ' + fmtNum(info.limits.tpm) + ' TPM' : '') + (info.limits.tpd ? ' / ' + fmtNum(info.limits.tpd) + ' TPD' : '') + '</div>' : '') + '</div>';
+    }
+    return '<div class="card card-full"><div class="card-title"><span class="pulse"></span>LLM Providers</div><div class="provider-grid">' + pc('gemini', 'Gemini', p.gemini) + pc('openai', 'OpenAI', p.openai) + pc('openrouter', 'OpenRouter', p.openrouter) + '</div></div>';
   }
 
-  // --- API CALLS ---
+  function renderLlmUsage(u, d) {
+    if (!u) return '';
+    var today = u.today || {};
+    var allTime = u.allTime || {};
+    var todayBars = '';
+    var providerConfigs = { gemini: { label: 'Gemini', tokenLimit: 1000000 }, openai: { label: 'OpenAI', tokenLimit: 2500000 }, openrouter: { label: 'OpenRouter', tokenLimit: null } };
+    for (var prov in providerConfigs) {
+      var config = providerConfigs[prov];
+      var usage = today[prov];
+      if (!usage && !allTime[prov]) continue;
+      var calls = usage ? usage.calls : 0, tokens = usage ? usage.tokens : 0, errors = usage ? usage.errors : 0;
+      var avgLatency = usage && usage.calls > 0 ? Math.round(usage.latencyMs / usage.calls) : 0;
+      var atCalls = allTime[prov] ? allTime[prov].calls : 0, atTokens = allTime[prov] ? allTime[prov].tokens : 0, atErrors = allTime[prov] ? allTime[prov].errors : 0;
+      var tokenBar = '';
+      if (config.tokenLimit) {
+        var pct = Math.min(100, Math.round(tokens / config.tokenLimit * 100));
+        var barColor = pct > 90 ? 'red' : pct > 70 ? 'yellow' : 'green';
+        tokenBar = '<div class="usage-bar-wrap"><div class="usage-bar-header"><span class="usage-bar-label">Tokens today</span><span class="usage-bar-value">' + fmtNum(tokens) + ' / ' + fmtNum(config.tokenLimit) + '</span></div><div class="usage-bar-track"><div class="usage-bar-fill ' + barColor + '" style="width:' + pct + '%"></div></div></div>';
+      }
+      todayBars += '<div style="margin-bottom:16px;"><div style="color:#8a7d55;font-size:13px;font-weight:bold;margin-bottom:8px;">' + config.label + '</div><div class="stat-row" style="margin-bottom:8px;"><div class="stat"><div class="stat-value small">' + calls + '</div><div class="stat-label">Calls today</div></div><div class="stat"><div class="stat-value small">' + fmtNum(tokens) + '</div><div class="stat-label">Tokens today</div></div><div class="stat"><div class="stat-value small' + (errors > 0 ? ' danger' : '') + '">' + errors + '</div><div class="stat-label">Errors today</div></div><div class="stat"><div class="stat-value small">' + avgLatency + 'ms</div><div class="stat-label">Avg latency</div></div></div>' + tokenBar + '<div style="font-size:11px;color:#3a3528;margin-top:4px;">All time: ' + fmtNum(atCalls) + ' calls, ' + fmtNum(atTokens) + ' tokens, ' + atErrors + ' errors</div></div>';
+    }
+    var last7 = (u.last7Days || []).slice().reverse();
+    var chartHtml = '';
+    if (last7.length > 0) {
+      var maxCalls = Math.max.apply(null, last7.map(function(dy) { var t = 0; for (var pp in (dy.usage || {})) t += (dy.usage[pp].calls || 0); return t; }).concat([1]));
+      chartHtml = '<div style="margin-top:16px;"><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Last 7 Days (API Calls)</div>' + last7.map(function(day) { var t = 0; for (var pp in (day.usage || {})) t += (day.usage[pp].calls || 0); return '<div class="bar-item"><div class="bar-label" style="min-width:50px">' + day.date.slice(5) + '</div><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(t / maxCalls * 100) + '%"></div></div><div class="bar-count">' + t + '</div></div>'; }).join('') + '</div>';
+    }
+    var alertsHtml = '';
+    if (u.alerts && u.alerts.length > 0) {
+      alertsHtml = '<div style="margin-top:16px;"><div style="color:#7a4a4a;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Budget Alerts</div>' + u.alerts.slice(-5).reverse().map(function(a) { return '<div style="font-size:12px;color:' + (a.level === 'critical' ? '#9a5a5a' : '#b8a86a') + ';padding:4px 0;border-bottom:1px solid #0f0e0c;">' + formatTime(a.timestamp) + ' -- ' + escHtml(a.message) + '</div>'; }).join('') + '</div>';
+    }
+    return '<div class="card card-full"><div class="card-title">LLM Usage & Budget</div>' + (todayBars || '<div class="empty-state">No LLM calls tracked yet.</div>') + chartHtml + alertsHtml + '</div>';
+  }
 
   function renderApiUsage(d) {
-    const calls = d.apiCalls;
-    const total = Object.values(calls).reduce((s, v) => s + v, 0);
-    const maxCall = Math.max(...Object.values(calls), 1);
-    const bars = Object.entries(calls).sort((a, b) => b[1] - a[1]).map(([name, count]) => `
-      <div class="bar-item">
-        <div class="bar-label">${name}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / maxCall * 100)}%"></div></div>
-        <div class="bar-count">${count}</div>
-      </div>
-    `).join('');
-    return `
-    <div class="card">
-      <div class="card-title">API Calls</div>
-      <div class="stat-row"><div class="stat"><div class="stat-value">${total}</div><div class="stat-label">Total API calls</div></div></div>
-      <div class="bar-group">${bars}</div>
-    </div>`;
+    var calls = d.apiCalls;
+    var total = Object.values(calls).reduce(function(s, v) { return s + v; }, 0);
+    var maxCall = Math.max.apply(null, Object.values(calls).concat([1]));
+    var bars = Object.entries(calls).sort(function(a, b) { return b[1] - a[1]; }).map(function(e) { return '<div class="bar-item"><div class="bar-label">' + e[0] + '</div><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(e[1] / maxCall * 100) + '%"></div></div><div class="bar-count">' + e[1] + '</div></div>'; }).join('');
+    return '<div class="card"><div class="card-title">API Calls</div><div class="stat-row"><div class="stat"><div class="stat-value">' + total + '</div><div class="stat-label">Total API calls</div></div></div><div class="bar-group">' + bars + '</div></div>';
   }
 
-  // --- COVER STATS ---
+  function renderSystem(d) {
+    var sys = d.system, mem = sys.memoryMB;
+    return '<div class="card"><div class="card-title"><span class="pulse"></span>System</div>' +
+      '<div class="sys-row"><span class="sys-label">Uptime</span><span class="sys-value">' + sys.uptimeHuman + '</span></div>' +
+      '<div class="sys-row"><span class="sys-label">Active provider</span><span class="sys-value">' + sys.activeProvider + '</span></div>' +
+      '<div class="sys-row"><span class="sys-label">Active model</span><span class="sys-value">' + sys.activeModel + '</span></div>' +
+      '<div class="sys-row"><span class="sys-label">Active sessions</span><span class="sys-value">' + sys.activeSessions + '</span></div>' +
+      '<div class="sys-row"><span class="sys-label">Memory (RSS)</span><span class="sys-value">' + mem.rss + ' MB</span></div>' +
+      '<div class="sys-row"><span class="sys-label">Heap</span><span class="sys-value">' + mem.heapUsed + ' / ' + mem.heapTotal + ' MB</span></div>' +
+      '<div class="sys-row"><span class="sys-label">Node</span><span class="sys-value">' + sys.nodeVersion + '</span></div>' +
+      '<div class="sys-row"><span class="sys-label">Platform</span><span class="sys-value">' + sys.platform + '</span></div>' +
+      '<div class="sys-row"><span class="sys-label">Started</span><span class="sys-value">' + formatTime(d.serverStartTime) + '</span></div>' +
+    '</div>';
+  }
+
+  function renderTraffic(d) {
+    var errors = d.errors;
+    return '<div class="card"><div class="card-title">Traffic & Errors</div>' +
+      '<div class="stat-row"><div class="stat"><div class="stat-value">' + d.pageVisits.waitlist + '</div><div class="stat-label">Waitlist visits</div></div><div class="stat"><div class="stat-value">' + d.pageVisits.library + '</div><div class="stat-label">Library visits</div></div><div class="stat"><div class="stat-value">' + d.uniqueVisitors + '</div><div class="stat-label">Unique IPs</div></div></div>' +
+      '<div class="stat-row"><div class="stat"><div class="stat-value small">' + d.devices.mobile + '</div><div class="stat-label">Mobile hits</div></div><div class="stat"><div class="stat-value small">' + d.devices.desktop + '</div><div class="stat-label">Desktop hits</div></div></div>' +
+      '<div class="stat-row" style="margin-top:12px;"><div class="stat"><div class="stat-value' + (errors.total > 0 ? ' danger' : '') + ' small">' + errors.total + '</div><div class="stat-label">Total errors</div></div><div class="stat"><div class="stat-value danger small">' + errors.e500 + '</div><div class="stat-label">500s</div></div><div class="stat"><div class="stat-value danger small">' + errors.e429 + '</div><div class="stat-label">429s (rate limited)</div></div></div>' +
+    '</div>';
+  }
+
+  function renderVisitorFeed(d) {
+    var visitors = d.recentVisitors || [];
+    var countryStats = {};
+    for (var ip in (d.visitors || {})) { var v = d.visitors[ip]; var c = v.country || 'Unknown'; if (!countryStats[c]) countryStats[c] = { count: 0, hits: 0 }; countryStats[c].count++; countryStats[c].hits += v.hits || 1; }
+    var topCountries = Object.entries(countryStats).sort(function(a, b) { return b[1].count - a[1].count; }).slice(0, 10);
+    var maxCC = topCountries.length > 0 ? topCountries[0][1].count : 1;
+    var countryBars = '';
+    if (topCountries.length > 0 && !(topCountries.length === 1 && topCountries[0][0] === 'Unknown')) {
+      countryBars = '<div style="margin-bottom:20px;"><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Visitors by Country</div>' + topCountries.filter(function(e) { return e[0] !== 'Unknown'; }).map(function(e) { return '<div class="bar-item"><div class="bar-label" style="min-width:60px">' + countryFlag(e[0]) + ' ' + e[0] + '</div><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(e[1].count / maxCC * 100) + '%"></div></div><div class="bar-count">' + e[1].count + '</div></div>'; }).join('') + '</div>';
+    }
+    var now = Date.now();
+    var feedItems = visitors.slice(0, 30).map(function(v) {
+      var ago = now - new Date(v.timestamp).getTime();
+      var isRecent = ago < 300000;
+      var timeAgo = ago < 60000 ? 'just now' : ago < 3600000 ? Math.floor(ago/60000) + 'm ago' : ago < 86400000 ? Math.floor(ago/3600000) + 'h ago' : Math.floor(ago/86400000) + 'd ago';
+      var geo = [v.city, v.region, v.country].filter(Boolean).join(', ') || v.ip;
+      return '<div class="visitor-item"><div class="visitor-dot' + (isRecent ? ' recent' : '') + '"></div><div class="visitor-page">' + escHtml(v.page) + '</div><div class="visitor-geo">' + (v.country ? countryFlag(v.country) + ' ' : '') + escHtml(geo) + '</div><div class="visitor-device">' + (v.isMobile ? 'Mobile' : 'Desktop') + '</div><div class="visitor-time">' + timeAgo + '</div></div>';
+    }).join('');
+    return '<div class="card card-full"><div class="card-title"><span class="pulse"></span>Live Visitors</div>' + countryBars + '<div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Recent Activity</div><div class="visitor-feed">' + (feedItems || '<div class="empty-state">No visitor data yet.</div>') + '</div></div>';
+  }
 
   function renderCoverStats(d) {
-    const c = d.covers;
-    const total = c.geminiSuccess + c.imagenFallback + c.failed;
-    if (total === 0) {
-      return `<div class="card"><div class="card-title">Cover Generation</div><div class="empty-state">No covers generated yet.</div></div>`;
-    }
-    return `
-    <div class="card">
-      <div class="card-title">Cover Generation</div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value success small">${c.geminiSuccess}</div><div class="stat-label">Gemini (direct)</div></div>
-        <div class="stat"><div class="stat-value accent small">${c.imagenFallback}</div><div class="stat-label">Imagen fallback</div></div>
-        <div class="stat"><div class="stat-value danger small">${c.failed}</div><div class="stat-label">Failed</div></div>
-      </div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value small">${Math.round(c.imagenFallback / total * 100)}%</div><div class="stat-label">Fallback rate</div></div>
-        <div class="stat"><div class="stat-value small">${Math.round(c.failed / total * 100)}%</div><div class="stat-label">Failure rate</div></div>
-      </div>
-    </div>`;
+    var c = d.covers, total = c.geminiSuccess + c.imagenFallback + c.failed;
+    if (total === 0) return '<div class="card"><div class="card-title">Cover Generation</div><div class="empty-state">No covers generated yet.</div></div>';
+    return '<div class="card"><div class="card-title">Cover Generation</div><div class="stat-row"><div class="stat"><div class="stat-value success small">' + c.geminiSuccess + '</div><div class="stat-label">Gemini (direct)</div></div><div class="stat"><div class="stat-value accent small">' + c.imagenFallback + '</div><div class="stat-label">Imagen fallback</div></div><div class="stat"><div class="stat-value danger small">' + c.failed + '</div><div class="stat-label">Failed</div></div></div><div class="stat-row"><div class="stat"><div class="stat-value small">' + Math.round(c.imagenFallback / total * 100) + '%</div><div class="stat-label">Fallback rate</div></div><div class="stat"><div class="stat-value small">' + Math.round(c.failed / total * 100) + '%</div><div class="stat-label">Failure rate</div></div></div></div>';
   }
-
-  // --- ERROR LOG ---
-
-  function renderErrorLog(an) {
-    const errors = an.recentErrors || [];
-    return `
-    <div class="card">
-      <div class="card-title">Errors</div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value${(metricsData?.errors?.total || 0) > 0 ? ' danger' : ''} small">${metricsData?.errors?.total || 0}</div><div class="stat-label">Total errors</div></div>
-        <div class="stat"><div class="stat-value danger small">${metricsData?.errors?.e500 || 0}</div><div class="stat-label">500s</div></div>
-        <div class="stat"><div class="stat-value danger small">${metricsData?.errors?.e429 || 0}</div><div class="stat-label">429s</div></div>
-      </div>
-      ${errors.length > 0 ? `
-        <div class="section-label" style="margin-top:16px">Recent Errors</div>
-        <div style="max-height:200px;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;">
-          ${errors.map(e => `<div class="error-item">
-            <span class="error-status">${e.status}</span>
-            <span class="error-context">${escHtml(e.context)}</span>
-            <span class="error-time">${formatTime(e.timestamp)}</span>
-          </div>`).join('')}
-        </div>
-      ` : '<div class="empty-state" style="margin-top:12px">No recent errors.</div>'}
-    </div>`;
-  }
-
-  // --- SIGNUP TREND ---
-
-  function renderSignupTrend(w) {
-    const trend = w.signupTrend || [];
-    if (trend.length === 0 || trend.every(t => t.count === 0)) return '';
-    const maxCount = Math.max(...trend.map(t => t.count), 1);
-
-    const bars = trend.map(t => {
-      const h = Math.max(2, Math.round(t.count / maxCount * 100));
-      const label = t.date.slice(5);
-      return `<div class="mini-chart-bar" style="height:${h}%${t.count > 0 ? '' : ';background:#141210'}">
-        <div class="tooltip">${label}: ${t.count} signups</div>
-      </div>`;
-    }).join('');
-
-    const totalMonth = trend.reduce((s, t) => s + t.count, 0);
-    const avgDaily = (totalMonth / trend.length).toFixed(1);
-    const bestDay = trend.reduce((best, t) => t.count > best.count ? t : best, { count: 0, date: '' });
-
-    return `
-    <div class="card card-full">
-      <div class="card-title">Signup Trend (30 Days)</div>
-      <div class="stat-row">
-        <div class="stat"><div class="stat-value small">${totalMonth}</div><div class="stat-label">30-day signups</div></div>
-        <div class="stat"><div class="stat-value small">${avgDaily}</div><div class="stat-label">Avg per day</div></div>
-        <div class="stat"><div class="stat-value small">${bestDay.count}</div><div class="stat-label">Best day (${bestDay.date ? bestDay.date.slice(5) : '--'})</div></div>
-      </div>
-      <div class="section-label" style="margin-top:16px">Signups Per Day</div>
-      <div class="mini-chart">${bars}</div>
-    </div>`;
-  }
-
-  // --- SURVEY INSIGHTS ---
 
   function renderSurveyInsights(w) {
-    const stats = w.surveyStats;
-    const topics = stats.topTopics || [];
-    const maxTopicCount = topics.length > 0 ? topics[0][1] : 1;
-    const topicBars = topics.slice(0, 10).map(([name, count]) => `
-      <div class="bar-item">
-        <div class="bar-label" style="min-width:120px">${name}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / maxTopicCount * 100)}%"></div></div>
-        <div class="bar-count">${count}</div>
-      </div>
-    `).join('');
-
-    const payEntries = Object.entries(stats.wouldPay || {});
-    const payBars = payEntries.map(([answer, count]) => `
-      <div class="bar-item">
-        <div class="bar-label">${answer}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / Math.max(...payEntries.map(e => e[1]), 1) * 100)}%"></div></div>
-        <div class="bar-count">${count}</div>
-      </div>
-    `).join('');
-
-    const fmtEntries = Object.entries(stats.formats || {});
-    const fmtBars = fmtEntries.map(([fmt, count]) => `
-      <div class="bar-item">
-        <div class="bar-label">${fmt}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / Math.max(...fmtEntries.map(e => e[1]), 1) * 100)}%"></div></div>
-        <div class="bar-count">${count}</div>
-      </div>
-    `).join('');
-
-    const roleEntries = Object.entries(stats.roles || {});
-    const roleBars = roleEntries.map(([role, count]) => `
-      <div class="bar-item">
-        <div class="bar-label">${role}</div>
-        <div class="bar-track"><div class="bar-fill orange" style="width:${Math.round(count / Math.max(...roleEntries.map(e => e[1]), 1) * 100)}%"></div></div>
-        <div class="bar-count">${count}</div>
-      </div>
-    `).join('');
-
-    const sourceEntries = Object.entries(stats.sources || {});
-    const sourceBars = sourceEntries.map(([src, count]) => `
-      <div class="bar-item">
-        <div class="bar-label">${src}</div>
-        <div class="bar-track"><div class="bar-fill blue" style="width:${Math.round(count / Math.max(...sourceEntries.map(e => e[1]), 1) * 100)}%"></div></div>
-        <div class="bar-count">${count}</div>
-      </div>
-    `).join('');
-
-    const hasData = topics.length > 0 || payEntries.length > 0 || roleEntries.length > 0;
-    if (!hasData) {
-      return `<div class="card card-full"><div class="card-title">Survey Insights</div><div class="empty-state">No survey data yet.</div></div>`;
-    }
-
-    return `
-    <div class="card card-full">
-      <div class="card-title">Survey Insights</div>
-      ${topics.length > 0 ? `<div style="margin-bottom:20px"><div class="section-label">Top Topics</div><div class="bar-group">${topicBars}</div></div>` : ''}
-      <div class="two-col">
-        ${payEntries.length > 0 ? `<div><div class="section-label">Would Pay?</div><div class="bar-group">${payBars}</div></div>` : ''}
-        ${fmtEntries.length > 0 ? `<div><div class="section-label">Preferred Format</div><div class="bar-group">${fmtBars}</div></div>` : ''}
-      </div>
-      <div class="two-col" style="margin-top:20px">
-        ${roleEntries.length > 0 ? `<div><div class="section-label">Roles</div><div class="bar-group">${roleBars}</div></div>` : ''}
-        ${sourceEntries.length > 0 ? `<div><div class="section-label">How They Found Us</div><div class="bar-group">${sourceBars}</div></div>` : ''}
-      </div>
-    </div>`;
+    var stats = w.surveyStats;
+    var topics = stats.topTopics || [];
+    function mkBars(entries) { var mx = entries.length > 0 ? Math.max.apply(null, entries.map(function(e) { return e[1]; })) : 1; return entries.map(function(e) { return '<div class="bar-item"><div class="bar-label">' + e[0] + '</div><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(e[1] / mx * 100) + '%"></div></div><div class="bar-count">' + e[1] + '</div></div>'; }).join(''); }
+    var topicBars = topics.length > 0 ? mkBars(topics.slice(0, 10).map(function(t) { return t; })) : '';
+    var payEntries = Object.entries(stats.wouldPay || {}), fmtEntries = Object.entries(stats.formats || {});
+    var roleEntries = Object.entries(stats.roles || {}), srcEntries = Object.entries(stats.sources || {});
+    var hasData = topics.length > 0 || payEntries.length > 0 || fmtEntries.length > 0 || roleEntries.length > 0 || srcEntries.length > 0;
+    var html = '<div class="card card-full"><div class="card-title">Survey Insights</div>';
+    if (!hasData) html += '<div class="empty-state">No survey data yet.</div>';
+    if (topics.length > 0) html += '<div style="margin-bottom:20px"><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Top Topics</div><div class="bar-group">' + topicBars + '</div></div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">';
+    if (roleEntries.length > 0) html += '<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Seeker Role</div><div class="bar-group">' + mkBars(roleEntries) + '</div></div>';
+    if (fmtEntries.length > 0) html += '<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Preferred Format</div><div class="bar-group">' + mkBars(fmtEntries) + '</div></div>';
+    if (payEntries.length > 0) html += '<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Would Pay?</div><div class="bar-group">' + mkBars(payEntries) + '</div></div>';
+    if (srcEntries.length > 0) html += '<div><div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Discovery Source</div><div class="bar-group">' + mkBars(srcEntries) + '</div></div>';
+    html += '</div></div>';
+    return html;
   }
-
-  // --- UTM CAMPAIGNS ---
-
-  function renderUtmCampaigns(w) {
-    const campaigns = w.utmCampaigns || [];
-    if (campaigns.length === 0) return '';
-    const maxSignups = campaigns[0][1].signups || 1;
-    const bars = campaigns.slice(0, 10).map(([name, data]) => `
-      <div class="bar-item">
-        <div class="bar-label" style="min-width:100px">${escHtml(name)}</div>
-        <div class="bar-track"><div class="bar-fill green" style="width:${Math.round(data.signups / maxSignups * 100)}%"></div></div>
-        <div class="bar-count">${data.signups} <span style="color:#3a3528;font-size:10px">${data.source ? '(' + escHtml(data.source) + (data.medium ? '/' + escHtml(data.medium) : '') + ')' : ''}</span></div>
-      </div>
-    `).join('');
-    return `
-    <div class="card">
-      <div class="card-title">UTM Campaigns</div>
-      <div class="bar-group">${bars}</div>
-    </div>`;
-  }
-
-  // --- WAITLIST TABLE ---
 
   function renderWaitlistTable(w) {
-    const signups = w.signups || [];
-    if (signups.length === 0) {
-      return `<div class="card card-full"><div class="card-title">Waitlist Signups</div><div class="empty-state">The ledger is empty.</div></div>`;
-    }
-    const rows = signups.map(s => `
-      <tr>
-        <td title="${escHtml(s.email)}">${escHtml(s.email)}</td>
-        <td>${formatTime(s.timestamp)}</td>
-        <td>${s.sourceReferrer ? escHtml(tryHostname(s.sourceReferrer)) : (s.referrer ? escHtml(tryHostname(s.referrer)) : '--')}</td>
-        <td>${s.device || '--'}</td>
-        <td>${s.hasSurvey ? '<span class="tag tag-yes">yes</span>' : '<span class="tag tag-no">no</span>'}</td>
-        <td title="${s.survey ? escHtml(s.survey.topics || '') : ''}">${s.survey ? escHtml(s.survey.topics || '--') : '--'}</td>
-        <td>${s.survey ? escHtml(s.survey.wouldPay || '--') : '--'}</td>
-      </tr>
-    `).join('');
-    return `
-    <div class="card card-full">
-      <div class="card-title"><span>Waitlist Signups (${signups.length})</span><button class="btn-export" data-export="waitlist">Export JSON</button></div>
-      <input class="search-input" type="text" placeholder="Search emails..." data-search="waitlist-table">
-      <div class="data-table-wrap">
-        <table class="data-table" id="waitlist-table" style="table-layout:fixed;">
-          <colgroup><col style="width:22%"><col style="width:12%"><col style="width:14%"><col style="width:8%"><col style="width:8%"><col style="width:20%"><col style="width:12%"></colgroup>
-          <thead><tr>
-            <th data-sort="0">Email</th><th data-sort="1">Date</th><th data-sort="2">Source</th>
-            <th data-sort="3">Device</th><th data-sort="4">Survey</th><th data-sort="5">Topics</th><th data-sort="6">Would Pay</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    </div>`;
+    var signups = w.signups || [];
+    if (signups.length === 0) return '<div class="card card-full"><div class="card-title">Waitlist Signups</div><div class="empty-state">The ledger is empty.</div></div>';
+    var rows = signups.map(function(s) {
+      return '<tr><td title="' + escHtml(s.email) + '">' + escHtml(s.email) + '</td><td>' + formatTime(s.timestamp) + '</td><td>' + (s.referrer ? escHtml(tryHostname(s.referrer)) : '--') + '</td><td>' + (s.hasSurvey ? '<span class="tag tag-yes">yes</span>' : '<span class="tag tag-no">no</span>') + '</td><td title="' + (s.survey ? escHtml(s.survey.topics || '') : '') + '">' + (s.survey ? escHtml(s.survey.topics || '--') : '--') + '</td><td>' + (s.survey ? escHtml(s.survey.format || '--') : '--') + '</td><td>' + (s.survey ? escHtml(s.survey.role || '--') : '--') + '</td><td>' + (s.survey ? escHtml(s.survey.wouldPay || '--') : '--') + '</td><td>' + (s.survey ? escHtml(s.survey.source || '--') : '--') + '</td></tr>';
+    }).join('');
+    return '<div class="card card-full"><div class="card-title">Waitlist Signups (' + signups.length + ')<button class="btn-export" data-export="waitlist">Export JSON</button></div><input class="search-input" type="text" placeholder="Search emails..." data-search="waitlist-table"><div class="data-table-wrap"><table class="data-table" id="waitlist-table" style="table-layout:auto;min-width:900px;"><thead><tr><th data-sort="0" style="min-width:180px">Email</th><th data-sort="1" style="min-width:110px">Date</th><th data-sort="2" style="min-width:100px">Referrer</th><th data-sort="3" style="min-width:70px">Survey</th><th data-sort="4" style="min-width:150px">Topics</th><th data-sort="5" style="min-width:90px">Format</th><th data-sort="6" style="min-width:90px">Role</th><th data-sort="7" style="min-width:90px">Would Pay</th><th data-sort="8" style="min-width:110px">Source</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   }
-
-  // --- EBOOK TABLE ---
 
   function renderEbookTable(e) {
-    const jobs = e.jobs || [];
-    if (jobs.length === 0) {
-      return `<div class="card card-full"><div class="card-title">Ebook History</div><div class="empty-state">No tomes forged yet.</div></div>`;
-    }
-    const rows = jobs.map(j => {
-      const statusClass = j.status === 'ready' ? 'tag-ready' : j.status === 'generating' ? 'tag-generating' : 'tag-failed';
-      return `<tr>
-        <td title="${escHtml(j.title || '')}">${escHtml(j.title || '--')}</td>
-        <td><span class="tag ${statusClass}">${j.status}</span></td>
-        <td>${j.chapters || '--'}</td>
-        <td>${j.durationHuman || '--'}</td>
-        <td>${formatTime(j.generatedAt)}</td>
-        <td title="${j.error ? escHtml(j.error) : ''}">${j.error ? escHtml(j.error) : '--'}</td>
-      </tr>`;
+    var jobs = e.jobs || [];
+    if (jobs.length === 0) return '<div class="card card-full"><div class="card-title">Ebook History</div><div class="empty-state">No tomes forged yet.</div></div>';
+    var rows = jobs.map(function(j) {
+      var sc = j.status === 'ready' ? 'tag-ready' : j.status === 'generating' ? 'tag-generating' : 'tag-failed';
+      return '<tr><td title="' + escHtml(j.title || '') + '">' + escHtml(j.title || '--') + '</td><td><span class="tag ' + sc + '">' + j.status + '</span></td><td>' + (j.chapters || '--') + '</td><td>' + (j.durationHuman || '--') + '</td><td>' + formatTime(j.generatedAt) + '</td><td title="' + (j.error ? escHtml(j.error) : '') + '">' + (j.error ? escHtml(j.error) : '--') + '</td></tr>';
     }).join('');
-    return `
-    <div class="card card-full">
-      <div class="card-title"><span>Ebook History (${jobs.length})</span><button class="btn-export" data-export="ebooks">Export JSON</button></div>
-      <input class="search-input" type="text" placeholder="Search titles..." data-search="ebook-table">
-      <div class="data-table-wrap">
-        <table class="data-table" id="ebook-table" style="table-layout:fixed;">
-          <colgroup><col style="width:30%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:20%"><col style="width:20%"></colgroup>
-          <thead><tr>
-            <th data-sort="0">Title</th><th data-sort="1">Status</th><th data-sort="2">Chapters</th>
-            <th data-sort="3">Duration</th><th data-sort="4">Date</th><th data-sort="5">Error</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    </div>`;
+    return '<div class="card card-full"><div class="card-title">Ebook History (' + jobs.length + ')<button class="btn-export" data-export="ebooks">Export JSON</button></div><input class="search-input" type="text" placeholder="Search titles..." data-search="ebook-table"><div class="data-table-wrap"><table class="data-table" id="ebook-table" style="table-layout:fixed;"><colgroup><col style="width:30%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:20%"><col style="width:20%"></colgroup><thead><tr><th data-sort="0">Title</th><th data-sort="1">Status</th><th data-sort="2">Chapters</th><th data-sort="3">Duration</th><th data-sort="4">Date</th><th data-sort="5">Error</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   }
-
-  // --- REFERRERS ---
 
   function renderReferrers(d) {
-    const refs = Object.entries(d.referrers || {}).sort((a, b) => b[1] - a[1]);
-    if (refs.length === 0) {
-      return `<div class="card"><div class="card-title">Top Referrers</div><div class="empty-state">No external referrers yet.</div></div>`;
-    }
-    const maxRef = refs[0][1];
-    const bars = refs.slice(0, 15).map(([host, count]) => `
-      <div class="bar-item">
-        <div class="bar-label" style="min-width:140px">${escHtml(host)}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / maxRef * 100)}%"></div></div>
-        <div class="bar-count">${count}</div>
-      </div>
-    `).join('');
-    return `<div class="card"><div class="card-title">Top Referrers</div><div class="bar-group">${bars}</div></div>`;
+    var refs = Object.entries(d.referrers || {}).sort(function(a, b) { return b[1] - a[1]; });
+    if (refs.length === 0) return '<div class="card"><div class="card-title">Referrers</div><div class="empty-state">No external referrers yet.</div></div>';
+    var maxRef = refs[0][1];
+    var bars = refs.slice(0, 15).map(function(e) { return '<div class="bar-item"><div class="bar-label" style="min-width:140px">' + escHtml(e[0]) + '</div><div class="bar-track"><div class="bar-fill" style="width:' + Math.round(e[1] / maxRef * 100) + '%"></div></div><div class="bar-count">' + e[1] + '</div></div>'; }).join('');
+    return '<div class="card"><div class="card-title">Referrers</div><div class="bar-group">' + bars + '</div></div>';
   }
 
-  // --- HELPERS ---
-
+  // --- Helpers ---
   function formatTime(iso) {
     if (!iso) return '--';
-    try {
-      const d = new Date(iso);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
-             d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    } catch { return iso; }
+    try { var d = new Date(iso); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); } catch(e) { return iso; }
   }
+  function escHtml(s) { if (!s) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function tryHostname(url) { try { return new URL(url).hostname; } catch(e) { return url; } }
+  function fmtNum(n) { if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'; if (n >= 1000) return (n / 1000).toFixed(1) + 'K'; return String(n); }
+  function countryFlag(code) { if (!code || code.length !== 2) return ''; return String.fromCodePoint.apply(null, code.toUpperCase().split('').map(function(c) { return c.charCodeAt(0) + 127397; })); }
 
-  function escHtml(s) {
-    if (!s) return '';
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function tryHostname(url) {
-    try { return new URL(url).hostname; } catch { return url; }
-  }
-
-  function fmtNum(n) {
-    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-    return String(n);
-  }
-
-  function countryFlag(code) {
-    if (!code || code.length !== 2) return '';
-    const offset = 127397;
-    return String.fromCodePoint(...[...code.toUpperCase()].map(c => c.charCodeAt(0) + offset));
-  }
-
-  // --- TABLE SORTING ---
-
+  // --- Table sorting ---
   function bindTableSort() {
-    $$('.data-table th[data-sort]').forEach(th => {
+    $$('.data-table th[data-sort]').forEach(function(th) {
       th.addEventListener('click', function() {
-        const table = this.closest('table');
-        const colIdx = parseInt(this.dataset.sort);
-        const tableId = table.id;
-        const state = sortState[tableId] || { col: -1, asc: true };
+        var table = this.closest('table'), colIdx = parseInt(this.dataset.sort), tableId = table.id;
+        var state = sortState[tableId] || { col: -1, asc: true };
         state.asc = state.col === colIdx ? !state.asc : true;
         state.col = colIdx;
         sortState[tableId] = state;
-        const tbody = table.querySelector('tbody');
-        const rows = [...tbody.querySelectorAll('tr')];
-        rows.sort((a, b) => {
-          const aText = a.children[colIdx]?.textContent || '';
-          const bText = b.children[colIdx]?.textContent || '';
-          return (state.asc ? 1 : -1) * aText.localeCompare(bText, undefined, { numeric: true });
-        });
-        rows.forEach(r => tbody.appendChild(r));
+        var tbody = table.querySelector('tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort(function(a, b) { var at = (a.children[colIdx] || {}).textContent || '', bt = (b.children[colIdx] || {}).textContent || ''; return (state.asc ? 1 : -1) * at.localeCompare(bt, undefined, { numeric: true }); });
+        rows.forEach(function(r) { tbody.appendChild(r); });
       });
     });
   }
 
   function bindSearch() {
-    $$('.search-input[data-search]').forEach(input => {
+    $$('.search-input[data-search]').forEach(function(input) {
       input.addEventListener('input', function() {
-        const tableId = this.dataset.search;
-        const query = this.value.toLowerCase();
-        $$(`#${tableId} tbody tr`).forEach(r => {
-          r.style.display = r.textContent.toLowerCase().includes(query) ? '' : 'none';
-        });
+        var tableId = this.dataset.search, query = this.value.toLowerCase();
+        $$('#' + tableId + ' tbody tr').forEach(function(r) { r.style.display = r.textContent.toLowerCase().indexOf(query) >= 0 ? '' : 'none'; });
       });
     });
   }
 
   function bindExport() {
-    $$('.btn-export[data-export]').forEach(btn => {
+    $$('.btn-export[data-export]').forEach(function(btn) {
       btn.addEventListener('click', function() {
-        const type = this.dataset.export;
-        let data, filename;
+        var type = this.dataset.export, data, filename;
         if (type === 'waitlist') { data = waitlistData; filename = 'waitlist-export.json'; }
         else if (type === 'ebooks') { data = ebooksData; filename = 'ebooks-export.json'; }
         else { data = metricsData; filename = 'metrics-export.json'; }
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = filename;
-        a.click();
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
         URL.revokeObjectURL(url);
       });
     });
   }
 
-  // --- INIT ---
+  // --- Init ---
   fetchAll();
-  setInterval(fetchAll, 15000);
+  setInterval(fetchAll, 30000);
 })();
 </script>
 </body>
