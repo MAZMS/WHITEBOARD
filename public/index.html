@@ -812,39 +812,6 @@
       flex-shrink: 0;
     }
 
-    .support-btn {
-      width: 100%;
-      padding: 10px 14px;
-      text-align: center;
-      font-size: 13px;
-      margin-bottom: 4px;
-    }
-
-    .donate-input {
-      background: #141210;
-      border: 1px solid #2a2520;
-      border-radius: 6px;
-      padding: 8px 12px;
-      color: #c8b88a;
-      font-family: Georgia, serif;
-      font-size: 13px;
-      outline: none;
-      width: 80px;
-      -moz-appearance: textfield;
-      transition: border-color 0.3s;
-    }
-    .donate-input::-webkit-inner-spin-button,
-    .donate-input::-webkit-outer-spin-button {
-      -webkit-appearance: none;
-    }
-    .donate-input:focus {
-      border-color: #4a4030;
-    }
-    body.uncensored .donate-input {
-      border-color: #2a2020;
-      color: #c4a088;
-    }
-
     /* ===== LIGHT MODE — The Sunlit Hall ===== */
     body.light-mode {
       background: #F0EBE0;
@@ -937,11 +904,6 @@
     body.light-mode .auth-microsoft { background: rgba(0, 164, 239, 0.05); }
     body.light-mode .auth-input { background: #faf8f2; border-color: #d8d0c0; color: #3a3020; }
     body.light-mode .auth-input::placeholder { color: #b0a890; }
-    body.light-mode .donate-input {
-      background: #FAF6EE;
-      border-color: #d0c8b0;
-      color: #3a3020;
-    }
 
     /* Sleeping in light mode */
     body.light-mode.phase-sleeping .chat-area { opacity: 0.5; }
@@ -1141,7 +1103,6 @@
 
   </style>
   
-  <script src="https://app.lemonsqueezy.com/js/lemon.js" defer></script>
 </head>
 <body class="phase-dormant centered">
   <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
@@ -1248,20 +1209,6 @@
         </div>
       </div>
 
-      <div class="settings-section">
-        <div class="settings-label">Support the Library</div>
-        <button class="settings-action support-btn" id="membershipBtn">Become a Member — $49</button>
-        <div style="margin-top:14px;">
-          <div class="settings-row">
-            <span style="font-size:12px;color:#8a8070;">Donate any amount</span>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
-            <span style="color:#5a5040;font-size:13px;">$</span>
-            <input type="number" id="donateAmount" class="donate-input" placeholder="4" min="4" max="999" value="4">
-            <button class="settings-action" id="donateBtn">Give</button>
-          </div>
-        </div>
-      </div>
 
       <div class="settings-section" style="border-top:1px solid #1a1815;padding-top:16px;">
         <div class="settings-row" style="justify-content:center;gap:16px;flex-wrap:wrap;">
@@ -3504,30 +3451,6 @@
     }
     updateTomesDisplay();
 
-    // ===== PAYMENT (Lemon Squeezy) =====
-    // Set your Lemon Squeezy checkout URLs here (from your dashboard)
-    const LS_MEMBERSHIP_URL = 'https://greatlibraryai.lemonsqueezy.com/checkout/buy/4e3760c1-eae3-4ae0-aa6e-20fe21b9bb1a';
-    const LS_DONATE_URL = 'https://greatlibraryai.lemonsqueezy.com/checkout/buy/8bd907ae-b11d-4307-9ec4-89d18be07b95';
-
-    document.getElementById('membershipBtn').addEventListener('click', () => {
-      if (window.LemonSqueezy) {
-        window.LemonSqueezy.Url.Open(LS_MEMBERSHIP_URL);
-      } else {
-        window.open(LS_MEMBERSHIP_URL, '_blank');
-      }
-    });
-
-    document.getElementById('donateBtn').addEventListener('click', () => {
-      const amount = parseFloat(document.getElementById('donateAmount').value);
-      if (!amount || amount < 1) return;
-      const cents = Math.round(amount * 100);
-      const url = `${LS_DONATE_URL}?checkout[custom_price]=${cents}`;
-      if (window.LemonSqueezy) {
-        window.LemonSqueezy.Url.Open(url);
-      } else {
-        window.open(url, '_blank');
-      }
-    });
     // ===== ACCOUNT / AUTH =====
     let currentUser = null;
 
