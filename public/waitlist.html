@@ -732,6 +732,62 @@
     body.light-mode .wl-ctrl-btn:hover svg { stroke: #3a3020; }
     body.light-mode .wl-ctrl-btn.active svg { stroke: #3a3020; }
 
+    /* === Library entrance transition === */
+    .wl-transition-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.8s ease-in;
+      background: #0a0a0a;
+    }
+    .wl-transition-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    body.light-mode .wl-transition-overlay {
+      background: #f5f2e8;
+    }
+    .wl-eye-wrap.wl-entering .wl-eye svg {
+      transition: transform 0.4s ease-out, filter 0.4s ease-out;
+      transform: scale(1.25);
+      filter: drop-shadow(0 0 24px rgba(200, 184, 138, 0.5));
+    }
+    .wl-eye-wrap.wl-entering .wl-pupil {
+      transition: fill 0.4s ease-out, filter 0.4s ease-out;
+      fill: #c8b88a !important;
+      filter: drop-shadow(0 0 12px rgba(200, 184, 138, 0.6));
+    }
+    .wl-eye-wrap.wl-entering .wl-iris {
+      transition: stroke 0.4s ease-out;
+      stroke: #c8b88a !important;
+    }
+    .wl-eye-wrap.wl-entering .wl-lid-top,
+    .wl-eye-wrap.wl-entering .wl-lid-bottom {
+      transition: stroke 0.4s ease-out;
+      stroke: #c8b88a !important;
+    }
+    body.light-mode .wl-eye-wrap.wl-entering .wl-eye svg {
+      filter: drop-shadow(0 0 24px rgba(100, 80, 30, 0.4));
+    }
+    body.light-mode .wl-eye-wrap.wl-entering .wl-pupil {
+      fill: #3a3020 !important;
+      filter: drop-shadow(0 0 12px rgba(100, 80, 30, 0.5));
+    }
+    body.light-mode .wl-eye-wrap.wl-entering .wl-iris {
+      stroke: #6a5a30 !important;
+    }
+    .wl-eye-wrap.wl-entering .wl-particle {
+      opacity: 0.7 !important;
+      transform: scale(1.5) !important;
+      transition: opacity 0.4s, transform 0.4s;
+    }
+    .wl-enter-link.fading {
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
     @media (max-width: 600px) {
       .waitlist-inner { padding: 32px 20px; }
       .wl-headline { font-size: 22px; }
@@ -1716,6 +1772,69 @@
     // ===== Update theme-color meta for light mode =====
     if (wlLightMode) {
       document.querySelector('meta[name="theme-color"]').content = '#f5f2e8';
+    }
+
+    // ===== LIBRARY ENTRANCE TRANSITION =====
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('.wl-enter-link');
+      if (!link) return;
+      e.preventDefault();
+      if (document.querySelector('.wl-transition-overlay')) return;
+      const dest = link.href || '/library';
+
+      // Phase 1: Eye intensifies
+      const eyeWrap = document.querySelector('.wl-eye-wrap');
+      if (eyeWrap) eyeWrap.classList.add('wl-entering');
+      link.classList.add('fading');
+      wlPlayEntranceSound();
+
+      // Phase 2: Overlay fades in
+      setTimeout(() => {
+        const overlay = document.createElement('div');
+        overlay.className = 'wl-transition-overlay';
+        document.body.appendChild(overlay);
+        overlay.offsetHeight;
+        overlay.classList.add('active');
+      }, 300);
+
+      // Phase 3+4: Hold in darkness, then navigate
+      setTimeout(() => { window.location.href = dest; }, 1400);
+    });
+
+    function wlPlayEntranceSound() {
+      if (!audioCtx || wlMuted) { wlInitAudio(); if (!audioCtx || wlMuted) return; }
+      const now = audioCtx.currentTime;
+      // Low rumble (doors)
+      const r = audioCtx.createOscillator(), rg = audioCtx.createGain();
+      r.type = 'sine'; r.frequency.value = 65;
+      rg.gain.setValueAtTime(0.04, now);
+      rg.gain.linearRampToValueAtTime(0.06, now + 0.3);
+      rg.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+      r.connect(rg); wlOut(rg); r.start(now); r.stop(now + 1.5);
+      // Rising tone (portal)
+      const t1 = audioCtx.createOscillator(), g1 = audioCtx.createGain();
+      t1.type = 'sine'; t1.frequency.setValueAtTime(220, now);
+      t1.frequency.linearRampToValueAtTime(440, now + 1.2);
+      g1.gain.setValueAtTime(0.025, now);
+      g1.gain.linearRampToValueAtTime(0.04, now + 0.6);
+      g1.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+      t1.connect(g1); wlOut(g1); t1.start(now); t1.stop(now + 1.5);
+      // Harmonic fifth
+      const t2 = audioCtx.createOscillator(), g2 = audioCtx.createGain();
+      t2.type = 'sine'; t2.frequency.setValueAtTime(330, now + 0.15);
+      t2.frequency.linearRampToValueAtTime(660, now + 1.2);
+      g2.gain.setValueAtTime(0, now);
+      g2.gain.linearRampToValueAtTime(0.02, now + 0.3);
+      g2.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+      t2.connect(g2); wlOut(g2); t2.start(now + 0.15); t2.stop(now + 1.5);
+      // High shimmer
+      const t3 = audioCtx.createOscillator(), g3 = audioCtx.createGain();
+      t3.type = 'triangle'; t3.frequency.setValueAtTime(880, now + 0.3);
+      t3.frequency.linearRampToValueAtTime(1320, now + 1.0);
+      g3.gain.setValueAtTime(0, now);
+      g3.gain.linearRampToValueAtTime(0.012, now + 0.5);
+      g3.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+      t3.connect(g3); wlOut(g3); t3.start(now + 0.3); t3.stop(now + 1.3);
     }
 
     // --- Initialize ---
