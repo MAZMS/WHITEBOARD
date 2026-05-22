@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const OpenAI = require('openai');
-const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, Header, Footer, PageNumber, PageBreak } = require('docx');
+const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, Header, Footer, PageNumber, PageBreak, HorizontalPositionRelativeFrom, VerticalPositionRelativeFrom, TextWrappingType } = require('docx');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -598,7 +598,12 @@ async function createDocx(docxPath, outline, chapters, coverPath, design) {
           children: [
             new ImageRun({
               data: coverData,
-              transformation: { width: 794, height: 1123 }
+              transformation: { width: 794, height: 1123 },
+              floating: {
+                horizontalPosition: { relative: HorizontalPositionRelativeFrom.PAGE, offset: 0 },
+                verticalPosition: { relative: VerticalPositionRelativeFrom.PAGE, offset: 0 },
+                wrap: { type: TextWrappingType.NONE },
+              }
             })
           ]
         })
