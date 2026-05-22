@@ -234,6 +234,67 @@
       animation: wl-fade-up 1.2s ease-out 2.2s forwards;
     }
 
+    /* OAuth divider and buttons */
+    .wl-oauth-divider {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 14px 0;
+      opacity: 0;
+      animation: wl-fade-up 1.2s ease-out 1.9s forwards;
+    }
+    .wl-oauth-divider::before,
+    .wl-oauth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #2a2520;
+    }
+    .wl-oauth-divider span {
+      color: #3a3528;
+      font-size: 11px;
+      font-style: italic;
+      white-space: nowrap;
+    }
+    .wl-oauth-buttons {
+      display: flex;
+      gap: 10px;
+      opacity: 0;
+      animation: wl-fade-up 1.2s ease-out 2.0s forwards;
+    }
+    .wl-oauth-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: none;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 12px 14px;
+      color: #6a6050;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wl-oauth-btn:hover {
+      border-color: #4a4030;
+      color: #c8b88a;
+      background: rgba(180, 160, 100, 0.06);
+    }
+    .wl-oauth-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .wl-oauth-btn svg {
+      flex-shrink: 0;
+      opacity: 0.6;
+      transition: opacity 0.3s;
+    }
+    .wl-oauth-btn:hover svg { opacity: 1; }
+
     /* Confirmation shown after email submit */
     .wl-confirmed {
       margin-bottom: 8px;
@@ -335,6 +396,7 @@
       transform: translateY(-1px);
     }
     .wl-nav-btn:active { transform: translateY(0); }
+    .wl-nav-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     .wl-nav-btn.back {
       background: none;
       border-color: #2a2520;
@@ -358,23 +420,44 @@
       -webkit-tap-highlight-color: transparent;
     }
     .wl-skip-btn:hover { color: #5a5040; }
+    .wl-skip-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* Final done view */
     .wl-final { display: none; text-align: center; }
     .wl-final.visible { display: block; animation: wl-fade-up 0.8s ease-out; }
     .wl-final-text { color: #5a5040; font-size: 14px; font-style: italic; }
 
+    /* Enter the Library — hidden by default, revealed after survey */
+    .wl-enter-reward {
+      display: none;
+      margin-top: 32px;
+      text-align: center;
+    }
+    .wl-enter-reward.visible {
+      display: block;
+      animation: wl-fade-up 1.2s ease-out;
+    }
+    .wl-enter-reward-text {
+      color: #5a5038;
+      font-size: 13px;
+      font-style: italic;
+      margin-bottom: 12px;
+      letter-spacing: 0.3px;
+    }
     .wl-enter-link {
       display: inline-block;
-      margin-top: 40px;
-      color: #3a3528;
-      font-size: 13px;
+      color: #c8b88a;
+      font-size: 15px;
       font-style: italic;
       text-decoration: none;
       letter-spacing: 0.5px;
-      transition: color 0.4s;
+      transition: color 0.4s, text-shadow 0.4s;
+      text-shadow: 0 0 12px rgba(180, 160, 100, 0.15);
     }
-    .wl-enter-link:hover { color: #c8b88a; }
+    .wl-enter-link:hover {
+      color: #e0d0a0;
+      text-shadow: 0 0 20px rgba(180, 160, 100, 0.3);
+    }
 
     .wl-legal {
       margin-top: 48px;
@@ -403,6 +486,8 @@
       .wl-eye { width: 64px; height: 64px; margin-bottom: 24px; }
       .wl-chip { padding: 11px 20px; font-size: 15px; }
       .wl-nav { flex-wrap: wrap; }
+      .wl-oauth-buttons { flex-direction: column; }
+      .wl-oauth-btn { font-size: 14px; padding: 13px 14px; }
     }
   </style>
 </head>
@@ -434,6 +519,17 @@
             <button type="submit" class="wl-submit" id="wlBtn">Join the Vigil</button>
           </form>
           <div class="wl-error" id="wlError"></div>
+          <div class="wl-oauth-divider"><span>or continue with</span></div>
+          <div class="wl-oauth-buttons">
+            <button type="button" class="wl-oauth-btn" id="wlGoogleBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#5a5038"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#5a5038"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#5a5038"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#5a5038"/></svg>
+              Google
+            </button>
+            <button type="button" class="wl-oauth-btn" id="wlMicrosoftBtn">
+              <svg width="16" height="16" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#5a5038"/><rect x="11" y="1" width="9" height="9" fill="#6a6050"/><rect x="1" y="11" width="9" height="9" fill="#6a6050"/><rect x="11" y="11" width="9" height="9" fill="#5a5038"/></svg>
+              Microsoft
+            </button>
+          </div>
           <div class="wl-count" id="wlCount"></div>
           <div class="wl-early" id="wlEarly">Early seekers receive access first.</div>
         </div>
@@ -514,7 +610,7 @@
             <button type="button" class="wl-chip" data-value="social">Social media</button>
             <button type="button" class="wl-chip" data-value="search">Search</button>
             <button type="button" class="wl-chip" data-value="friend">A friend</button>
-            <button type="button" class="wl-chip" data-value="reddit">Reddit</button>
+            <button type="button" class="wl-chip" data-value="x">X</button>
             <button type="button" class="wl-chip" data-value="other" data-other="true">Other</button>
           </div>
           <input type="text" class="wl-other-input" id="sourceOther" placeholder="Tell us where...">
@@ -529,7 +625,10 @@
         <div class="wl-final-text">The Guardian notes your preferences. Patience... the halls are vast.</div>
       </div>
 
-      <a href="/library" class="wl-enter-link">Enter the Library</a>
+      <div class="wl-enter-reward" id="wlEnterReward">
+        <div class="wl-enter-reward-text">The doors open for those who are known.</div>
+        <a href="/library" class="wl-enter-link">Enter the Library</a>
+      </div>
 
       <div class="wl-legal">
         <a href="/terms">Terms</a>
@@ -544,6 +643,7 @@
     let currentStep = 0;
     const totalSteps = 6; // 0=email, 1=topics, 2=format, 3=role, 4=pay, 5=source
     let isExistingUser = false;
+    let isTransitioning = false; // Debounce lock for wizard navigation
 
     // Elements
     const formEl = document.getElementById('wlForm');
@@ -605,52 +705,78 @@
 
     // --- Wizard navigation ---
     function showStep(stepIndex, direction) {
-      // direction: 1 = forward, -1 = back
-      const allSteps = document.querySelectorAll('.wl-step');
-      const outgoing = document.querySelector('.wl-step.active.visible');
+      if (isTransitioning) return;
       const incoming = document.getElementById('step-' + stepIndex);
       if (!incoming) return;
 
-      // Hide outgoing
+      isTransitioning = true;
+
+      // Hide ALL other steps immediately (prevents overlapping)
+      const allSteps = document.querySelectorAll('.wl-step');
+      const outgoing = document.querySelector('.wl-step.active.visible');
+
+      // First: fade out outgoing
       if (outgoing && outgoing !== incoming) {
         outgoing.classList.remove('visible');
         setTimeout(() => {
-          outgoing.classList.remove('active');
-        }, 300);
-      }
+          // Remove active from ALL steps except incoming
+          allSteps.forEach(s => {
+            if (s !== incoming) {
+              s.classList.remove('active', 'visible');
+            }
+          });
 
-      // Show incoming after brief delay
-      setTimeout(() => {
+          // Show incoming
+          incoming.classList.add('active');
+          incoming.offsetHeight; // force reflow
+          requestAnimationFrame(() => {
+            incoming.classList.add('visible');
+
+            // Scroll into view on mobile
+            if (window.innerWidth <= 600 && stepIndex > 0) {
+              setTimeout(() => incoming.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+            }
+
+            // Unlock after transition completes
+            setTimeout(() => { isTransitioning = false; }, 460);
+          });
+        }, 320);
+      } else if (!outgoing) {
+        // No outgoing — just show incoming immediately
+        allSteps.forEach(s => {
+          if (s !== incoming) s.classList.remove('active', 'visible');
+        });
         incoming.classList.add('active');
-        // Force reflow
         incoming.offsetHeight;
         requestAnimationFrame(() => {
           incoming.classList.add('visible');
+          setTimeout(() => { isTransitioning = false; }, 460);
         });
-
-        // Scroll into view on mobile
-        if (window.innerWidth <= 600 && stepIndex > 0) {
-          setTimeout(() => incoming.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
-        }
-      }, outgoing ? 320 : 0);
+      } else {
+        // outgoing === incoming, nothing to do
+        isTransitioning = false;
+      }
 
       currentStep = stepIndex;
       updateProgress();
     }
 
     function wizardNext() {
+      if (isTransitioning) return;
       if (currentStep < totalSteps - 1) {
         showStep(currentStep + 1, 1);
       }
     }
 
     function wizardBack() {
+      if (isTransitioning) return;
       if (currentStep > 1) { // Can't go back past step 1 (email is done)
         showStep(currentStep - 1, -1);
       }
     }
 
     function wizardSkip() {
+      if (isTransitioning) return;
       if (currentStep < totalSteps - 1) {
         showStep(currentStep + 1, 1);
       } else {
@@ -659,6 +785,9 @@
     }
 
     async function wizardSubmit() {
+      if (isTransitioning) return;
+      isTransitioning = true;
+
       const data = collectSurveyData();
       trackEvent('survey_submit');
       try {
@@ -669,13 +798,18 @@
         });
       } catch {}
 
-      // Hide wizard, show final
+      // Hide wizard, show final + enter reward
       const wizardEl = document.getElementById('wlWizard');
       wizardEl.style.opacity = '0';
       wizardEl.style.transition = 'opacity 0.5s ease';
       setTimeout(() => {
         wizardEl.style.display = 'none';
         finalEl.classList.add('visible');
+        // Reveal "Enter the Library" as reward after survey
+        setTimeout(() => {
+          document.getElementById('wlEnterReward').classList.add('visible');
+        }, 600);
+        isTransitioning = false;
       }, 500);
     }
 
@@ -764,6 +898,40 @@
       } catch {}
     })();
 
+    // --- Shared post-signup handler ---
+    function handleSignupSuccess(email, data) {
+      trackEvent('signup_success');
+      userEmail = email;
+
+      if (data.position) {
+        posEl.textContent = '#' + data.position + ' in the ledger';
+      }
+
+      if (data.existing) {
+        isExistingUser = true;
+        document.querySelector('.wl-confirmed-text').textContent = 'The ledger already holds your name.';
+        document.getElementById('wlConfirmedSub').textContent = 'Patience. You will not be forgotten.';
+      }
+
+      if (data.existing) {
+        // For existing users, skip survey — go to final
+        const wizardEl = document.getElementById('wlWizard');
+        wizardEl.style.opacity = '0';
+        wizardEl.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => {
+          wizardEl.style.display = 'none';
+          finalEl.querySelector('.wl-final-text').textContent = 'The ledger already holds your name. Patience. You will not be forgotten.';
+          finalEl.classList.add('visible');
+          // Still show enter link for existing users
+          setTimeout(() => {
+            document.getElementById('wlEnterReward').classList.add('visible');
+          }, 600);
+        }, 500);
+      } else {
+        showStep(1, 1);
+      }
+    }
+
     // --- Email signup (step 0 submit) ---
     formEl.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -799,39 +967,144 @@
           return;
         }
 
-        trackEvent('signup_success');
-        userEmail = email;
-
-        if (data.position) {
-          posEl.textContent = '#' + data.position + ' in the ledger';
-        }
-
-        if (data.existing) {
-          isExistingUser = true;
-          document.querySelector('.wl-confirmed-text').textContent = 'The ledger already holds your name.';
-          document.getElementById('wlConfirmedSub').textContent = 'Patience. You will not be forgotten.';
-        }
-
-        // Move to step 1 (first survey question) for new users, or show final for existing
-        if (data.existing) {
-          // For existing users, skip survey — go to final
-          const wizardEl = document.getElementById('wlWizard');
-          wizardEl.style.opacity = '0';
-          wizardEl.style.transition = 'opacity 0.5s ease';
-          setTimeout(() => {
-            wizardEl.style.display = 'none';
-            finalEl.querySelector('.wl-final-text').textContent = 'The ledger already holds your name. Patience. You will not be forgotten.';
-            finalEl.classList.add('visible');
-          }, 500);
-        } else {
-          showStep(1, 1);
-        }
+        handleSignupSuccess(email, data);
       } catch {
         errorEl.textContent = 'The connection falters. Try again.';
         btnEl.disabled = false;
         btnEl.textContent = 'Join the Vigil';
       }
     });
+
+    // --- OAuth signup (Google + Microsoft) ---
+    let authConfig = { googleClientId: null, microsoftClientId: null };
+    fetch('/api/auth/config').then(r => r.json()).then(c => { authConfig = c; }).catch(() => {});
+
+    async function signupViaOAuth(email) {
+      // Register the OAuth email on the waitlist
+      try {
+        const payload = { email };
+        const utm = getUTMParams();
+        if (utm) payload.utm = utm;
+        const docRef = document.referrer;
+        if (docRef && !docRef.includes(window.location.hostname)) {
+          payload.sourceReferrer = docRef;
+        }
+        payload.device = getDeviceType();
+        payload.screen = window.innerWidth + 'x' + window.innerHeight;
+        payload.oauthSignup = true;
+
+        const res = await fetch('/api/waitlist/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          handleSignupSuccess(email, data);
+        } else {
+          errorEl.textContent = data.error || 'Something went wrong.';
+        }
+      } catch {
+        errorEl.textContent = 'The connection falters. Try again.';
+      }
+    }
+
+    // Google Sign-In
+    document.getElementById('wlGoogleBtn').addEventListener('click', () => {
+      if (!authConfig.googleClientId) {
+        errorEl.textContent = 'Google sign-in not configured yet.';
+        return;
+      }
+      errorEl.textContent = '';
+      if (!window.google?.accounts?.id) {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.onload = () => initWlGoogleSignIn();
+        document.head.appendChild(script);
+      } else {
+        window.google.accounts.id.prompt();
+      }
+    });
+
+    function initWlGoogleSignIn() {
+      if (!authConfig.googleClientId || !window.google?.accounts?.id) {
+        errorEl.textContent = 'Google sign-in not available.';
+        return;
+      }
+      window.google.accounts.id.initialize({
+        client_id: authConfig.googleClientId,
+        callback: handleWlGoogleCredential,
+        auto_select: false
+      });
+      window.google.accounts.id.prompt();
+    }
+
+    async function handleWlGoogleCredential(response) {
+      try {
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential: response.credential })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errorEl.textContent = data.error || 'Google sign-in failed.';
+          return;
+        }
+        // Use the email from the auth response to register on waitlist
+        if (data.user && data.user.email) {
+          trackEvent('oauth_google');
+          await signupViaOAuth(data.user.email);
+        }
+      } catch {
+        errorEl.textContent = 'Connection failed.';
+      }
+    }
+
+    // Microsoft Sign-In
+    document.getElementById('wlMicrosoftBtn').addEventListener('click', async () => {
+      errorEl.textContent = '';
+      if (!window.msal) {
+        const script = document.createElement('script');
+        script.src = 'https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js';
+        script.onload = () => doWlMicrosoftSignIn();
+        document.head.appendChild(script);
+      } else {
+        doWlMicrosoftSignIn();
+      }
+    });
+
+    async function doWlMicrosoftSignIn() {
+      const clientId = authConfig.microsoftClientId;
+      if (!clientId || !window.msal) {
+        errorEl.textContent = 'Microsoft sign-in not configured yet.';
+        return;
+      }
+      try {
+        const msalInstance = new msal.PublicClientApplication({
+          auth: { clientId, redirectUri: window.location.origin }
+        });
+        await msalInstance.initialize();
+        const loginResponse = await msalInstance.loginPopup({ scopes: ['User.Read'] });
+        const tokenResponse = await msalInstance.acquireTokenSilent({ scopes: ['User.Read'], account: loginResponse.account });
+        const res = await fetch('/api/auth/microsoft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken: tokenResponse.accessToken })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errorEl.textContent = data.error || 'Microsoft sign-in failed.';
+          return;
+        }
+        if (data.user && data.user.email) {
+          trackEvent('oauth_microsoft');
+          await signupViaOAuth(data.user.email);
+        }
+      } catch {
+        errorEl.textContent = 'Microsoft sign-in failed.';
+      }
+    }
 
     // Prevent Enter in text inputs from doing anything unexpected
     document.querySelectorAll('.wl-survey-input, .wl-other-input').forEach(input => {
