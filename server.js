@@ -7,6 +7,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 const app = express();
+app.set('trust proxy', true); // Railway runs behind a proxy
 app.use(express.json());
 
 // Serve waitlist as the landing page, Library at /library
@@ -949,6 +950,11 @@ app.get('/api/status', async (req, res) => {
 // --- Waitlist ---
 const WAITLIST_FILE = path.join(EBOOKS_DIR, 'waitlist.json');
 
+// Simple in-memory rate limiter for signup endpoint
+const signupRateLimit = new Map(); // ip -> { count, resetTime }
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
+const RATE_LIMIT_MAX = 5; // max 5 signups per IP per hour
+
 function loadWaitlist() {
   try { return JSON.parse(fs.readFileSync(WAITLIST_FILE, 'utf8')); } catch { return { signups: [] }; }
 }
@@ -958,40 +964,90 @@ function saveWaitlist(data) {
   }
 }
 
+function getClientIP(req) {
+  // Railway/proxies set x-forwarded-for
+  const forwarded = req.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return req.ip || req.connection?.remoteAddress || 'unknown';
+}
+
 app.get('/api/waitlist/count', (req, res) => {
   const data = loadWaitlist();
   res.json({ count: data.signups.length });
 });
 
 app.post('/api/waitlist/signup', (req, res) => {
-  const { email } = req.body;
-  if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+  const { email, utm } = req.body;
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Email required' });
+  }
+
+  const normalized = email.trim().toLowerCase();
+
+  // Validate email format — reject obvious garbage
+  if (!normalized.match(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/)) {
     return res.status(400).json({ error: 'Invalid email' });
   }
 
-  const data = loadWaitlist();
-  const normalized = email.trim().toLowerCase();
-
-  // Deduplicate
-  if (data.signups.some(s => s.email === normalized)) {
-    return res.json({ success: true, count: data.signups.length, existing: true });
+  // Block disposable/spam patterns
+  if (normalized.length > 254) {
+    return res.status(400).json({ error: 'Invalid email' });
   }
 
-  data.signups.push({
+  // Rate limiting by IP
+  const clientIP = getClientIP(req);
+  const now = Date.now();
+  const rateEntry = signupRateLimit.get(clientIP);
+  if (rateEntry && now < rateEntry.resetTime) {
+    if (rateEntry.count >= RATE_LIMIT_MAX) {
+      return res.status(429).json({ error: 'The ledger does not accept haste. Try again later.' });
+    }
+    rateEntry.count++;
+  } else {
+    signupRateLimit.set(clientIP, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+  }
+
+  const data = loadWaitlist();
+
+  // Deduplicate — return existing position
+  const existingIndex = data.signups.findIndex(s => s.email === normalized);
+  if (existingIndex !== -1) {
+    return res.json({
+      success: true,
+      count: data.signups.length,
+      position: existingIndex + 1,
+      existing: true
+    });
+  }
+
+  const entry = {
     email: normalized,
     timestamp: new Date().toISOString(),
     referrer: req.get('referer') || null,
     userAgent: req.get('user-agent') || null,
-    ip: req.ip
-  });
+    ip: clientIP
+  };
 
+  // Capture UTM params if provided
+  if (utm && typeof utm === 'object') {
+    entry.utm = {};
+    for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content']) {
+      if (utm[key] && typeof utm[key] === 'string') {
+        entry.utm[key] = utm[key].slice(0, 200); // cap length
+      }
+    }
+  }
+
+  data.signups.push(entry);
   saveWaitlist(data);
-  console.log(`Waitlist signup: ${normalized} (#${data.signups.length})`);
-  res.json({ success: true, count: data.signups.length });
+
+  const position = data.signups.length;
+  console.log(`Waitlist signup: ${normalized} (#${position})`);
+  res.json({ success: true, count: position, position });
 });
 
 app.post('/api/waitlist/survey', (req, res) => {
-  const { email, topics, format, wouldPay } = req.body;
+  const { email, topics, format, role, wouldPay } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
 
   const data = loadWaitlist();
@@ -1000,10 +1056,17 @@ app.post('/api/waitlist/survey', (req, res) => {
 
   if (!entry) return res.status(404).json({ error: 'Email not found' });
 
+  // Sanitize survey inputs — cap string lengths
+  const sanitize = (val, maxLen) => {
+    if (!val || typeof val !== 'string') return null;
+    return val.trim().slice(0, maxLen) || null;
+  };
+
   entry.survey = {
-    topics: topics || null,
-    format: format || null,
-    wouldPay: wouldPay || null,
+    topics: sanitize(topics, 500),
+    format: sanitize(format, 100),
+    role: sanitize(role, 50),
+    wouldPay: sanitize(wouldPay, 20),
     answeredAt: new Date().toISOString()
   };
 
