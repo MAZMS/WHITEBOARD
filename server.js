@@ -586,6 +586,8 @@ async function createDocx(docxPath, outline, chapters, coverPath, design) {
   // --- COVER PAGE (full-bleed floating image) ---
   if (coverPath && fs.existsSync(coverPath)) {
     const coverData = fs.readFileSync(coverPath);
+    // Detect image type from magic bytes
+    const coverType = (coverData[0] === 0xFF && coverData[1] === 0xD8) ? 'jpg' : 'png';
     sections.push({
       properties: {
         page: {
@@ -599,6 +601,7 @@ async function createDocx(docxPath, outline, chapters, coverPath, design) {
           children: [
             new ImageRun({
               data: coverData,
+              type: coverType,
               altText: { title: 'Cover', description: 'Book cover', name: 'cover' },
               transformation: { width: 800, height: 1132 },
               floating: {
