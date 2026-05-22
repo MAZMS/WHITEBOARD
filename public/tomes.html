@@ -105,7 +105,7 @@
       border: 1px solid var(--border);
       color: var(--gold);
       font-family: var(--font);
-      font-size: 14px;
+      font-size: 16px;
       padding: 8px 36px 8px 14px;
       border-radius: 6px;
       outline: none;
@@ -269,7 +269,7 @@
       border: 1px solid var(--border);
       color: var(--gold-dim);
       font-family: var(--font);
-      font-size: 12px;
+      font-size: 16px;
       padding: 6px 12px;
       border-radius: 6px;
       cursor: pointer;
@@ -481,20 +481,48 @@
       .header { padding: 0 16px; height: 56px; }
       .header-nav { display: none; }
       .search-box { width: 160px; }
-      .create-btn { padding: 6px 12px; font-size: 12px; }
-      .main { padding-top: 76px; padding-left: 16px; padding-right: 16px; }
+      .create-btn { padding: 6px 12px; font-size: 12px; min-height: 44px; display: flex; align-items: center; }
+      .main {
+        padding-top: 76px;
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+      }
       .hero { min-height: 200px; }
       .hero-title { font-size: 22px; }
       .hero-content { padding: 20px; }
       .tome-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
       .card-body { padding: 10px; }
       .card-title { font-size: 13px; }
+      .tag-pill { min-height: 36px; display: inline-flex; align-items: center; }
+      .sort-select { min-height: 36px; }
+      .load-more-btn { min-height: 44px; }
     }
 
     @media (max-width: 480px) {
       .tome-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .search-box { width: 120px; }
+      .search-box { width: 100px; }
+      .search-box input { font-size: 16px; padding: 8px 30px 8px 10px; }
+      .header-logo { font-size: 15px; }
       .hero-title { font-size: 18px; }
+      .create-btn { font-size: 0; padding: 6px 10px; }
+      .create-btn::before { content: '+'; font-size: 18px; }
+    }
+
+    @media (max-width: 360px) {
+      .header { padding: 0 10px; gap: 6px; }
+      .search-box { width: 80px; }
+      .hero-content { padding: 14px; }
+      .hero-title { font-size: 16px; }
+    }
+
+    /* --- Reduced motion --- */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
     }
 
     /* --- Fade-in animation --- */

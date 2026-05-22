@@ -402,7 +402,7 @@
       padding: 12px 16px;
       color: #c8b88a;
       font-family: Georgia, serif;
-      font-size: 15px;
+      font-size: 16px;
       outline: none;
       transition: border-color 0.3s;
     }
@@ -436,7 +436,7 @@
       padding: 10px 14px;
       color: #c8b88a;
       font-family: Georgia, serif;
-      font-size: 14px;
+      font-size: 16px;
       outline: none;
       transition: border-color 0.3s, opacity 0.35s, max-height 0.35s;
       max-height: 0;
@@ -798,12 +798,24 @@
       .wl-sub { font-size: 14px; margin-bottom: 28px; }
       .wl-form { flex-direction: column; }
       .wl-email { font-size: 16px; }
-      .wl-submit { padding: 14px; font-size: 16px; }
+      .wl-submit { padding: 14px; font-size: 16px; min-height: 48px; }
       .wl-eye-wrap { width: 64px; height: 64px; margin-bottom: 24px; }
-      .wl-chip { padding: 11px 20px; font-size: 15px; }
+      .wl-chip { padding: 11px 20px; font-size: 15px; min-height: 44px; }
       .wl-nav { flex-wrap: wrap; }
+      .wl-nav-btn { min-height: 44px; }
       .wl-oauth-buttons { flex-direction: column; }
-      .wl-oauth-btn { font-size: 14px; padding: 13px 14px; }
+      .wl-oauth-btn { font-size: 14px; padding: 13px 14px; min-height: 48px; }
+      .wl-ctrl-btn { width: 44px; height: 44px; }
+    }
+
+    /* ===== REDUCED MOTION ===== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .wl-particle { display: none; }
     }
   </style>
 </head>

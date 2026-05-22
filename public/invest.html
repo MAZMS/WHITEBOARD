@@ -712,7 +712,7 @@
       padding: 10px 14px;
       color: #c8b88a;
       font-family: Georgia, serif;
-      font-size: 14px;
+      font-size: 16px;
       outline: none;
       transition: border-color 0.3s;
     }
@@ -901,6 +901,14 @@
     }
     @media (max-width: 400px) {
       .inv-stats-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 </head>

@@ -13,6 +13,7 @@
       background: #0a0a0a;
       font-family: Georgia, 'Times New Roman', serif;
       color: #c8b88a;
+      overflow-x: hidden;
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
@@ -146,9 +147,22 @@
     .legal-contact p { margin-bottom: 4px; }
 
     @media (max-width: 600px) {
-      .legal-wrap { padding: 32px 18px 60px; }
+      .legal-wrap {
+        padding: 32px 18px 60px;
+        padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+      }
       h1 { font-size: 22px; }
       h2 { font-size: 18px; }
+      .legal-toc a { padding: 10px 0; min-height: 44px; display: flex; align-items: center; }
+      .legal-back { min-height: 44px; display: inline-flex; align-items: center; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 </head>

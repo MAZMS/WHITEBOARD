@@ -792,12 +792,12 @@
     .auth-microsoft:hover { border-color: #00a4ef; background: rgba(0, 164, 239, 0.1); }
     .auth-input {
       width: 100%;
-      padding: 8px 12px;
+      padding: 10px 12px;
       background: #0a0a0a;
       border: 1px solid #2a2520;
       border-radius: 6px;
       color: #c8b88a;
-      font-size: 12px;
+      font-size: 16px;
       font-family: Georgia, serif;
       outline: none;
       transition: border-color 0.3s;
@@ -1107,14 +1107,26 @@
         padding: 18px 18px;
         border-radius: 14px;
       }
-      #sendBtn { border-radius: 14px; padding: 0 18px; }
+      #sendBtn { border-radius: 14px; padding: 0 18px; min-height: 48px; min-width: 48px; }
 
       .download-link {
-        padding: 12px 18px;
-        font-size: 14px;
+        padding: 14px 18px;
+        font-size: 15px;
         display: block;
         text-align: center;
+        min-height: 48px;
       }
+
+      .settings-panel {
+        width: 100%;
+        left: -100%;
+      }
+
+      .settings-btn { font-size: 28px; padding: 8px; min-width: 44px; min-height: 44px; }
+      .settings-close { font-size: 24px; padding: 8px 12px; min-width: 44px; min-height: 44px; }
+      .toggle { width: 48px; height: 28px; }
+      .toggle::after { width: 20px; height: 20px; }
+      .toggle.on::after { left: 24px; }
     }
 
     @media (max-height: 500px) {
@@ -1125,6 +1137,16 @@
         width: 70px;
         height: 70px;
       }
+    }
+
+    /* ===== REDUCED MOTION ===== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .particle { display: none; }
     }
 
   </style>
@@ -1369,6 +1391,8 @@
     }
 
     // ===== STATE =====
+    const isMobile = window.innerWidth <= 600;
+    const particleRate = (ms) => isMobile ? ms * 2 : ms; // halve particle frequency on mobile
     let guardianPhase = 'dormant';
     let particleInterval = null;
     let blinkTimeout = null;
@@ -1530,7 +1554,7 @@
 
       // Particles start midway, slow at first
       setTimeout(() => {
-        particleInterval = setInterval(spawnParticle, 900);
+        particleInterval = setInterval(spawnParticle, particleRate(900));
       }, 1200);
 
       // Random awakening phrases
@@ -1627,7 +1651,7 @@
 
         // Speed up particles, start blinking
         clearInterval(particleInterval);
-        particleInterval = setInterval(spawnParticle, 600);
+        particleInterval = setInterval(spawnParticle, particleRate(600));
         scheduleBlink();
 
         // Go alive
@@ -1650,7 +1674,7 @@
       input.disabled = true; sendBtn.disabled = true;
       input.placeholder = 'The Guardian searches the archives...';
       clearInterval(particleInterval);
-      particleInterval = setInterval(spawnParticle, 200);
+      particleInterval = setInterval(spawnParticle, particleRate(200));
       startDrift(2000, 4);
       startBorderLoader();
       shake();
@@ -1661,7 +1685,7 @@
       stopDrift();
       resetSearchIntensity();
       clearInterval(particleInterval);
-      particleInterval = setInterval(spawnParticle, 600);
+      particleInterval = setInterval(spawnParticle, particleRate(600));
       completeBorderLoader();
       burstParticles(35);
       shake();
@@ -1727,7 +1751,7 @@
       if (Math.abs(newRate - searchParticleRate) > 15) {
         searchParticleRate = newRate;
         clearInterval(particleInterval);
-        particleInterval = setInterval(spawnParticle, searchParticleRate);
+        particleInterval = setInterval(spawnParticle, particleRate(searchParticleRate));
       }
 
       // Drift speed: wider and faster
@@ -3133,10 +3157,11 @@
 
     // ===== PARTICLE BURST =====
     function burstParticles(count) {
+      const actual = isMobile ? Math.ceil(count / 2) : count;
       const eyeRect = eyeSymbol.getBoundingClientRect();
       const cx = eyeRect.left + eyeRect.width / 2;
       const cy = eyeRect.top + eyeRect.height / 2;
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; i < actual; i++) {
         const p = document.createElement('div');
         p.className = 'particle';
         const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
