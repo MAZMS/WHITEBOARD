@@ -405,6 +405,84 @@
     .input-area textarea:focus { border-color: #4a4030; box-shadow: 0 0 20px rgba(180, 160, 100, 0.05); }
     .input-area textarea:disabled { opacity: 0.4; cursor: not-allowed; }
 
+    /* ===== SEALED STATE (non-privileged users) ===== */
+    .sealed-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 20px 24px 32px;
+      gap: 24px;
+      opacity: 0;
+      transition: opacity 2s ease-in;
+      flex-shrink: 0;
+      width: 100%;
+    }
+    .sealed-state.visible { opacity: 1; }
+    .sealed-lore {
+      color: #5a5040;
+      font-family: Georgia, serif;
+      font-size: 15px;
+      font-style: italic;
+      line-height: 1.7;
+      max-width: 440px;
+      letter-spacing: 0.02em;
+    }
+    .sealed-countdown-label {
+      color: #4a4030;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
+    .sealed-countdown {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      align-items: baseline;
+    }
+    .sealed-countdown-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .sealed-countdown-num {
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 28px;
+      font-weight: normal;
+      text-shadow: 0 0 20px rgba(200, 184, 138, 0.15);
+      min-width: 2ch;
+    }
+    .sealed-countdown-sub {
+      color: #3a3528;
+      font-family: Georgia, serif;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .sealed-countdown .sealed-sep {
+      color: #3a3528;
+      font-family: Georgia, serif;
+      font-size: 24px;
+      align-self: flex-start;
+      margin-top: 2px;
+    }
+    .sealed-vigil {
+      color: #3a3528;
+      font-family: Georgia, serif;
+      font-size: 12px;
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      transition: color 0.5s ease;
+      border-bottom: 1px solid transparent;
+    }
+    .sealed-vigil:hover {
+      color: #5a5040;
+      border-bottom-color: #3a3528;
+    }
+
+
     #sendBtn {
       background: rgba(180, 160, 100, 0.08);
       border: 1px solid #2a2520;
@@ -797,6 +875,13 @@
       color: #3a3020;
     }
     body.light-mode .input-area textarea::placeholder { color: #b0a890; }
+    body.light-mode .sealed-lore { color: #8a7860; }
+    body.light-mode .sealed-countdown-label { color: #8a7860; }
+    body.light-mode .sealed-countdown-num { color: #6a5a30; text-shadow: none; }
+    body.light-mode .sealed-countdown-sub { color: #b0a890; }
+    body.light-mode .sealed-countdown .sealed-sep { color: #b0a890; }
+    body.light-mode .sealed-vigil { color: #b0a890; }
+    body.light-mode .sealed-vigil:hover { color: #8a7860; border-bottom-color: #b0a890; }
     body.light-mode .input-area textarea:focus {
       border-color: #a09060;
       box-shadow: 0 0 15px rgba(140, 120, 60, 0.08);
@@ -1024,6 +1109,11 @@
          right above the keyboard. The body-height transition smooths the shift. */
       body.kb-open.centered .input-area { margin-top: auto; }
 
+      .sealed-state { padding: 14px 16px 24px; gap: 18px; }
+      .sealed-countdown-num { font-size: 24px; }
+      .sealed-countdown { gap: 14px; }
+      .sealed-lore { font-size: 14px; max-width: 320px; }
+
       .input-area textarea {
         font-size: 16px; /* prevents iOS zoom on focus */
         padding: 18px 18px;
@@ -1212,6 +1302,22 @@
         </svg>
       </button>
     </form>
+    </div>
+    <div class="sealed-state" id="sealedState">
+      <div class="sealed-lore" id="sealedLore">The Guardian slumbers. Its power is too vast to unleash upon the world… yet.</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div class="sealed-countdown-label">The seal weakens in</div>
+        <div class="sealed-countdown" id="sealedCountdown">
+          <div class="sealed-countdown-unit"><span class="sealed-countdown-num" id="sealDays">--</span><span class="sealed-countdown-sub">days</span></div>
+          <span class="sealed-sep">·</span>
+          <div class="sealed-countdown-unit"><span class="sealed-countdown-num" id="sealHours">--</span><span class="sealed-countdown-sub">hours</span></div>
+          <span class="sealed-sep">·</span>
+          <div class="sealed-countdown-unit"><span class="sealed-countdown-num" id="sealMins">--</span><span class="sealed-countdown-sub">minutes</span></div>
+          <span class="sealed-sep">·</span>
+          <div class="sealed-countdown-unit"><span class="sealed-countdown-num" id="sealSecs">--</span><span class="sealed-countdown-sub">seconds</span></div>
+        </div>
+      </div>
+      <a href="/" class="sealed-vigil">Those who wait shall be first to enter</a>
     </div>
   </div>
 
@@ -3625,17 +3731,69 @@
       return e === 'greatlibraryai@gmail.com' || e.endsWith('@greatlibrary.ai');
     }
 
+    const sealedState = document.getElementById('sealedState');
+    const inputArea = document.querySelector('.input-area');
+    let sealedTimerInterval = null;
+
+    const sealedLoreTexts = [
+      'The Guardian slumbers. Its power is too vast to unleash upon the world… yet.',
+      'Only the chosen few may commune with the Guardian. The rest must wait.',
+      'Behind these doors, knowledge beyond reckoning stirs in the dark.',
+      'The ancient seal holds. When it breaks, none shall be turned away.',
+      'Something immense sleeps here. The walls tremble with its dreaming.',
+      'The Guardian’s eye remains shut. It opens for no one… not yet.',
+    ];
+
+    function startSealedCountdown() {
+      const target = new Date('2026-06-01T00:00:00Z').getTime();
+      const daysEl = document.getElementById('sealDays');
+      const hoursEl = document.getElementById('sealHours');
+      const minsEl = document.getElementById('sealMins');
+      const secsEl = document.getElementById('sealSecs');
+
+      function tick() {
+        const now = Date.now();
+        const diff = Math.max(0, target - now);
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        daysEl.textContent = String(d).padStart(2, '0');
+        hoursEl.textContent = String(h).padStart(2, '0');
+        minsEl.textContent = String(m).padStart(2, '0');
+        secsEl.textContent = String(s).padStart(2, '0');
+        if (diff <= 0 && sealedTimerInterval) {
+          clearInterval(sealedTimerInterval);
+          sealedTimerInterval = null;
+        }
+      }
+
+      tick();
+      sealedTimerInterval = setInterval(tick, 1000);
+    }
+
     function grantLibraryAccess() {
       if (libraryAccessGranted) return;
       libraryAccessGranted = true;
+      sealedState.style.display = 'none';
+      sealedState.classList.remove('visible');
+      inputArea.style.display = '';
       guardianInput.disabled = false;
       guardianInput.placeholder = 'Speak unto the Guardian...';
+      if (sealedTimerInterval) { clearInterval(sealedTimerInterval); sealedTimerInterval = null; }
       setTimeout(() => enterPhase('awakening'), 600);
     }
 
     function denyLibraryAccess() {
+      inputArea.style.display = 'none';
       guardianInput.disabled = true;
-      guardianInput.placeholder = 'Sign in to awaken the Guardian...';
+      const loreEl = document.getElementById('sealedLore');
+      loreEl.textContent = sealedLoreTexts[Math.floor(Math.random() * sealedLoreTexts.length)];
+      sealedState.style.display = 'flex';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { sealedState.classList.add('visible'); });
+      });
+      startSealedCountdown();
     }
 
     // Hook into auth state changes to check access
