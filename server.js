@@ -942,6 +942,71 @@ app.get('/api/status', async (req, res) => {
   }
 });
 
+// --- Waitlist ---
+const WAITLIST_FILE = path.join(EBOOKS_DIR, 'waitlist.json');
+
+function loadWaitlist() {
+  try { return JSON.parse(fs.readFileSync(WAITLIST_FILE, 'utf8')); } catch { return { signups: [] }; }
+}
+function saveWaitlist(data) {
+  try { fs.writeFileSync(WAITLIST_FILE, JSON.stringify(data, null, 2)); } catch (err) {
+    console.error('Failed to save waitlist:', err.message);
+  }
+}
+
+app.get('/api/waitlist/count', (req, res) => {
+  const data = loadWaitlist();
+  res.json({ count: data.signups.length });
+});
+
+app.post('/api/waitlist/signup', (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+    return res.status(400).json({ error: 'Invalid email' });
+  }
+
+  const data = loadWaitlist();
+  const normalized = email.trim().toLowerCase();
+
+  // Deduplicate
+  if (data.signups.some(s => s.email === normalized)) {
+    return res.json({ success: true, count: data.signups.length, existing: true });
+  }
+
+  data.signups.push({
+    email: normalized,
+    timestamp: new Date().toISOString(),
+    referrer: req.get('referer') || null,
+    userAgent: req.get('user-agent') || null,
+    ip: req.ip
+  });
+
+  saveWaitlist(data);
+  console.log(`Waitlist signup: ${normalized} (#${data.signups.length})`);
+  res.json({ success: true, count: data.signups.length });
+});
+
+app.post('/api/waitlist/survey', (req, res) => {
+  const { email, topics, format, wouldPay } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  const data = loadWaitlist();
+  const normalized = email.trim().toLowerCase();
+  const entry = data.signups.find(s => s.email === normalized);
+
+  if (!entry) return res.status(404).json({ error: 'Email not found' });
+
+  entry.survey = {
+    topics: topics || null,
+    format: format || null,
+    wouldPay: wouldPay || null,
+    answeredAt: new Date().toISOString()
+  };
+
+  saveWaitlist(data);
+  res.json({ success: true });
+});
+
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`The Great Library awakens on port ${PORT}`);

@@ -990,9 +990,371 @@
       }
     }
   </style>
+  <style>
+    /* ===== WAITLIST OVERLAY ===== */
+    .waitlist-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: #0a0a0a;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-y: auto;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      transition: opacity 1.5s ease;
+    }
+    .waitlist-overlay::-webkit-scrollbar { display: none; }
+    .waitlist-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .waitlist-inner {
+      width: 100%;
+      max-width: 480px;
+      padding: 40px 28px;
+      text-align: center;
+      position: relative;
+    }
+
+    /* Ambient glow behind the form */
+    .waitlist-inner::before {
+      content: '';
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(180, 160, 100, 0.04) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: waitlist-glow 6s ease-in-out infinite;
+    }
+    @keyframes waitlist-glow {
+      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    }
+
+    .waitlist-eye {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 32px;
+      opacity: 0;
+      animation: waitlist-eye-in 2s ease-out 0.3s forwards;
+    }
+    @keyframes waitlist-eye-in {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .waitlist-headline {
+      font-family: Georgia, 'Times New Roman', serif;
+      color: #c8b88a;
+      font-size: 28px;
+      font-weight: normal;
+      line-height: 1.35;
+      margin-bottom: 14px;
+      opacity: 0;
+      animation: waitlist-fade-up 1.2s ease-out 0.8s forwards;
+    }
+    .waitlist-sub {
+      font-family: Georgia, serif;
+      color: #6a6050;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 36px;
+      opacity: 0;
+      animation: waitlist-fade-up 1.2s ease-out 1.2s forwards;
+    }
+    @keyframes waitlist-fade-up {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .waitlist-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: waitlist-fade-up 1.2s ease-out 1.6s forwards;
+    }
+    .waitlist-email {
+      flex: 1;
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 14px 18px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.4s, box-shadow 0.4s;
+    }
+    .waitlist-email::placeholder { color: #4a4030; }
+    .waitlist-email:focus {
+      border-color: #5a5038;
+      box-shadow: 0 0 20px rgba(180, 160, 100, 0.08);
+    }
+    .waitlist-submit {
+      background: rgba(180, 160, 100, 0.1);
+      border: 1px solid #3a3528;
+      border-radius: 6px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 15px;
+      padding: 14px 24px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+      white-space: nowrap;
+    }
+    .waitlist-submit:hover {
+      background: rgba(180, 160, 100, 0.18);
+      border-color: #5a5038;
+      box-shadow: 0 0 15px rgba(180, 160, 100, 0.06);
+    }
+    .waitlist-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .waitlist-count {
+      font-family: Georgia, serif;
+      color: #3a3528;
+      font-size: 13px;
+      font-style: italic;
+      opacity: 0;
+      animation: waitlist-fade-up 1.2s ease-out 2s forwards;
+    }
+
+    .waitlist-error {
+      color: #7a4040;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+
+    /* ===== THANK YOU + SURVEY ===== */
+    .waitlist-thankyou {
+      display: none;
+    }
+    .waitlist-thankyou.visible {
+      display: block;
+      animation: waitlist-fade-up 0.8s ease-out;
+    }
+    .waitlist-thankyou-text {
+      font-family: Georgia, serif;
+      color: #c8b88a;
+      font-size: 22px;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .waitlist-thankyou-sub {
+      font-family: Georgia, serif;
+      color: #5a5040;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    .waitlist-survey {
+      text-align: left;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .waitlist-survey.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .waitlist-survey-q {
+      margin-bottom: 24px;
+    }
+    .waitlist-survey-label {
+      font-family: Georgia, serif;
+      color: #8a8070;
+      font-size: 13px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    .waitlist-survey-input {
+      width: 100%;
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      padding: 12px 16px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .waitlist-survey-input::placeholder { color: #3a3528; }
+    .waitlist-survey-input:focus { border-color: #4a4030; }
+
+    .waitlist-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .waitlist-chip {
+      background: #141210;
+      border: 1px solid #2a2520;
+      border-radius: 20px;
+      padding: 8px 18px;
+      color: #8a8070;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+    }
+    .waitlist-chip:hover {
+      border-color: #4a4030;
+      color: #c8b88a;
+    }
+    .waitlist-chip.selected {
+      background: rgba(180, 160, 100, 0.12);
+      border-color: #5a5038;
+      color: #c8b88a;
+    }
+
+    .waitlist-survey-done {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .waitlist-survey-submit {
+      background: rgba(180, 160, 100, 0.08);
+      border: 1px solid #2a2520;
+      border-radius: 6px;
+      color: #8a8070;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+    }
+    .waitlist-survey-submit:hover {
+      background: rgba(180, 160, 100, 0.15);
+      border-color: #4a4030;
+      color: #c8b88a;
+    }
+    .waitlist-skip {
+      background: none;
+      border: none;
+      color: #3a3528;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      font-style: italic;
+      cursor: pointer;
+      margin-left: 16px;
+      transition: color 0.3s;
+    }
+    .waitlist-skip:hover { color: #5a5040; }
+
+    .waitlist-final {
+      display: none;
+      text-align: center;
+    }
+    .waitlist-final.visible {
+      display: block;
+      animation: waitlist-fade-up 0.8s ease-out;
+    }
+    .waitlist-final-text {
+      font-family: Georgia, serif;
+      color: #5a5040;
+      font-size: 14px;
+      font-style: italic;
+    }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+      .waitlist-inner { padding: 32px 20px; }
+      .waitlist-headline { font-size: 22px; }
+      .waitlist-sub { font-size: 14px; margin-bottom: 28px; }
+      .waitlist-form { flex-direction: column; }
+      .waitlist-email { font-size: 16px; }
+      .waitlist-submit { padding: 14px; }
+      .waitlist-eye { width: 64px; height: 64px; margin-bottom: 24px; }
+    }
+  </style>
   <script src="https://app.lemonsqueezy.com/js/lemon.js" defer></script>
 </head>
 <body class="phase-dormant centered">
+  <!-- ===== WAITLIST OVERLAY ===== -->
+  <div class="waitlist-overlay" id="waitlistOverlay">
+    <div class="waitlist-inner">
+      <!-- Eye symbol -->
+      <div class="waitlist-eye">
+        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+          <ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+          <circle cx="60" cy="68" r="8" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+          <circle cx="60" cy="68" r="3.5" fill="#4a4030"/>
+          <path d="M34 68 Q60 48 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+          <path d="M34 68 Q60 88 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+        </svg>
+      </div>
+
+      <h1 class="waitlist-headline">The Library is opening.</h1>
+      <p class="waitlist-sub">An ancient intelligence is preparing to generate ebooks on any topic you desire. Leave your name in the ledger. When the doors open, you will be the first to enter.</p>
+
+      <!-- Email capture -->
+      <div id="waitlistSignup">
+        <form class="waitlist-form" id="waitlistForm">
+          <input type="email" class="waitlist-email" id="waitlistEmail" placeholder="Your email..." autocomplete="email" required>
+          <button type="submit" class="waitlist-submit" id="waitlistBtn">Enter</button>
+        </form>
+        <div class="waitlist-error" id="waitlistError"></div>
+        <div class="waitlist-count" id="waitlistCount"></div>
+      </div>
+
+      <!-- Thank you + Survey (hidden until signup) -->
+      <div class="waitlist-thankyou" id="waitlistThankyou">
+        <div class="waitlist-thankyou-text">The ledger remembers you.</div>
+        <div class="waitlist-thankyou-sub">You will be summoned when the doors open.</div>
+
+        <div class="waitlist-survey" id="waitlistSurvey">
+          <div class="waitlist-survey-q">
+            <label class="waitlist-survey-label">What knowledge would you seek from the Library?</label>
+            <input type="text" class="waitlist-survey-input" id="surveyTopics" placeholder="Philosophy, coding, history, fitness...">
+          </div>
+
+          <div class="waitlist-survey-q">
+            <label class="waitlist-survey-label">How do you consume your tomes?</label>
+            <div class="waitlist-chips" id="formatChips">
+              <button type="button" class="waitlist-chip" data-value="phone">Phone</button>
+              <button type="button" class="waitlist-chip" data-value="tablet">Tablet</button>
+              <button type="button" class="waitlist-chip" data-value="desktop">Desktop</button>
+              <button type="button" class="waitlist-chip" data-value="kindle">Kindle</button>
+            </div>
+          </div>
+
+          <div class="waitlist-survey-q">
+            <label class="waitlist-survey-label">Would you pay for premium AI-generated ebooks?</label>
+            <div class="waitlist-chips" id="payChips">
+              <button type="button" class="waitlist-chip" data-value="yes">Yes</button>
+              <button type="button" class="waitlist-chip" data-value="maybe">Maybe</button>
+              <button type="button" class="waitlist-chip" data-value="no">No</button>
+            </div>
+          </div>
+
+          <div class="waitlist-survey-done">
+            <button type="button" class="waitlist-survey-submit" id="surveySubmitBtn">Submit</button>
+            <button type="button" class="waitlist-skip" id="surveySkipBtn">Skip</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Final state after survey -->
+      <div class="waitlist-final" id="waitlistFinal">
+        <div class="waitlist-final-text">The Guardian notes your preferences. Patience... the halls are vast.</div>
+      </div>
+    </div>
+  </div>
+
   <button class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
   <div class="settings-overlay" id="settingsOverlay">
     <div class="settings-panel">
@@ -3307,13 +3669,140 @@
       }
     });
 
+    // ===== WAITLIST SYSTEM =====
+    const waitlistOverlay = document.getElementById('waitlistOverlay');
+    const waitlistForm = document.getElementById('waitlistForm');
+    const waitlistEmailInput = document.getElementById('waitlistEmail');
+    const waitlistBtn = document.getElementById('waitlistBtn');
+    const waitlistError = document.getElementById('waitlistError');
+    const waitlistCountEl = document.getElementById('waitlistCount');
+    const waitlistSignup = document.getElementById('waitlistSignup');
+    const waitlistThankyou = document.getElementById('waitlistThankyou');
+    const waitlistSurvey = document.getElementById('waitlistSurvey');
+    const waitlistFinal = document.getElementById('waitlistFinal');
+    let waitlistUserEmail = null;
+
+    // Fetch and display waitlist count
+    async function updateWaitlistCount() {
+      try {
+        const res = await fetch('/api/waitlist/count');
+        const data = await res.json();
+        if (data.count > 0) {
+          waitlistCountEl.textContent = data.count + (data.count === 1 ? ' seeker awaits' : ' seekers await');
+        }
+      } catch {}
+    }
+    updateWaitlistCount();
+
+    // Email signup
+    waitlistForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = waitlistEmailInput.value.trim();
+      if (!email) return;
+
+      waitlistBtn.disabled = true;
+      waitlistBtn.textContent = '...';
+      waitlistError.textContent = '';
+
+      try {
+        const res = await fetch('/api/waitlist/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          waitlistError.textContent = data.error || 'Something went wrong.';
+          waitlistBtn.disabled = false;
+          waitlistBtn.textContent = 'Enter';
+          return;
+        }
+
+        waitlistUserEmail = email;
+
+        // Transition: hide signup, show thank you
+        waitlistSignup.style.opacity = '0';
+        waitlistSignup.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => {
+          waitlistSignup.style.display = 'none';
+          waitlistThankyou.classList.add('visible');
+
+          // Update count
+          if (data.count > 0) {
+            waitlistCountEl.style.display = 'none';
+          }
+
+          // Slide in survey after a moment
+          setTimeout(() => {
+            waitlistSurvey.classList.add('visible');
+          }, 800);
+        }, 500);
+
+      } catch {
+        waitlistError.textContent = 'The connection falters. Try again.';
+        waitlistBtn.disabled = false;
+        waitlistBtn.textContent = 'Enter';
+      }
+    });
+
+    // Survey chip selection
+    document.querySelectorAll('.waitlist-chips').forEach(group => {
+      group.addEventListener('click', (e) => {
+        const chip = e.target.closest('.waitlist-chip');
+        if (!chip) return;
+        // For format chips, allow multiple; for pay chips, single select
+        if (group.id === 'payChips') {
+          group.querySelectorAll('.waitlist-chip').forEach(c => c.classList.remove('selected'));
+        }
+        chip.classList.toggle('selected');
+      });
+    });
+
+    // Survey submit
+    document.getElementById('surveySubmitBtn').addEventListener('click', async () => {
+      const topics = document.getElementById('surveyTopics').value.trim();
+      const formatChips = [...document.querySelectorAll('#formatChips .waitlist-chip.selected')].map(c => c.dataset.value);
+      const payChip = document.querySelector('#payChips .waitlist-chip.selected');
+
+      try {
+        await fetch('/api/waitlist/survey', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: waitlistUserEmail,
+            topics: topics || null,
+            format: formatChips.length ? formatChips.join(', ') : null,
+            wouldPay: payChip ? payChip.dataset.value : null
+          })
+        });
+      } catch {}
+
+      // Show final message
+      waitlistSurvey.style.opacity = '0';
+      waitlistSurvey.style.transition = 'opacity 0.5s ease';
+      setTimeout(() => {
+        waitlistSurvey.style.display = 'none';
+        waitlistThankyou.querySelector('.waitlist-thankyou-sub').style.display = 'none';
+        waitlistFinal.classList.add('visible');
+      }, 500);
+    });
+
+    // Survey skip
+    document.getElementById('surveySkipBtn').addEventListener('click', () => {
+      waitlistSurvey.style.opacity = '0';
+      waitlistSurvey.style.transition = 'opacity 0.5s ease';
+      setTimeout(() => {
+        waitlistSurvey.style.display = 'none';
+      }, 500);
+    });
+
     // ===== START: BORDER UNLOADS + AWAKENING IN PARALLEL =====
+    // The waitlist overlay blocks the Library — don't awaken until dismissed
+    // (For now, the Library stays hidden behind the waitlist permanently)
     sizeBorderLoader();
-    borderCurrent = 1;
-    borderPath.style.strokeDashoffset = 0;
-    setTimeout(() => reverseBorderLoader(), 300);
-    // Start awakening immediately — don't wait for border
-    setTimeout(() => enterPhase('awakening'), 400);
+    borderCurrent = 0;
+    borderPath.style.strokeDashoffset = borderPerimeter;
   </script>
 </body>
 </html>
