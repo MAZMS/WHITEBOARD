@@ -1460,6 +1460,15 @@ app.get('/api/auth/me', optionalAuth, (req, res) => {
   res.json({ user: { id: req.user.id, email: req.user.email, name: req.user.name, avatar: req.user.avatar, tomesCount: req.user.tomesCount, membershipStatus: req.user.membershipStatus, ebookIds: req.user.ebookIds || [] } });
 });
 
+// GET /api/auth/access — check if current user has library access
+app.get('/api/auth/access', optionalAuth, (req, res) => {
+  if (!req.user || !req.user.email) return res.json({ access: false, user: null });
+  const email = req.user.email.toLowerCase();
+  const hasAccess = email === 'greatlibraryai@gmail.com' || email.endsWith('@greatlibrary.ai');
+  const user = { id: req.user.id, email: req.user.email, name: req.user.name };
+  res.json({ access: hasAccess, user });
+});
+
 // GET /api/auth/ebooks — user's ebook history
 app.get('/api/auth/ebooks', optionalAuth, (req, res) => {
   if (!req.user) return res.status(401).json({ error: 'Not signed in' });
