@@ -88,6 +88,90 @@
       50% { transform: scale(1.04); filter: drop-shadow(0 0 14px rgba(180, 160, 100, 0.25)); }
     }
 
+    /* Pupil glow pulse */
+    .wl-eye .wl-pupil {
+      animation: wl-pupil-glow 3s ease-in-out infinite;
+    }
+    @keyframes wl-pupil-glow {
+      0%, 100% { fill: #4a4030; }
+      50% { fill: #6a5a40; filter: drop-shadow(0 0 6px rgba(180, 160, 100, 0.4)); }
+    }
+
+    /* Iris shimmer */
+    .wl-eye .wl-iris {
+      animation: wl-iris-shimmer 5s ease-in-out infinite;
+    }
+    @keyframes wl-iris-shimmer {
+      0%, 100% { stroke: #3a3528; stroke-width: 1.2; }
+      50% { stroke: #5a5038; stroke-width: 1.6; }
+    }
+
+    /* Blink — lids sweep closed then open */
+    .wl-eye .wl-lid-top {
+      animation: wl-blink-top 6s ease-in-out infinite;
+      animation-delay: 3s;
+    }
+    .wl-eye .wl-lid-bottom {
+      animation: wl-blink-bottom 6s ease-in-out infinite;
+      animation-delay: 3s;
+    }
+    @keyframes wl-blink-top {
+      0%, 6%, 100% { d: path("M34 68 Q60 48 86 68"); }
+      3% { d: path("M34 68 Q60 72 86 68"); }
+    }
+    @keyframes wl-blink-bottom {
+      0%, 6%, 100% { d: path("M34 68 Q60 88 86 68"); }
+      3% { d: path("M34 68 Q60 64 86 68"); }
+    }
+
+    /* Floating particles around eye — pure CSS */
+    .wl-eye-wrap {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 32px;
+    }
+    .wl-eye-wrap .wl-eye {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .wl-particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: #c8b88a;
+      border-radius: 50%;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .wl-particle:nth-child(2) {
+      top: 10%; left: -10%;
+      animation: wl-float 7s ease-in-out 1s infinite;
+    }
+    .wl-particle:nth-child(3) {
+      top: 60%; right: -14%;
+      animation: wl-float 8s ease-in-out 2.5s infinite;
+    }
+    .wl-particle:nth-child(4) {
+      top: -5%; right: 20%;
+      animation: wl-float 6s ease-in-out 0.5s infinite;
+    }
+    .wl-particle:nth-child(5) {
+      bottom: -8%; left: 25%;
+      animation: wl-float 9s ease-in-out 3.5s infinite;
+    }
+    .wl-particle:nth-child(6) {
+      top: 30%; left: -18%;
+      animation: wl-float 7.5s ease-in-out 4s infinite;
+    }
+    @keyframes wl-float {
+      0%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
+      20% { opacity: 0.4; }
+      50% { opacity: 0.6; transform: translateY(-12px) scale(1); }
+      80% { opacity: 0.3; }
+    }
+
     .wl-headline {
       color: #c8b88a;
       font-size: 28px;
@@ -497,7 +581,7 @@
       .wl-form { flex-direction: column; }
       .wl-email { font-size: 16px; }
       .wl-submit { padding: 14px; font-size: 16px; }
-      .wl-eye { width: 64px; height: 64px; margin-bottom: 24px; }
+      .wl-eye-wrap { width: 64px; height: 64px; margin-bottom: 24px; }
       .wl-chip { padding: 11px 20px; font-size: 15px; }
       .wl-nav { flex-wrap: wrap; }
       .wl-oauth-buttons { flex-direction: column; }
@@ -508,15 +592,22 @@
 <body>
   <div class="waitlist">
     <div class="waitlist-inner">
-      <div class="wl-eye">
-        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
-          <ellipse cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/>
-          <circle cx="60" cy="68" r="8" stroke="#3a3528" stroke-width="1.2" fill="none"/>
-          <circle cx="60" cy="68" r="3.5" fill="#4a4030"/>
-          <path d="M34 68 Q60 48 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
-          <path d="M34 68 Q60 88 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
-        </svg>
+      <div class="wl-eye-wrap">
+        <div class="wl-eye">
+          <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="60,12 110,105 10,105" stroke="#3a3528" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+            <ellipse class="wl-iris" cx="60" cy="68" rx="26" ry="14" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+            <circle cx="60" cy="68" r="8" stroke="#3a3528" stroke-width="1.2" fill="none"/>
+            <circle class="wl-pupil" cx="60" cy="68" r="3.5" fill="#4a4030"/>
+            <path class="wl-lid-top" d="M34 68 Q60 48 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+            <path class="wl-lid-bottom" d="M34 68 Q60 88 86 68" stroke="#3a3528" stroke-width="1" fill="none"/>
+          </svg>
+        </div>
+        <div class="wl-particle"></div>
+        <div class="wl-particle"></div>
+        <div class="wl-particle"></div>
+        <div class="wl-particle"></div>
+        <div class="wl-particle"></div>
       </div>
 
       <h1 class="wl-headline">Name a topic. Receive a book.</h1>
