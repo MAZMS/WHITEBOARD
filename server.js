@@ -35,15 +35,21 @@ function loadMetrics() {
 function createEmptyMetrics() {
   return {
     apiCalls: { chat: 0, greet: 0, whisper: 0, farewell: 0, outro: 0, mode: 0, status: 0 },
-    errors: { total: 0, e500: 0, e429: 0, timeouts: 0 },
-    pageVisits: { waitlist: 0, library: 0, admin: 0 },
+    errors: { total: 0, e500: 0, e429: 0, timeouts: 0, recent: [] },
+    pageVisits: { waitlist: 0, library: 0, admin: 0, tomes: 0, legal: 0 },
     ebooks: { generated: 0, failed: 0, totalGenerationMs: 0 },
     covers: { geminiSuccess: 0, imagenFallback: 0, failed: 0 },
-    visitors: {},       // ip -> { first, last, hits, ua, country, city, page }
+    visitors: {},       // ip -> { first, last, hits, ua, country, city, region, page, browser, sessions }
     referrers: {},      // referrer -> count
-    devices: { mobile: 0, desktop: 0 },
+    devices: { mobile: 0, desktop: 0, tablet: 0 },
+    browsers: {},       // browser name -> count
     dailySignups: {},   // "YYYY-MM-DD" -> count
-    recentVisitors: [], // last 50 visitors [{ip, timestamp, page, country, city, ua}]
+    dailyVisits: {},    // "YYYY-MM-DD" -> { total, unique, pages: { waitlist, library, ... } }
+    hourlyHeatmap: {},  // "0"-"23" -> { "0"-"6" (day of week) -> count }
+    trafficSources: { direct: 0, search: 0, social: 0, referral: 0 },
+    recentVisitors: [], // last 100 visitors [{ip, timestamp, page, country, city, ua, browser, isMobile}]
+    sessions: {},       // sessionId -> { start, last, pages: [], duration, ip, country }
+    funnelEvents: { pageView: 0, emailFocus: 0, emailSubmit: 0, surveyStart: 0, surveyComplete: 0 },
     llmUsage: {         // per-provider API usage tracking
       daily: {},        // "YYYY-MM-DD" -> { provider -> { calls, inputTokens, outputTokens, tokens, errors, latencyMs } }
       allTime: {}       // provider -> { calls, inputTokens, outputTokens, tokens, errors, totalLatencyMs }
@@ -64,9 +70,24 @@ let metricsDirty = false;
 function saveMetrics() {
   if (!metricsDirty) return;
   metrics.lastUpdated = new Date().toISOString();
-  try { fs.writeFileSync(METRICS_FILE, JSON.stringify(metrics, null, 2)); }
+  try {
+    // Convert Sets to arrays for JSON serialization (dailyVisits unique visitors)
+    const serializable = JSON.parse(JSON.stringify(metrics, (key, value) => {
+      if (value instanceof Set) return [...value];
+      return value;
+    }));
+    fs.writeFileSync(METRICS_FILE, JSON.stringify(serializable, null, 2));
+  }
   catch (err) { console.error('Failed to save metrics:', err.message); }
   metricsDirty = false;
+
+  // Prune daily visit data older than 90 days
+  const cutoff90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  if (metrics.dailyVisits) {
+    for (const day of Object.keys(metrics.dailyVisits)) {
+      if (day < cutoff90) delete metrics.dailyVisits[day];
+    }
+  }
 }
 
 // Flush metrics to disk every 30s — never blocks a request
@@ -79,55 +100,134 @@ function trackApiCall(endpoint) {
   }
 }
 
-function trackError(statusCode) {
+function trackError(statusCode, context) {
   metrics.errors.total++;
   if (statusCode === 500) metrics.errors.e500++;
   if (statusCode === 429) metrics.errors.e429++;
+  // Record recent errors (last 50) for dashboard debugging
+  if (!metrics.errors.recent) metrics.errors.recent = [];
+  metrics.errors.recent.unshift({
+    status: statusCode,
+    context: (context || 'unknown').slice(0, 200),
+    timestamp: new Date().toISOString()
+  });
+  if (metrics.errors.recent.length > 50) metrics.errors.recent = metrics.errors.recent.slice(0, 50);
   metricsDirty = true;
+}
+
+// Browser detection from user agent
+function detectBrowser(ua) {
+  if (!ua) return 'Unknown';
+  if (/edg\//i.test(ua)) return 'Edge';
+  if (/opr\//i.test(ua) || /opera/i.test(ua)) return 'Opera';
+  if (/chrome/i.test(ua) && !/edg/i.test(ua)) return 'Chrome';
+  if (/firefox/i.test(ua)) return 'Firefox';
+  if (/safari/i.test(ua) && !/chrome/i.test(ua)) return 'Safari';
+  if (/msie|trident/i.test(ua)) return 'IE';
+  return 'Other';
+}
+
+// Classify traffic source from referrer
+function classifyTrafficSource(ref) {
+  if (!ref) return 'direct';
+  const host = (() => { try { return new URL(ref).hostname.toLowerCase(); } catch { return ''; } })();
+  if (!host) return 'direct';
+  const searchEngines = ['google', 'bing', 'yahoo', 'duckduckgo', 'baidu', 'yandex', 'ecosia', 'ask.com'];
+  if (searchEngines.some(se => host.includes(se))) return 'search';
+  const socialNetworks = ['facebook', 'twitter', 'x.com', 'linkedin', 'instagram', 'reddit', 'tiktok', 'youtube', 'pinterest', 'threads', 'mastodon', 'discord', 'slack'];
+  if (socialNetworks.some(sn => host.includes(sn))) return 'social';
+  return 'referral';
 }
 
 function trackVisitor(req, page) {
   const ip = getClientIPEarly(req);
   const ua = req.get('user-agent') || '';
   const ref = req.get('referer') || '';
-  const now = new Date().toISOString();
+  const now = new Date();
+  const nowISO = now.toISOString();
+  const today = nowISO.slice(0, 10);
+  const hour = String(now.getUTCHours());
+  const dayOfWeek = String(now.getUTCDay());
 
   // Geo data from proxy headers (Railway/Cloudflare provide these)
   const country = req.get('cf-ipcountry') || req.get('x-vercel-ip-country') || req.get('x-country') || null;
   const city = req.get('cf-ipcity') || req.get('x-vercel-ip-city') || req.get('x-city') || null;
   const region = req.get('cf-region') || req.get('x-vercel-ip-country-region') || null;
 
-  // Visitor tracking (capped at 10k unique IPs to avoid memory bloat)
-  if (Object.keys(metrics.visitors).length < 10000) {
-    if (!metrics.visitors[ip]) {
-      metrics.visitors[ip] = { first: now, last: now, hits: 1, ua: ua.slice(0, 200), country, city, region };
-    } else {
-      metrics.visitors[ip].last = now;
-      metrics.visitors[ip].hits++;
-      if (country && !metrics.visitors[ip].country) metrics.visitors[ip].country = country;
-      if (city && !metrics.visitors[ip].city) metrics.visitors[ip].city = city;
-      if (region && !metrics.visitors[ip].region) metrics.visitors[ip].region = region;
-    }
-  }
+  // Browser detection
+  const browser = detectBrowser(ua);
+  if (!metrics.browsers) metrics.browsers = {};
+  metrics.browsers[browser] = (metrics.browsers[browser] || 0) + 1;
 
-  // Recent visitors feed (last 50)
-  if (!metrics.recentVisitors) metrics.recentVisitors = [];
-  metrics.recentVisitors.unshift({
-    ip: ip.replace(/\d+$/, 'x'), // partial IP for privacy
-    timestamp: now,
-    page: page || 'unknown',
-    country, city, region,
-    ua: ua.slice(0, 100),
-    isMobile: /mobile|android|iphone|ipad|ipod/i.test(ua)
-  });
-  if (metrics.recentVisitors.length > 50) metrics.recentVisitors = metrics.recentVisitors.slice(0, 50);
-
-  // Device detection from user agent
-  if (/mobile|android|iphone|ipad|ipod/i.test(ua)) {
+  // Device detection (tablet vs mobile vs desktop)
+  const isTablet = /ipad|tablet|playbook|silk/i.test(ua) || (/android/i.test(ua) && !/mobile/i.test(ua));
+  const isMobile = !isTablet && /mobile|android|iphone|ipod/i.test(ua);
+  if (!metrics.devices.tablet) metrics.devices.tablet = 0;
+  if (isTablet) {
+    metrics.devices.tablet++;
+  } else if (isMobile) {
     metrics.devices.mobile++;
   } else if (ua) {
     metrics.devices.desktop++;
   }
+
+  // Visitor tracking (capped at 10k unique IPs to avoid memory bloat)
+  const isReturning = !!metrics.visitors[ip];
+  if (Object.keys(metrics.visitors).length < 10000) {
+    if (!metrics.visitors[ip]) {
+      metrics.visitors[ip] = { first: nowISO, last: nowISO, hits: 1, ua: ua.slice(0, 200), country, city, region, browser, pages: [page] };
+    } else {
+      metrics.visitors[ip].last = nowISO;
+      metrics.visitors[ip].hits++;
+      if (country && !metrics.visitors[ip].country) metrics.visitors[ip].country = country;
+      if (city && !metrics.visitors[ip].city) metrics.visitors[ip].city = city;
+      if (region && !metrics.visitors[ip].region) metrics.visitors[ip].region = region;
+      if (!metrics.visitors[ip].browser) metrics.visitors[ip].browser = browser;
+      // Track unique pages visited
+      if (!metrics.visitors[ip].pages) metrics.visitors[ip].pages = [];
+      if (!metrics.visitors[ip].pages.includes(page) && metrics.visitors[ip].pages.length < 20) {
+        metrics.visitors[ip].pages.push(page);
+      }
+    }
+  }
+
+  // Daily visit tracking
+  if (!metrics.dailyVisits) metrics.dailyVisits = {};
+  if (!metrics.dailyVisits[today]) metrics.dailyVisits[today] = { total: 0, unique: new Set(), pages: {} };
+  // Handle Set serialization — when loaded from JSON it becomes an array
+  if (Array.isArray(metrics.dailyVisits[today].unique)) {
+    metrics.dailyVisits[today].unique = new Set(metrics.dailyVisits[today].unique);
+  }
+  metrics.dailyVisits[today].total++;
+  metrics.dailyVisits[today].unique.add(ip);
+  if (!metrics.dailyVisits[today].pages[page]) metrics.dailyVisits[today].pages[page] = 0;
+  metrics.dailyVisits[today].pages[page]++;
+
+  // Hourly heatmap (hour x day-of-week)
+  if (!metrics.hourlyHeatmap) metrics.hourlyHeatmap = {};
+  if (!metrics.hourlyHeatmap[hour]) metrics.hourlyHeatmap[hour] = {};
+  if (!metrics.hourlyHeatmap[hour][dayOfWeek]) metrics.hourlyHeatmap[hour][dayOfWeek] = 0;
+  metrics.hourlyHeatmap[hour][dayOfWeek]++;
+
+  // Traffic source classification
+  if (!metrics.trafficSources) metrics.trafficSources = { direct: 0, search: 0, social: 0, referral: 0 };
+  const source = classifyTrafficSource(ref);
+  metrics.trafficSources[source]++;
+
+  // Recent visitors feed (last 100)
+  if (!metrics.recentVisitors) metrics.recentVisitors = [];
+  metrics.recentVisitors.unshift({
+    ip: ip.replace(/\d+$/, 'x'), // partial IP for privacy
+    timestamp: nowISO,
+    page: page || 'unknown',
+    country, city, region,
+    ua: ua.slice(0, 100),
+    browser,
+    isMobile: isMobile || isTablet,
+    isReturning,
+    source
+  });
+  if (metrics.recentVisitors.length > 100) metrics.recentVisitors = metrics.recentVisitors.slice(0, 100);
 
   // Referrer tracking (skip self-referrals)
   if (ref && !ref.includes('greatlibrary.ai') && !ref.includes('localhost')) {
@@ -191,10 +291,35 @@ app.get('/library', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Tome Library pages
+app.get('/tomes', (req, res) => {
+  if (!metrics.pageVisits.tomes) metrics.pageVisits.tomes = 0;
+  metrics.pageVisits.tomes++;
+  trackVisitor(req, 'tomes');
+  metricsDirty = true;
+  res.sendFile(path.join(__dirname, 'public', 'tomes.html'));
+});
+app.get('/tome/:id', (req, res) => {
+  trackVisitor(req, 'tome-detail');
+  metricsDirty = true;
+  res.sendFile(path.join(__dirname, 'public', 'tome.html'));
+});
+app.get('/tome/:id/read', (req, res) => {
+  trackVisitor(req, 'tome-read');
+  metricsDirty = true;
+  res.sendFile(path.join(__dirname, 'public', 'tome.html'));
+});
+
 // Legal pages — all served from a single template
 const LEGAL_PAGES = ['/terms', '/privacy', '/cookies', '/acceptable-use', '/dmca', '/refund', '/disclaimer'];
 LEGAL_PAGES.forEach(route => {
-  app.get(route, (req, res) => res.sendFile(path.join(__dirname, 'public', 'legal.html')));
+  app.get(route, (req, res) => {
+    if (!metrics.pageVisits.legal) metrics.pageVisits.legal = 0;
+    metrics.pageVisits.legal++;
+    trackVisitor(req, 'legal');
+    metricsDirty = true;
+    res.sendFile(path.join(__dirname, 'public', 'legal.html'));
+  });
 });
 
 app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
@@ -203,6 +328,21 @@ app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
 const EBOOKS_DIR = process.env.RAILWAY_ENVIRONMENT ? '/tmp/ebooks' : path.join(__dirname, 'ebooks');
 if (!fs.existsSync(EBOOKS_DIR)) fs.mkdirSync(EBOOKS_DIR, { recursive: true });
 console.log('Ebooks directory:', EBOOKS_DIR);
+
+// Covers directory — permanent storage for tome cover images
+const COVERS_DIR = path.join(EBOOKS_DIR, 'covers');
+if (!fs.existsSync(COVERS_DIR)) fs.mkdirSync(COVERS_DIR, { recursive: true });
+
+// Tome Library data file
+const TOMES_FILE = path.join(EBOOKS_DIR, 'tomes.json');
+function loadTomes() {
+  try { return JSON.parse(fs.readFileSync(TOMES_FILE, 'utf8')); }
+  catch { return { tomes: [], likes: [], saves: [], comments: [], views: [], reports: [] }; }
+}
+function saveTomes(data) {
+  try { fs.writeFileSync(TOMES_FILE, JSON.stringify(data, null, 2)); }
+  catch (err) { console.error('Failed to save tomes:', err.message); }
+}
 
 // --- Font + color helpers ---
 const FONTS_DIR = path.join(__dirname, 'fonts');
@@ -492,7 +632,7 @@ async function llmCreate(opts) {
       return result;
     } catch (err) {
       if (err.status === 429 && attempt < maxRetries - 1) {
-        trackError(429);
+        trackError(429, 'LLM rate limit: ' + (err.message || '').slice(0, 100));
         const delay = (attempt + 1) * 10000;
         console.warn(`Rate limited (429), retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
         await new Promise(r => setTimeout(r, delay));
@@ -624,6 +764,43 @@ function getJob(id) {
   return ebookJobs.get(id) || loadJobsFromDisk()[id];
 }
 
+// --- Migrate existing ebooks to Tome Library on startup ---
+(function migrateExistingEbooksToLibrary() {
+  try {
+    const allJobs = loadJobsFromDisk();
+    const tomesData = loadTomes();
+    let migrated = 0;
+    for (const [id, job] of Object.entries(allJobs)) {
+      if (job.status !== 'ready') continue;
+      if (tomesData.tomes.find(t => t.id === id)) continue;
+      tomesData.tomes.push({
+        id,
+        title: job.title || 'Untitled Tome',
+        subtitle: job.subtitle || '',
+        authorId: null,
+        authorName: 'Anonymous Seeker',
+        coverUrl: job.coverPath ? `/api/tomes/${id}/cover` : null,
+        fileUrl: `/api/ebook/${id}/download`,
+        chapters: job.chapterList ? job.chapterList.map(ch => ({ title: ch.title, content: '' })) : [],
+        designConfig: null,
+        topicTags: generateTopicTags(job.title || '', job.subtitle || ''),
+        status: 'published',
+        visibility: 'public',
+        likesCount: 0, dislikesCount: 0, viewsCount: 0, downloadsCount: 0, commentsCount: 0,
+        createdAt: job.generatedAt || new Date().toISOString(),
+        updatedAt: job.generatedAt || new Date().toISOString()
+      });
+      migrated++;
+    }
+    if (migrated > 0) {
+      saveTomes(tomesData);
+      console.log(`Migrated ${migrated} existing ebooks to Tome Library`);
+    }
+  } catch (err) {
+    console.warn('Tome migration skipped:', err.message);
+  }
+})();
+
 // --- Chat endpoint ---
 app.post('/api/chat', optionalAuth, async (req, res) => {
   trackApiCall('chat');
@@ -688,7 +865,7 @@ app.post('/api/chat', optionalAuth, async (req, res) => {
     }
   } catch (err) {
     console.error(`LLM error (${activeProvider}):`, err.message, err.status, err.code);
-    trackError(err.status || 500);
+    trackError(err.status || 500, 'Chat LLM: ' + (err.message || '').slice(0, 100));
     res.status(500).json({
       error: activeProvider === 'selfhosted'
         ? 'The Guardian sleeps... the ancient vessel may need awakening.'
@@ -697,6 +874,43 @@ app.post('/api/chat', optionalAuth, async (req, res) => {
     });
   }
 });
+
+// --- Topic tag generation (keyword-based, no LLM call) ---
+function generateTopicTags(title, subtitle) {
+  const text = ((title || '') + ' ' + (subtitle || '')).toLowerCase();
+  const tagMap = {
+    'philosophy': ['philosophy', 'philosophical', 'ethics', 'moral', 'existence', 'meaning', 'wisdom', 'stoic', 'plato', 'aristotle', 'nietzsche', 'socrates', 'metaphysics', 'epistemology'],
+    'science': ['science', 'scientific', 'physics', 'chemistry', 'biology', 'quantum', 'atom', 'molecule', 'experiment', 'theory', 'hypothesis', 'evolution', 'relativity', 'gravity'],
+    'technology': ['technology', 'tech', 'software', 'hardware', 'computer', 'digital', 'internet', 'cyber', 'robot', 'automation', 'innovation'],
+    'coding': ['coding', 'programming', 'code', 'developer', 'algorithm', 'javascript', 'python', 'java', 'react', 'api', 'database', 'web development', 'machine learning', 'data structure'],
+    'history': ['history', 'historical', 'ancient', 'medieval', 'war', 'empire', 'civilization', 'dynasty', 'revolution', 'century', 'era', 'kingdom'],
+    'fiction': ['fiction', 'novel', 'story', 'tale', 'adventure', 'mystery', 'fantasy', 'dragon', 'magic', 'quest', 'hero', 'kingdom', 'legend', 'myth'],
+    'psychology': ['psychology', 'psychological', 'mind', 'brain', 'behavior', 'cognitive', 'mental', 'emotion', 'personality', 'consciousness', 'therapy', 'anxiety', 'depression'],
+    'business': ['business', 'entrepreneur', 'startup', 'marketing', 'sales', 'management', 'leadership', 'strategy', 'profit', 'investment', 'finance', 'economy', 'money'],
+    'self-help': ['self-help', 'self help', 'productivity', 'habit', 'motivation', 'success', 'mindset', 'growth', 'discipline', 'goal', 'confidence', 'resilience'],
+    'art': ['art', 'artistic', 'painting', 'sculpture', 'music', 'creative', 'creativity', 'design', 'aesthetic', 'beauty', 'canvas', 'composition'],
+    'mathematics': ['math', 'mathematics', 'mathematical', 'calculus', 'algebra', 'geometry', 'statistics', 'probability', 'equation', 'theorem', 'number theory'],
+    'nature': ['nature', 'natural', 'animal', 'plant', 'ocean', 'forest', 'wildlife', 'ecology', 'environment', 'climate', 'earth', 'species'],
+    'spirituality': ['spiritual', 'spirituality', 'meditation', 'zen', 'enlightenment', 'soul', 'divine', 'sacred', 'mystical', 'consciousness', 'awakening'],
+    'health': ['health', 'fitness', 'nutrition', 'diet', 'exercise', 'wellness', 'medical', 'healing', 'body', 'sleep', 'stress'],
+    'cooking': ['cooking', 'recipe', 'food', 'cuisine', 'chef', 'kitchen', 'culinary', 'baking', 'meal', 'ingredient'],
+    'travel': ['travel', 'journey', 'explore', 'adventure', 'destination', 'voyage', 'wanderlust', 'culture', 'backpack'],
+    'relationships': ['relationship', 'love', 'romance', 'dating', 'marriage', 'intimacy', 'connection', 'partner', 'communication'],
+    'education': ['education', 'learning', 'teaching', 'student', 'school', 'university', 'knowledge', 'study', 'curriculum'],
+    'space': ['space', 'cosmos', 'universe', 'galaxy', 'star', 'planet', 'astronaut', 'nasa', 'orbit', 'nebula', 'astronomical']
+  };
+
+  const tags = [];
+  for (const [tag, keywords] of Object.entries(tagMap)) {
+    if (keywords.some(kw => text.includes(kw))) {
+      tags.push(tag);
+    }
+  }
+
+  // If no tags matched, assign 'general'
+  if (tags.length === 0) tags.push('general');
+  return tags.slice(0, 5); // Max 5 tags
+}
 
 // --- Cover image generation (Imagen 3 via Vertex AI) ---
 async function generateCover(title, subtitle, designTheme, styleSeedText) {
@@ -904,19 +1118,85 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
 
   await createDocx(docxFilepath, outline, chapters, coverPath, designConfig);
 
-  // Clean up cover image
+  // Save cover image permanently for the library
+  let permanentCoverPath = null;
+  if (coverPath && fs.existsSync(coverPath)) {
+    const ext = coverPath.endsWith('.jpg') || coverPath.endsWith('.jpeg') ? '.jpg' : '.png';
+    permanentCoverPath = path.join(COVERS_DIR, ebookId + ext);
+    try {
+      fs.copyFileSync(coverPath, permanentCoverPath);
+      console.log('  Cover saved permanently:', permanentCoverPath);
+    } catch (e) {
+      console.warn('  Failed to save cover permanently:', e.message);
+      permanentCoverPath = null;
+    }
+  }
+
+  // Clean up temp cover image
   if (coverPath) try { fs.unlinkSync(coverPath); } catch (e) {}
 
   const genDuration = Date.now() - ebookStartTime;
   saveJob(ebookId, {
     status: 'ready',
     title: outline.title,
+    subtitle: outline.subtitle,
     filename: ebookId + '.docx',
     path: docxFilepath,
     generatedAt: new Date().toISOString(),
     durationMs: genDuration,
-    chapters: outline.chapters.length
+    chapters: outline.chapters.length,
+    chapterList: outline.chapters.map((ch, i) => ({ title: ch.title, description: ch.description })),
+    coverPath: permanentCoverPath
   });
+
+  // Auto-publish to the Tome Library
+  try {
+    const tomesData = loadTomes();
+    // Avoid duplicates
+    if (!tomesData.tomes.find(t => t.id === ebookId)) {
+      // Determine author from the account linked to this job
+      let authorName = 'Anonymous Seeker';
+      let authorId = null;
+      const accountsData = loadAccounts();
+      const linkedAccount = accountsData.accounts.find(a => a.ebookIds && a.ebookIds.includes(ebookId));
+      if (linkedAccount) {
+        authorName = linkedAccount.name || 'Anonymous Seeker';
+        authorId = linkedAccount.id;
+      }
+
+      // Generate topic tags from title and subtitle
+      const topicTags = generateTopicTags(outline.title, outline.subtitle);
+
+      tomesData.tomes.push({
+        id: ebookId,
+        title: outline.title,
+        subtitle: outline.subtitle || '',
+        authorId: authorId,
+        authorName: authorName,
+        coverUrl: permanentCoverPath ? `/api/tomes/${ebookId}/cover` : null,
+        fileUrl: `/api/ebook/${ebookId}/download`,
+        chapters: chapters.map((ch, i) => ({
+          title: ch.title,
+          content: ch.content
+        })),
+        designConfig: designConfig,
+        topicTags: topicTags,
+        status: 'published',
+        visibility: 'public',
+        likesCount: 0,
+        dislikesCount: 0,
+        viewsCount: 0,
+        downloadsCount: 0,
+        commentsCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      saveTomes(tomesData);
+      console.log('  Tome published to library: ' + outline.title);
+    }
+  } catch (err) {
+    console.warn('  Failed to publish tome to library:', err.message);
+  }
 
   metrics.ebooks.generated++;
   metrics.ebooks.totalGenerationMs += genDuration;
@@ -1759,6 +2039,464 @@ app.get('/api/auth/config', (req, res) => {
   });
 });
 
+// --- Tome Library API endpoints ---
+
+// GET /api/tomes — browse tomes with filters, sort, pagination
+app.get('/api/tomes', (req, res) => {
+  const data = loadTomes();
+  let tomes = data.tomes.filter(t => t.status === 'published' && t.visibility === 'public');
+
+  // Filter by topic tag
+  const topic = req.query.topic;
+  if (topic && topic !== 'all') {
+    tomes = tomes.filter(t => t.topicTags && t.topicTags.includes(topic));
+  }
+
+  // Search by title or subtitle
+  const q = (req.query.q || '').toLowerCase().trim();
+  if (q) {
+    tomes = tomes.filter(t =>
+      (t.title || '').toLowerCase().includes(q) ||
+      (t.subtitle || '').toLowerCase().includes(q) ||
+      (t.topicTags || []).some(tag => tag.includes(q))
+    );
+  }
+
+  // Sort
+  const sort = req.query.sort || 'newest';
+  if (sort === 'newest') {
+    tomes.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  } else if (sort === 'oldest') {
+    tomes.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  } else if (sort === 'most-liked') {
+    tomes.sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
+  } else if (sort === 'most-viewed') {
+    tomes.sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0));
+  } else if (sort === 'trending') {
+    // Trending = most views + likes in recent time, weighted by recency
+    const now = Date.now();
+    tomes.sort((a, b) => {
+      const ageA = (now - new Date(a.createdAt).getTime()) / 3600000; // hours
+      const ageB = (now - new Date(b.createdAt).getTime()) / 3600000;
+      const scoreA = ((a.likesCount || 0) * 3 + (a.viewsCount || 0)) / Math.max(1, Math.sqrt(ageA));
+      const scoreB = ((b.likesCount || 0) * 3 + (b.viewsCount || 0)) / Math.max(1, Math.sqrt(ageB));
+      return scoreB - scoreA;
+    });
+  }
+
+  // Pagination
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+  const total = tomes.length;
+  const start = (page - 1) * limit;
+  const paged = tomes.slice(start, start + limit);
+
+  // Return lightweight card data (no chapter content)
+  const cards = paged.map(t => ({
+    id: t.id,
+    title: t.title,
+    subtitle: t.subtitle || '',
+    authorName: t.authorName || 'Anonymous Seeker',
+    authorId: t.authorId,
+    coverUrl: t.coverUrl,
+    topicTags: t.topicTags || [],
+    likesCount: t.likesCount || 0,
+    viewsCount: t.viewsCount || 0,
+    commentsCount: t.commentsCount || 0,
+    chapterCount: (t.chapters || []).length,
+    createdAt: t.createdAt
+  }));
+
+  // Collect all available tags
+  const allTags = [...new Set(data.tomes.filter(t => t.status === 'published').flatMap(t => t.topicTags || []))].sort();
+
+  res.json({ tomes: cards, total, page, limit, totalPages: Math.ceil(total / limit), tags: allTags });
+});
+
+// GET /api/tomes/trending — top trending tomes
+app.get('/api/tomes/trending', (req, res) => {
+  const data = loadTomes();
+  const now = Date.now();
+  const tomes = data.tomes
+    .filter(t => t.status === 'published' && t.visibility === 'public')
+    .sort((a, b) => {
+      const ageA = (now - new Date(a.createdAt).getTime()) / 3600000;
+      const ageB = (now - new Date(b.createdAt).getTime()) / 3600000;
+      const scoreA = ((a.likesCount || 0) * 3 + (a.viewsCount || 0)) / Math.max(1, Math.sqrt(ageA));
+      const scoreB = ((b.likesCount || 0) * 3 + (b.viewsCount || 0)) / Math.max(1, Math.sqrt(ageB));
+      return scoreB - scoreA;
+    })
+    .slice(0, 10)
+    .map(t => ({
+      id: t.id, title: t.title, subtitle: t.subtitle || '', authorName: t.authorName || 'Anonymous Seeker',
+      coverUrl: t.coverUrl, topicTags: t.topicTags || [], likesCount: t.likesCount || 0,
+      viewsCount: t.viewsCount || 0, createdAt: t.createdAt
+    }));
+  res.json({ tomes });
+});
+
+// GET /api/tomes/search?q= — search tomes
+app.get('/api/tomes/search', (req, res) => {
+  const q = (req.query.q || '').toLowerCase().trim();
+  if (!q) return res.json({ tomes: [], total: 0 });
+  const data = loadTomes();
+  const results = data.tomes
+    .filter(t => t.status === 'published' && t.visibility === 'public')
+    .filter(t =>
+      (t.title || '').toLowerCase().includes(q) ||
+      (t.subtitle || '').toLowerCase().includes(q) ||
+      (t.authorName || '').toLowerCase().includes(q) ||
+      (t.topicTags || []).some(tag => tag.includes(q)) ||
+      (t.chapters || []).some(ch => (ch.title || '').toLowerCase().includes(q))
+    )
+    .slice(0, 30)
+    .map(t => ({
+      id: t.id, title: t.title, subtitle: t.subtitle || '', authorName: t.authorName || 'Anonymous Seeker',
+      coverUrl: t.coverUrl, topicTags: t.topicTags || [], likesCount: t.likesCount || 0,
+      viewsCount: t.viewsCount || 0, createdAt: t.createdAt
+    }));
+  res.json({ tomes: results, total: results.length });
+});
+
+// GET /api/tomes/:id — get single tome with full details
+app.get('/api/tomes/:id', (req, res) => {
+  const data = loadTomes();
+  const tome = data.tomes.find(t => t.id === req.params.id);
+  if (!tome || tome.status === 'removed') return res.status(404).json({ error: 'Tome not found' });
+
+  // Count views (simple increment — deduplicated per IP per hour for unique views)
+  const ip = getClientIPEarly(req);
+  const ipHash = crypto.createHash('sha256').update(ip + req.params.id).digest('hex').slice(0, 16);
+  const hourAgo = new Date(Date.now() - 3600000).toISOString();
+  const recentView = (data.views || []).find(v => v.ipHash === ipHash && v.tomeId === req.params.id && v.viewedAt > hourAgo);
+  if (!recentView) {
+    tome.viewsCount = (tome.viewsCount || 0) + 1;
+    if (!data.views) data.views = [];
+    data.views.push({ tomeId: req.params.id, ipHash, viewedAt: new Date().toISOString() });
+    // Prune old views (keep last 1000)
+    if (data.views.length > 1000) data.views = data.views.slice(-1000);
+    tome.updatedAt = new Date().toISOString();
+    saveTomes(data);
+  }
+
+  // Get author stats
+  let authorTomesCount = 0;
+  if (tome.authorId) {
+    authorTomesCount = data.tomes.filter(t => t.authorId === tome.authorId && t.status === 'published').length;
+  }
+
+  // Return full tome data with chapter titles (content separate for reading endpoint)
+  res.json({
+    id: tome.id,
+    title: tome.title,
+    subtitle: tome.subtitle || '',
+    authorId: tome.authorId,
+    authorName: tome.authorName || 'Anonymous Seeker',
+    coverUrl: tome.coverUrl,
+    topicTags: tome.topicTags || [],
+    status: tome.status,
+    likesCount: tome.likesCount || 0,
+    dislikesCount: tome.dislikesCount || 0,
+    viewsCount: tome.viewsCount || 0,
+    downloadsCount: tome.downloadsCount || 0,
+    commentsCount: tome.commentsCount || 0,
+    chapters: (tome.chapters || []).map((ch, i) => ({ index: i, title: ch.title })),
+    designConfig: tome.designConfig,
+    createdAt: tome.createdAt,
+    authorTomesCount
+  });
+});
+
+// GET /api/tomes/:id/chapters — get chapter content for reading
+app.get('/api/tomes/:id/chapters', (req, res) => {
+  const data = loadTomes();
+  const tome = data.tomes.find(t => t.id === req.params.id);
+  if (!tome || tome.status === 'removed') return res.status(404).json({ error: 'Tome not found' });
+
+  const chapterIndex = req.query.chapter !== undefined ? parseInt(req.query.chapter) : null;
+  const chapters = tome.chapters || [];
+
+  if (chapterIndex !== null) {
+    if (chapterIndex < 0 || chapterIndex >= chapters.length) return res.status(404).json({ error: 'Chapter not found' });
+    return res.json({
+      chapter: { index: chapterIndex, title: chapters[chapterIndex].title, content: chapters[chapterIndex].content },
+      totalChapters: chapters.length,
+      tomeTitle: tome.title
+    });
+  }
+
+  res.json({
+    chapters: chapters.map((ch, i) => ({ index: i, title: ch.title, content: ch.content })),
+    totalChapters: chapters.length,
+    tomeTitle: tome.title,
+    designConfig: tome.designConfig
+  });
+});
+
+// GET /api/tomes/:id/cover — serve cover image
+app.get('/api/tomes/:id/cover', (req, res) => {
+  const data = loadTomes();
+  const tome = data.tomes.find(t => t.id === req.params.id);
+  if (!tome || !tome.coverUrl) {
+    // Also check job data for cover path
+    const job = getJob(req.params.id);
+    if (job && job.coverPath && fs.existsSync(job.coverPath)) {
+      return res.sendFile(job.coverPath);
+    }
+    return res.status(404).json({ error: 'No cover image' });
+  }
+
+  // The coverUrl is an API path; the actual file path is stored in the job or derived
+  const job = getJob(req.params.id);
+  const coverFile = job && job.coverPath ? job.coverPath : path.join(COVERS_DIR, req.params.id + '.png');
+  const coverFileJpg = path.join(COVERS_DIR, req.params.id + '.jpg');
+
+  if (fs.existsSync(coverFile)) {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.sendFile(coverFile);
+  } else if (fs.existsSync(coverFileJpg)) {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.sendFile(coverFileJpg);
+  }
+  res.status(404).json({ error: 'Cover file not found' });
+});
+
+// POST /api/tomes/:id/like — toggle like
+app.post('/api/tomes/:id/like', optionalAuth, (req, res) => {
+  const data = loadTomes();
+  const tome = data.tomes.find(t => t.id === req.params.id);
+  if (!tome) return res.status(404).json({ error: 'Tome not found' });
+
+  // Use user ID or IP hash for anonymous likes
+  const userId = req.user ? req.user.id : null;
+  const ip = getClientIPEarly(req);
+  const anonId = crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16);
+  const likerId = userId || 'anon_' + anonId;
+
+  if (!data.likes) data.likes = [];
+  const existing = data.likes.find(l => l.tomeId === req.params.id && l.userId === likerId && l.type === 'like');
+
+  if (existing) {
+    // Remove like (toggle off)
+    data.likes = data.likes.filter(l => !(l.tomeId === req.params.id && l.userId === likerId && l.type === 'like'));
+    tome.likesCount = Math.max(0, (tome.likesCount || 0) - 1);
+  } else {
+    // Remove any dislike first
+    const hadDislike = data.likes.find(l => l.tomeId === req.params.id && l.userId === likerId && l.type === 'dislike');
+    if (hadDislike) {
+      data.likes = data.likes.filter(l => !(l.tomeId === req.params.id && l.userId === likerId && l.type === 'dislike'));
+      tome.dislikesCount = Math.max(0, (tome.dislikesCount || 0) - 1);
+    }
+    data.likes.push({ tomeId: req.params.id, userId: likerId, type: 'like', createdAt: new Date().toISOString() });
+    tome.likesCount = (tome.likesCount || 0) + 1;
+  }
+
+  tome.updatedAt = new Date().toISOString();
+  saveTomes(data);
+  res.json({ liked: !existing, likesCount: tome.likesCount });
+});
+
+// POST /api/tomes/:id/dislike — toggle dislike
+app.post('/api/tomes/:id/dislike', optionalAuth, (req, res) => {
+  const data = loadTomes();
+  const tome = data.tomes.find(t => t.id === req.params.id);
+  if (!tome) return res.status(404).json({ error: 'Tome not found' });
+
+  const userId = req.user ? req.user.id : null;
+  const ip = getClientIPEarly(req);
+  const anonId = crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16);
+  const likerId = userId || 'anon_' + anonId;
+
+  if (!data.likes) data.likes = [];
+  const existing = data.likes.find(l => l.tomeId === req.params.id && l.userId === likerId && l.type === 'dislike');
+
+  if (existing) {
+    data.likes = data.likes.filter(l => !(l.tomeId === req.params.id && l.userId === likerId && l.type === 'dislike'));
+    tome.dislikesCount = Math.max(0, (tome.dislikesCount || 0) - 1);
+  } else {
+    const hadLike = data.likes.find(l => l.tomeId === req.params.id && l.userId === likerId && l.type === 'like');
+    if (hadLike) {
+      data.likes = data.likes.filter(l => !(l.tomeId === req.params.id && l.userId === likerId && l.type === 'like'));
+      tome.likesCount = Math.max(0, (tome.likesCount || 0) - 1);
+    }
+    data.likes.push({ tomeId: req.params.id, userId: likerId, type: 'dislike', createdAt: new Date().toISOString() });
+    tome.dislikesCount = (tome.dislikesCount || 0) + 1;
+  }
+
+  tome.updatedAt = new Date().toISOString();
+  saveTomes(data);
+  res.json({ disliked: !existing, dislikesCount: tome.dislikesCount });
+});
+
+// POST /api/tomes/:id/save — toggle bookmark
+app.post('/api/tomes/:id/save', optionalAuth, (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Sign in to save tomes' });
+
+  const data = loadTomes();
+  const tome = data.tomes.find(t => t.id === req.params.id);
+  if (!tome) return res.status(404).json({ error: 'Tome not found' });
+
+  if (!data.saves) data.saves = [];
+  const existing = data.saves.find(s => s.tomeId === req.params.id && s.userId === req.user.id);
+
+  if (existing) {
+    data.saves = data.saves.filter(s => !(s.tomeId === req.params.id && s.userId === req.user.id));
+  } else {
+    data.saves.push({ tomeId: req.params.id, userId: req.user.id, createdAt: new Date().toISOString() });
+  }
+
+  saveTomes(data);
+  res.json({ saved: !existing });
+});
+
+// POST /api/tomes/:id/report — report a tome
+app.post('/api/tomes/:id/report', optionalAuth, (req, res) => {
+  const data = loadTomes();
+  const tome = data.tomes.find(t => t.id === req.params.id);
+  if (!tome) return res.status(404).json({ error: 'Tome not found' });
+
+  const { reason } = req.body;
+  if (!reason) return res.status(400).json({ error: 'Reason required' });
+
+  if (!data.reports) data.reports = [];
+  data.reports.push({
+    tomeId: req.params.id,
+    userId: req.user ? req.user.id : null,
+    reason,
+    createdAt: new Date().toISOString()
+  });
+  saveTomes(data);
+  res.json({ success: true });
+});
+
+// GET /api/tomes/:id/comments — get comments
+app.get('/api/tomes/:id/comments', (req, res) => {
+  const data = loadTomes();
+  if (!data.comments) data.comments = [];
+  const tomeComments = data.comments.filter(c => c.tomeId === req.params.id && !c.deleted);
+
+  // Build threaded structure
+  const topLevel = tomeComments.filter(c => !c.parentId);
+  const replies = tomeComments.filter(c => c.parentId);
+
+  const threaded = topLevel.map(c => ({
+    ...c,
+    replies: replies.filter(r => r.parentId === c.id).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
+  }));
+
+  // Sort newest first
+  threaded.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+  res.json({ comments: threaded, total: topLevel.length });
+});
+
+// POST /api/tomes/:id/comments — add comment
+app.post('/api/tomes/:id/comments', optionalAuth, (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Sign in to comment' });
+
+  const data = loadTomes();
+  const tome = data.tomes.find(t => t.id === req.params.id);
+  if (!tome) return res.status(404).json({ error: 'Tome not found' });
+
+  const { text, parentId } = req.body;
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Comment text required' });
+  if (text.length > 2000) return res.status(400).json({ error: 'Comment too long (max 2000 chars)' });
+
+  if (!data.comments) data.comments = [];
+  const comment = {
+    id: crypto.randomUUID(),
+    tomeId: req.params.id,
+    userId: req.user.id,
+    userName: req.user.name || 'Anonymous Seeker',
+    userAvatar: req.user.avatar || null,
+    parentId: parentId || null,
+    text: text.trim(),
+    likesCount: 0,
+    createdAt: new Date().toISOString()
+  };
+  data.comments.push(comment);
+
+  // Update tome comment count
+  tome.commentsCount = (tome.commentsCount || 0) + 1;
+  tome.updatedAt = new Date().toISOString();
+
+  saveTomes(data);
+  res.json({ comment });
+});
+
+// POST /api/tomes/:id/comments/:commentId/like — like a comment
+app.post('/api/tomes/:id/comments/:commentId/like', optionalAuth, (req, res) => {
+  const data = loadTomes();
+  if (!data.comments) return res.status(404).json({ error: 'Comment not found' });
+  const comment = data.comments.find(c => c.id === req.params.commentId);
+  if (!comment) return res.status(404).json({ error: 'Comment not found' });
+
+  comment.likesCount = (comment.likesCount || 0) + 1;
+  saveTomes(data);
+  res.json({ likesCount: comment.likesCount });
+});
+
+// GET /api/tomes/:id/download — download and track
+app.get('/api/tomes/:id/download', (req, res) => {
+  const data = loadTomes();
+  const tome = data.tomes.find(t => t.id === req.params.id);
+  if (tome) {
+    tome.downloadsCount = (tome.downloadsCount || 0) + 1;
+    tome.updatedAt = new Date().toISOString();
+    saveTomes(data);
+  }
+
+  const job = getJob(req.params.id);
+  if (!job || job.status !== 'ready') {
+    return res.status(404).json({ error: 'Ebook not ready' });
+  }
+  res.download(job.path, `${job.title || 'ebook'}.docx`);
+});
+
+// GET /api/tomes/:id/user-state — check if current user has liked/saved/disliked
+app.get('/api/tomes/:id/user-state', optionalAuth, (req, res) => {
+  const data = loadTomes();
+  const userId = req.user ? req.user.id : null;
+  const ip = getClientIPEarly(req);
+  const anonId = crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16);
+  const likerId = userId || 'anon_' + anonId;
+
+  const liked = (data.likes || []).some(l => l.tomeId === req.params.id && l.userId === likerId && l.type === 'like');
+  const disliked = (data.likes || []).some(l => l.tomeId === req.params.id && l.userId === likerId && l.type === 'dislike');
+  const saved = userId ? (data.saves || []).some(s => s.tomeId === req.params.id && s.userId === userId) : false;
+
+  res.json({ liked, disliked, saved, signedIn: !!req.user });
+});
+
+// GET /api/my-tomes — current user's created tomes
+app.get('/api/my-tomes', optionalAuth, (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not signed in' });
+  const data = loadTomes();
+  const myTomes = data.tomes
+    .filter(t => t.authorId === req.user.id && t.status !== 'removed')
+    .map(t => ({
+      id: t.id, title: t.title, subtitle: t.subtitle || '', coverUrl: t.coverUrl,
+      topicTags: t.topicTags || [], likesCount: t.likesCount || 0, viewsCount: t.viewsCount || 0,
+      commentsCount: t.commentsCount || 0, createdAt: t.createdAt, status: t.status
+    }));
+  res.json({ tomes: myTomes, total: myTomes.length });
+});
+
+// GET /api/my-tomes/saved — bookmarked tomes
+app.get('/api/my-tomes/saved', optionalAuth, (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not signed in' });
+  const data = loadTomes();
+  const savedIds = (data.saves || []).filter(s => s.userId === req.user.id).map(s => s.tomeId);
+  const savedTomes = data.tomes
+    .filter(t => savedIds.includes(t.id) && t.status === 'published')
+    .map(t => ({
+      id: t.id, title: t.title, subtitle: t.subtitle || '', authorName: t.authorName || 'Anonymous Seeker',
+      coverUrl: t.coverUrl, topicTags: t.topicTags || [], likesCount: t.likesCount || 0,
+      viewsCount: t.viewsCount || 0, createdAt: t.createdAt
+    }));
+  res.json({ tomes: savedTomes, total: savedTomes.length });
+});
+
 // --- Admin API endpoints ---
 app.get('/api/admin/metrics', requireAdmin, (req, res) => {
   metrics.pageVisits.admin++;
@@ -1851,6 +2589,9 @@ app.get('/api/admin/waitlist', requireAdmin, (req, res) => {
   const topicCounts = {};
   const formatCounts = {};
   const wouldPayCounts = {};
+  const roleCounts = {};
+  const sourceCounts = {};
+  const utmCampaigns = {};
 
   withSurvey.forEach(s => {
     if (s.survey.topics) {
@@ -1861,6 +2602,17 @@ app.get('/api/admin/waitlist', requireAdmin, (req, res) => {
     }
     if (s.survey.format) formatCounts[s.survey.format] = (formatCounts[s.survey.format] || 0) + 1;
     if (s.survey.wouldPay) wouldPayCounts[s.survey.wouldPay] = (wouldPayCounts[s.survey.wouldPay] || 0) + 1;
+    if (s.survey.role) roleCounts[s.survey.role] = (roleCounts[s.survey.role] || 0) + 1;
+    if (s.survey.source) sourceCounts[s.survey.source] = (sourceCounts[s.survey.source] || 0) + 1;
+  });
+
+  // UTM campaign tracking
+  signups.forEach(s => {
+    if (s.utm) {
+      const campaign = s.utm.utm_campaign || s.utm.utm_source || 'unknown';
+      if (!utmCampaigns[campaign]) utmCampaigns[campaign] = { signups: 0, source: s.utm.utm_source || '', medium: s.utm.utm_medium || '' };
+      utmCampaigns[campaign].signups++;
+    }
   });
 
   // Signup rate: today, this week
@@ -1870,13 +2622,32 @@ app.get('/api/admin/waitlist', requireAdmin, (req, res) => {
   const todayCount = signups.filter(s => s.timestamp && s.timestamp.startsWith(todayStr)).length;
   const weekCount = signups.filter(s => s.timestamp && s.timestamp >= weekAgo).length;
 
+  // Daily signup trend (last 30 days)
+  const signupTrend = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now - i * 86400000).toISOString().slice(0, 10);
+    const count = signups.filter(s => s.timestamp && s.timestamp.startsWith(d)).length;
+    signupTrend.push({ date: d, count });
+  }
+
+  // Device breakdown of signups
+  const signupDevices = { mobile: 0, desktop: 0, tablet: 0, unknown: 0 };
+  signups.forEach(s => {
+    const dev = s.device || 'unknown';
+    if (signupDevices[dev] !== undefined) signupDevices[dev]++;
+    else signupDevices.unknown++;
+  });
+
   res.json({
     total: signups.length,
     signups: signups.map(s => ({
       email: s.email,
       timestamp: s.timestamp,
       referrer: s.referrer,
+      sourceReferrer: s.sourceReferrer || null,
       ip: s.ip,
+      device: s.device || null,
+      utm: s.utm || null,
       hasSurvey: !!s.survey,
       survey: s.survey || null
     })),
@@ -1885,8 +2656,13 @@ app.get('/api/admin/waitlist', requireAdmin, (req, res) => {
       completionRate: signups.length ? Math.round(withSurvey.length / signups.length * 100) : 0,
       topTopics: Object.entries(topicCounts).sort((a, b) => b[1] - a[1]).slice(0, 20),
       formats: formatCounts,
-      wouldPay: wouldPayCounts
+      wouldPay: wouldPayCounts,
+      roles: roleCounts,
+      sources: sourceCounts
     },
+    utmCampaigns: Object.entries(utmCampaigns).sort((a, b) => b[1].signups - a[1].signups),
+    signupTrend,
+    signupDevices,
     rate: {
       today: todayCount,
       thisWeek: weekCount,
@@ -1965,6 +2741,122 @@ app.get('/api/admin/usage', requireAdmin, (req, res) => {
     last7Days,
     alerts: (metrics.budgetAlerts || []).slice(-20)
   });
+});
+
+// Admin: analytics — retention, sessions, heatmap, daily trends, traffic sources
+app.get('/api/admin/analytics', requireAdmin, (req, res) => {
+  const visitors = metrics.visitors || {};
+  const now = Date.now();
+  const fiveMinAgo = now - 5 * 60000;
+  const oneDayAgo = now - 86400000;
+
+  // Compute new vs returning visitors
+  let newVisitors = 0, returningVisitors = 0, totalHits = 0;
+  let recentActiveCount = 0;
+  const countryCounts = {};
+  const cityCounts = {};
+
+  for (const [ip, v] of Object.entries(visitors)) {
+    totalHits += v.hits || 1;
+    if (v.hits <= 1) newVisitors++;
+    else returningVisitors++;
+    if (v.last && new Date(v.last).getTime() > fiveMinAgo) recentActiveCount++;
+    // Country/city aggregation
+    const c = v.country || 'Unknown';
+    countryCounts[c] = (countryCounts[c] || 0) + 1;
+    if (v.city && c !== 'Unknown') {
+      const cityKey = v.city + ', ' + c;
+      cityCounts[cityKey] = (cityCounts[cityKey] || 0) + 1;
+    }
+  }
+
+  const uniqueTotal = Object.keys(visitors).length;
+  const bounceRate = uniqueTotal > 0
+    ? Math.round(Object.values(visitors).filter(v => v.hits === 1).length / uniqueTotal * 100) : 0;
+
+  // Daily visit trends (last 30 days)
+  const dailyTrends = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now - i * 86400000).toISOString().slice(0, 10);
+    const dv = metrics.dailyVisits?.[d];
+    const uniqueCount = dv?.unique ? (Array.isArray(dv.unique) ? dv.unique.length : (dv.unique.size || 0)) : 0;
+    dailyTrends.push({
+      date: d,
+      total: dv?.total || 0,
+      unique: uniqueCount,
+      pages: dv?.pages || {},
+      signups: metrics.dailySignups?.[d] || 0
+    });
+  }
+
+  // Top countries
+  const topCountries = Object.entries(countryCounts)
+    .filter(([c]) => c !== 'Unknown')
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20);
+
+  // Top cities
+  const topCities = Object.entries(cityCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15);
+
+  // Hourly heatmap data (24x7 grid)
+  const heatmap = [];
+  for (let h = 0; h < 24; h++) {
+    const row = [];
+    for (let d = 0; d < 7; d++) {
+      row.push(metrics.hourlyHeatmap?.[String(h)]?.[String(d)] || 0);
+    }
+    heatmap.push(row);
+  }
+
+  // Browser breakdown
+  const browserEntries = Object.entries(metrics.browsers || {}).sort((a, b) => b[1] - a[1]);
+
+  // Traffic sources
+  const sources = metrics.trafficSources || { direct: 0, search: 0, social: 0, referral: 0 };
+
+  // Funnel
+  const funnel = metrics.funnelEvents || { pageView: 0, emailFocus: 0, emailSubmit: 0, surveyStart: 0, surveyComplete: 0 };
+  // Supplement funnel from actual data
+  funnel.pageView = metrics.pageVisits?.waitlist || 0;
+  const wlData = loadWaitlist();
+  funnel.emailSubmit = wlData.signups?.length || 0;
+  funnel.surveyComplete = (wlData.signups || []).filter(s => s.survey).length;
+
+  // Recent errors
+  const recentErrors = (metrics.errors?.recent || []).slice(0, 20);
+
+  res.json({
+    liveVisitors: recentActiveCount,
+    uniqueTotal,
+    totalHits,
+    newVisitors,
+    returningVisitors,
+    bounceRate,
+    dailyTrends,
+    topCountries,
+    topCities,
+    heatmap,
+    browsers: browserEntries,
+    devices: metrics.devices || { mobile: 0, desktop: 0, tablet: 0 },
+    trafficSources: sources,
+    funnel,
+    recentErrors,
+    pageVisits: metrics.pageVisits || {}
+  });
+});
+
+// Funnel event tracking (called from frontend to track micro-conversions)
+app.post('/api/track/funnel', (req, res) => {
+  const { event } = req.body;
+  if (!event || typeof event !== 'string') return res.status(400).json({ error: 'Invalid' });
+  if (!metrics.funnelEvents) metrics.funnelEvents = { pageView: 0, emailFocus: 0, emailSubmit: 0, surveyStart: 0, surveyComplete: 0 };
+  if (metrics.funnelEvents[event] !== undefined) {
+    metrics.funnelEvents[event]++;
+    metricsDirty = true;
+  }
+  res.json({ ok: true });
 });
 
 function formatUptime(ms) {

@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tome | Great Library AI</title>
+  <meta name="description" content="Read an AI-generated tome from the Great Library.">
+  <link rel="icon" type="image/jpeg" href="/favicon.jpg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --bg-card: #111110;
+      --bg-hover: #1a1917;
+      --bg-surface: #161614;
+      --gold: #c8b88a;
+      --gold-dim: #8a7d5a;
+      --gold-bright: #e0d4a8;
+      --accent: #3a3528;
+      --accent-hover: #4a4030;
+      --accent-bright: #5a5038;
+      --text-muted: #6a6050;
+      --border: #2a2520;
+      --font: Georgia, 'Times New Roman', serif;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--gold);
+      font-family: var(--font);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    * { scrollbar-width: none; }
+
+    /* --- Header --- */
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(10, 10, 10, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .header-logo {
+      font-size: 18px; color: var(--gold); text-decoration: none;
+      letter-spacing: 1px; transition: color 0.3s;
+    }
+    .header-logo:hover { color: var(--gold-bright); }
+    .header-logo span { opacity: 0.4; }
+    .back-link {
+      color: var(--gold-dim); text-decoration: none; font-size: 14px;
+      padding: 6px 12px; border-radius: 4px; transition: all 0.2s;
+    }
+    .back-link:hover { color: var(--gold); background: var(--accent); }
+
+    /* --- Detail View --- */
+    .detail-view {
+      padding-top: 88px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding-left: 24px;
+      padding-right: 24px;
+      padding-bottom: 60px;
+    }
+
+    .detail-hero {
+      display: flex;
+      gap: 32px;
+      margin-bottom: 32px;
+    }
+
+    .detail-cover {
+      flex-shrink: 0;
+      width: 280px;
+      aspect-ratio: 3 / 4;
+      border-radius: 10px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1a1815, #0d0c0a);
+      border: 1px solid var(--border);
+    }
+    .detail-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .detail-cover .no-cover {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      font-size: 72px;
+      color: var(--accent-bright);
+    }
+
+    .detail-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .detail-title {
+      font-size: 32px;
+      color: var(--gold-bright);
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .detail-subtitle {
+      font-size: 18px;
+      color: var(--gold-dim);
+      font-style: italic;
+      margin-bottom: 16px;
+    }
+
+    .detail-author {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .detail-author strong {
+      color: var(--gold-dim);
+      font-weight: normal;
+    }
+
+    .detail-date {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .detail-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .detail-tag {
+      font-size: 12px;
+      color: var(--gold-dim);
+      background: var(--accent);
+      padding: 4px 12px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .detail-tag:hover {
+      background: var(--accent-hover);
+      color: var(--gold);
+    }
+
+    .detail-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .action-btn {
+      background: var(--accent);
+      border: 1px solid var(--border);
+      color: var(--gold-dim);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .action-btn:hover {
+      background: var(--accent-hover);
+      color: var(--gold);
+      border-color: var(--accent-bright);
+    }
+    .action-btn.primary {
+      background: var(--accent-hover);
+      border-color: var(--accent-bright);
+      color: var(--gold);
+    }
+    .action-btn.primary:hover {
+      background: var(--accent-bright);
+      color: var(--gold-bright);
+    }
+    .action-btn.active {
+      color: var(--gold-bright);
+      border-color: var(--gold-dim);
+    }
+
+    /* --- Engagement Bar --- */
+    .engagement-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .engage-btn {
+      background: none;
+      border: none;
+      color: var(--gold-dim);
+      font-family: var(--font);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .engage-btn:hover { color: var(--gold); background: var(--accent); }
+    .engage-btn.active { color: var(--gold-bright); }
+
+    .engage-spacer { flex: 1; }
+
+    .engage-stats {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 16px;
+    }
+
+    /* --- Chapters list --- */
+    .chapters-section {
+      margin-bottom: 40px;
+    }
+    .section-title {
+      font-size: 18px;
+      color: var(--gold);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chapter-list {
+      list-style: none;
+    }
+    .chapter-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(42, 37, 32, 0.5);
+      cursor: pointer;
+      transition: all 0.2s;
+      border-radius: 4px;
+    }
+    .chapter-item:hover {
+      background: var(--accent);
+    }
+    .chapter-num {
+      font-size: 14px;
+      color: var(--accent-bright);
+      font-weight: normal;
+      min-width: 28px;
+    }
+    .chapter-name {
+      font-size: 15px;
+      color: var(--gold-dim);
+      transition: color 0.2s;
+    }
+    .chapter-item:hover .chapter-name { color: var(--gold); }
+
+    /* --- Reading view --- */
+    .reading-view {
+      display: none;
+      padding-top: 88px;
+      max-width: 720px;
+      margin: 0 auto;
+      padding-left: 24px;
+      padding-right: 24px;
+      padding-bottom: 80px;
+    }
+
+    .reading-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .reading-back {
+      color: var(--gold-dim);
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .reading-back:hover { color: var(--gold); }
+
+    .reading-progress {
+      position: fixed;
+      top: 64px;
+      left: 0;
+      height: 2px;
+      background: var(--gold-dim);
+      transition: width 0.3s ease;
+      z-index: 101;
+    }
+
+    .reading-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .font-btn {
+      background: var(--accent);
+      border: 1px solid var(--border);
+      color: var(--gold-dim);
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-family: var(--font);
+    }
+    .font-btn:hover { color: var(--gold); background: var(--accent-hover); }
+
+    .reading-chapter-num {
+      font-size: 13px;
+      color: var(--accent-bright);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .reading-chapter-title {
+      font-size: 28px;
+      color: var(--gold-bright);
+      text-align: center;
+      line-height: 1.3;
+      margin-bottom: 8px;
+    }
+
+    .reading-divider {
+      text-align: center;
+      color: var(--accent-bright);
+      font-size: 16px;
+      margin-bottom: 32px;
+    }
+
+    .reading-body {
+      font-size: 17px;
+      color: var(--gold);
+      line-height: 1.8;
+    }
+    .reading-body p {
+      margin-bottom: 1.2em;
+      text-indent: 1.5em;
+    }
+    .reading-body p:first-child { text-indent: 0; }
+
+    .reading-end-mark {
+      text-align: center;
+      color: var(--accent-bright);
+      font-size: 16px;
+      margin-top: 48px;
+      margin-bottom: 48px;
+    }
+
+    .reading-pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    .reading-page-btn {
+      background: var(--accent);
+      border: 1px solid var(--border);
+      color: var(--gold-dim);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .reading-page-btn:hover { background: var(--accent-hover); color: var(--gold); border-color: var(--accent-bright); }
+    .reading-page-btn:disabled { opacity: 0.3; cursor: default; }
+    .reading-page-btn:disabled:hover { background: var(--accent); color: var(--gold-dim); }
+
+    /* --- TOC Sidebar (reading mode) --- */
+    .toc-sidebar {
+      position: fixed;
+      left: 0;
+      top: 64px;
+      bottom: 0;
+      width: 300px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      z-index: 99;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      padding: 24px 0;
+      overflow-y: auto;
+    }
+    .toc-sidebar.open { transform: translateX(0); }
+    .toc-sidebar-title {
+      font-size: 14px;
+      color: var(--gold-dim);
+      padding: 0 20px 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-size: 11px;
+    }
+    .toc-sidebar-item {
+      display: block;
+      padding: 10px 20px;
+      font-size: 14px;
+      color: var(--gold-dim);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .toc-sidebar-item:hover { background: var(--accent); color: var(--gold); }
+    .toc-sidebar-item.active { color: var(--gold-bright); background: var(--accent); }
+    .toc-overlay {
+      display: none;
+      position: fixed;
+      top: 64px; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 98;
+    }
+    .toc-overlay.open { display: block; }
+
+    /* --- Comments --- */
+    .comments-section {
+      margin-bottom: 40px;
+    }
+
+    .comment-form {
+      margin-bottom: 24px;
+    }
+    .comment-input {
+      width: 100%;
+      background: var(--accent);
+      border: 1px solid var(--border);
+      color: var(--gold);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 12px 16px;
+      border-radius: 6px;
+      resize: vertical;
+      min-height: 60px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .comment-input::placeholder { color: var(--text-muted); }
+    .comment-input:focus { border-color: var(--gold-dim); }
+    .comment-submit-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+    .comment-submit-btn {
+      background: var(--accent-hover);
+      border: 1px solid var(--accent-bright);
+      color: var(--gold);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .comment-submit-btn:hover { background: var(--accent-bright); color: var(--gold-bright); }
+    .comment-submit-btn:disabled { opacity: 0.4; cursor: default; }
+
+    .comment-signin-msg {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 16px;
+    }
+    .comment-signin-msg a { color: var(--gold-dim); }
+
+    .comment-item {
+      padding: 16px 0;
+      border-bottom: 1px solid rgba(42, 37, 32, 0.4);
+    }
+    .comment-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .comment-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--gold-dim);
+      overflow: hidden;
+    }
+    .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .comment-name {
+      font-size: 13px;
+      color: var(--gold-dim);
+    }
+    .comment-time {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .comment-text {
+      font-size: 14px;
+      color: var(--gold);
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    .comment-actions {
+      display: flex;
+      gap: 12px;
+    }
+    .comment-action-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      padding: 2px;
+      font-family: var(--font);
+      transition: color 0.2s;
+    }
+    .comment-action-btn:hover { color: var(--gold-dim); }
+
+    .comment-replies {
+      margin-left: 36px;
+      border-left: 1px solid var(--border);
+      padding-left: 16px;
+    }
+
+    .no-comments {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 24px;
+      font-style: italic;
+    }
+
+    /* --- Related tomes --- */
+    .related-section {
+      margin-bottom: 40px;
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
+    }
+    .related-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .related-card:hover {
+      border-color: var(--accent-bright);
+      transform: translateY(-2px);
+    }
+    .related-cover {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      background: linear-gradient(135deg, #1a1815, #0d0c0a);
+      overflow: hidden;
+    }
+    .related-cover img { width: 100%; height: 100%; object-fit: cover; }
+    .related-cover .no-cover {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      font-size: 32px;
+      color: var(--accent-bright);
+    }
+    .related-body { padding: 10px; }
+    .related-title {
+      font-size: 13px;
+      color: var(--gold);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+    .related-author {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* --- Share modal --- */
+    .share-modal-bg {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .share-modal-bg.open { display: flex; }
+    .share-modal {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      width: 380px;
+      max-width: 90vw;
+    }
+    .share-modal h3 {
+      font-size: 18px;
+      color: var(--gold);
+      margin-bottom: 16px;
+      font-weight: normal;
+    }
+    .share-link-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .share-link-input {
+      flex: 1;
+      background: var(--accent);
+      border: 1px solid var(--border);
+      color: var(--gold);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      outline: none;
+    }
+    .share-copy-btn {
+      background: var(--accent-hover);
+      border: 1px solid var(--accent-bright);
+      color: var(--gold);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .share-copy-btn:hover { background: var(--accent-bright); }
+    .share-options {
+      display: flex;
+      gap: 10px;
+    }
+    .share-option {
+      flex: 1;
+      background: var(--accent);
+      border: 1px solid var(--border);
+      color: var(--gold-dim);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 10px;
+      border-radius: 6px;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .share-option:hover { background: var(--accent-hover); color: var(--gold); }
+
+    /* --- Loading --- */
+    .loading-state {
+      text-align: center;
+      padding: 120px 20px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* --- Responsive --- */
+    @media (max-width: 768px) {
+      .header { padding: 0 16px; height: 56px; }
+      .detail-view { padding-top: 76px; padding-left: 16px; padding-right: 16px; }
+      .reading-view { padding-top: 76px; padding-left: 16px; padding-right: 16px; }
+      .detail-hero { flex-direction: column; gap: 20px; }
+      .detail-cover { width: 200px; margin: 0 auto; }
+      .detail-title { font-size: 24px; text-align: center; }
+      .detail-subtitle { text-align: center; }
+      .detail-author, .detail-date { text-align: center; }
+      .detail-tags { justify-content: center; }
+      .detail-actions { justify-content: center; }
+      .engagement-bar { justify-content: center; }
+      .reading-chapter-title { font-size: 22px; }
+      .reading-body { font-size: 16px; }
+      .toc-sidebar { width: 260px; }
+      .related-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    }
+
+    /* Fade in */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(8px);
+      animation: fadeInUp 0.4s ease forwards;
+    }
+    @keyframes fadeInUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <a href="/" class="header-logo">Great Library <span>AI</span></a>
+      <a href="/tomes" class="back-link">&#8592; Browse</a>
+    </div>
+  </header>
+
+  <!-- Loading -->
+  <div class="loading-state" id="loadingState">The tome materializes...</div>
+
+  <!-- Detail View -->
+  <div class="detail-view" id="detailView" style="display: none;">
+    <!-- Hero -->
+    <div class="detail-hero fade-in">
+      <div class="detail-cover" id="detailCover"></div>
+      <div class="detail-info">
+        <h1 class="detail-title" id="detailTitle"></h1>
+        <p class="detail-subtitle" id="detailSubtitle"></p>
+        <p class="detail-author" id="detailAuthor"></p>
+        <p class="detail-date" id="detailDate"></p>
+        <div class="detail-tags" id="detailTags"></div>
+        <div class="detail-actions">
+          <a class="action-btn primary" id="readBtn">&#9776; Read Online</a>
+          <a class="action-btn primary" id="downloadBtn">&#8615; Download</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Engagement Bar -->
+    <div class="engagement-bar fade-in">
+      <button class="engage-btn" id="likeBtn" title="Like">&#9825; <span id="likeCount">0</span></button>
+      <button class="engage-btn" id="dislikeBtn" title="Dislike">&#9877;</button>
+      <button class="engage-btn" id="saveBtn" title="Save">&#9734; Save</button>
+      <button class="engage-btn" id="shareBtn" title="Share">&#8599; Share</button>
+      <button class="engage-btn" id="reportBtn" title="Report">&#9872; Report</button>
+      <span class="engage-spacer"></span>
+      <div class="engage-stats" id="engageStats"></div>
+    </div>
+
+    <!-- Chapters -->
+    <div class="chapters-section fade-in">
+      <h2 class="section-title">Contents</h2>
+      <ul class="chapter-list" id="chapterList"></ul>
+    </div>
+
+    <!-- Comments -->
+    <div class="comments-section fade-in">
+      <h2 class="section-title" id="commentsTitle">Comments</h2>
+      <div class="comment-form" id="commentForm"></div>
+      <div id="commentsList"></div>
+    </div>
+
+    <!-- Related Tomes -->
+    <div class="related-section fade-in" id="relatedSection" style="display: none;">
+      <h2 class="section-title">More tomes like this</h2>
+      <div class="related-grid" id="relatedGrid"></div>
+    </div>
+  </div>
+
+  <!-- Reading View -->
+  <div class="reading-view" id="readingView">
+    <div class="reading-progress" id="readingProgress"></div>
+
+    <!-- TOC Sidebar -->
+    <div class="toc-overlay" id="tocOverlay"></div>
+    <div class="toc-sidebar" id="tocSidebar">
+      <div class="toc-sidebar-title">Contents</div>
+      <div id="tocItems"></div>
+    </div>
+
+    <div class="reading-nav">
+      <span class="reading-back" id="readingBackBtn">&#8592; Back to tome</span>
+      <div class="reading-controls">
+        <button class="font-btn" id="tocToggle" title="Table of contents">&#9776;</button>
+        <button class="font-btn" id="fontDown" title="Smaller text">A-</button>
+        <button class="font-btn" id="fontUp" title="Larger text">A+</button>
+      </div>
+    </div>
+
+    <div id="readingContent"></div>
+
+    <div class="reading-pagination">
+      <button class="reading-page-btn" id="prevChapter" disabled>&#8592; Previous</button>
+      <span id="chapterIndicator" style="font-size: 13px; color: var(--text-muted);"></span>
+      <button class="reading-page-btn" id="nextChapter">Next &#8594;</button>
+    </div>
+  </div>
+
+  <!-- Share Modal -->
+  <div class="share-modal-bg" id="shareModal">
+    <div class="share-modal">
+      <h3>Share this tome</h3>
+      <div class="share-link-row">
+        <input class="share-link-input" id="shareLink" readonly>
+        <button class="share-copy-btn" id="shareCopyBtn">Copy</button>
+      </div>
+      <div class="share-options">
+        <a class="share-option" id="shareX" target="_blank" rel="noopener">X / Twitter</a>
+        <a class="share-option" id="shareWhatsApp" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- State ---
+    const tomeId = window.location.pathname.split('/')[2];
+    const isReadMode = window.location.pathname.endsWith('/read');
+    let tomeData = null;
+    let chaptersData = null;
+    let currentChapter = 0;
+    let readingFontSize = 17;
+    let userState = { liked: false, disliked: false, saved: false, signedIn: false };
+
+    // --- DOM refs ---
+    const detailView = document.getElementById('detailView');
+    const readingView = document.getElementById('readingView');
+    const loadingState = document.getElementById('loadingState');
+
+    // --- Helpers ---
+    function timeAgo(dateStr) {
+      const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+      if (seconds < 60) return 'just now';
+      if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+      if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+      if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // --- Load tome data ---
+    async function loadTome() {
+      try {
+        const res = await fetch('/api/tomes/' + tomeId);
+        if (!res.ok) throw new Error('Not found');
+        tomeData = await res.json();
+
+        document.title = tomeData.title + ' | Great Library AI';
+        renderDetail();
+
+        // Load user state
+        loadUserState();
+
+        // Load comments
+        loadComments();
+
+        // Load related tomes
+        loadRelated();
+
+        if (isReadMode) {
+          loadChaptersAndRead();
+        }
+      } catch (err) {
+        loadingState.textContent = 'This tome could not be found in the archives.';
+      }
+    }
+
+    // --- Render detail view ---
+    function renderDetail() {
+      loadingState.style.display = 'none';
+      detailView.style.display = 'block';
+
+      // Cover
+      const coverEl = document.getElementById('detailCover');
+      if (tomeData.coverUrl) {
+        coverEl.innerHTML = `<img src="${tomeData.coverUrl}" alt="${escapeHtml(tomeData.title)}" onerror="this.parentElement.innerHTML='<div class=\\'no-cover\\'>&#9733;</div>'">`;
+      } else {
+        coverEl.innerHTML = '<div class="no-cover">&#9733;</div>';
+      }
+
+      // Info
+      document.getElementById('detailTitle').textContent = tomeData.title;
+      document.getElementById('detailSubtitle').textContent = tomeData.subtitle || '';
+      document.getElementById('detailAuthor').innerHTML = `By <strong>${escapeHtml(tomeData.authorName)}</strong>${tomeData.authorTomesCount > 1 ? ` &middot; ${tomeData.authorTomesCount} tomes` : ''}`;
+      document.getElementById('detailDate').textContent = timeAgo(tomeData.createdAt);
+
+      // Tags
+      const tagsHtml = (tomeData.topicTags || []).map(t =>
+        `<span class="detail-tag" onclick="window.location.href='/tomes?topic=${t}'">${t.charAt(0).toUpperCase() + t.slice(1)}</span>`
+      ).join('');
+      document.getElementById('detailTags').innerHTML = tagsHtml;
+
+      // Actions
+      document.getElementById('readBtn').onclick = () => enterReading();
+      document.getElementById('downloadBtn').href = `/api/tomes/${tomeId}/download`;
+      document.getElementById('downloadBtn').onclick = (e) => {
+        // Don't prevent default - let the download happen
+      };
+
+      // Stats
+      document.getElementById('likeCount').textContent = tomeData.likesCount || 0;
+      document.getElementById('engageStats').innerHTML = `
+        <span>&#9673; ${tomeData.viewsCount || 0} views</span>
+        <span>&#8615; ${tomeData.downloadsCount || 0} downloads</span>
+      `;
+
+      // Chapters
+      const chapterList = document.getElementById('chapterList');
+      chapterList.innerHTML = (tomeData.chapters || []).map((ch, i) => `
+        <li class="chapter-item" onclick="enterReading(${i})">
+          <span class="chapter-num">${String(i + 1).padStart(2, '0')}</span>
+          <span class="chapter-name">${escapeHtml(ch.title)}</span>
+        </li>
+      `).join('');
+    }
+
+    // --- User state (likes/saves) ---
+    async function loadUserState() {
+      try {
+        const res = await fetch('/api/tomes/' + tomeId + '/user-state');
+        userState = await res.json();
+        updateEngagementButtons();
+      } catch {}
+    }
+
+    function updateEngagementButtons() {
+      const likeBtn = document.getElementById('likeBtn');
+      const dislikeBtn = document.getElementById('dislikeBtn');
+      const saveBtn = document.getElementById('saveBtn');
+
+      likeBtn.className = 'engage-btn' + (userState.liked ? ' active' : '');
+      likeBtn.innerHTML = (userState.liked ? '&#9829;' : '&#9825;') + ' <span id="likeCount">' + (tomeData.likesCount || 0) + '</span>';
+
+      dislikeBtn.className = 'engage-btn' + (userState.disliked ? ' active' : '');
+
+      saveBtn.className = 'engage-btn' + (userState.saved ? ' active' : '');
+      saveBtn.innerHTML = (userState.saved ? '&#9733; Saved' : '&#9734; Save');
+    }
+
+    // --- Engagement actions ---
+    document.getElementById('likeBtn').addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/tomes/' + tomeId + '/like', { method: 'POST' });
+        const data = await res.json();
+        userState.liked = data.liked;
+        if (data.liked) userState.disliked = false;
+        tomeData.likesCount = data.likesCount;
+        updateEngagementButtons();
+      } catch {}
+    });
+
+    document.getElementById('dislikeBtn').addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/tomes/' + tomeId + '/dislike', { method: 'POST' });
+        const data = await res.json();
+        userState.disliked = data.disliked;
+        if (data.disliked) userState.liked = false;
+        tomeData.dislikesCount = data.dislikesCount;
+        // Re-fetch like count since it may have changed
+        const tomeRes = await fetch('/api/tomes/' + tomeId);
+        const tomeRefresh = await tomeRes.json();
+        tomeData.likesCount = tomeRefresh.likesCount;
+        updateEngagementButtons();
+      } catch {}
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      if (!userState.signedIn) {
+        alert('Sign in to save tomes to your collection.');
+        return;
+      }
+      try {
+        const res = await fetch('/api/tomes/' + tomeId + '/save', { method: 'POST' });
+        const data = await res.json();
+        userState.saved = data.saved;
+        updateEngagementButtons();
+      } catch {}
+    });
+
+    // Share
+    document.getElementById('shareBtn').addEventListener('click', () => {
+      const url = window.location.origin + '/tome/' + tomeId;
+      document.getElementById('shareLink').value = url;
+      document.getElementById('shareX').href = `https://x.com/intent/tweet?text=${encodeURIComponent(tomeData.title + ' - AI-generated tome')}&url=${encodeURIComponent(url)}`;
+      document.getElementById('shareWhatsApp').href = `https://wa.me/?text=${encodeURIComponent(tomeData.title + ' ' + url)}`;
+      document.getElementById('shareModal').classList.add('open');
+    });
+
+    document.getElementById('shareModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('shareModal')) {
+        document.getElementById('shareModal').classList.remove('open');
+      }
+    });
+
+    document.getElementById('shareCopyBtn').addEventListener('click', () => {
+      const input = document.getElementById('shareLink');
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        document.getElementById('shareCopyBtn').textContent = 'Copied';
+        setTimeout(() => document.getElementById('shareCopyBtn').textContent = 'Copy', 2000);
+      });
+    });
+
+    // Report
+    document.getElementById('reportBtn').addEventListener('click', async () => {
+      const reason = prompt('Why are you reporting this tome?');
+      if (!reason) return;
+      try {
+        await fetch('/api/tomes/' + tomeId + '/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        });
+        alert('Report submitted. Thank you.');
+      } catch {}
+    });
+
+    // --- Comments ---
+    async function loadComments() {
+      try {
+        const res = await fetch('/api/tomes/' + tomeId + '/comments');
+        const data = await res.json();
+
+        document.getElementById('commentsTitle').textContent = `Comments (${data.total || 0})`;
+
+        // Comment form
+        const formEl = document.getElementById('commentForm');
+        if (userState.signedIn) {
+          formEl.innerHTML = `
+            <textarea class="comment-input" id="commentInput" placeholder="Share your thoughts on this tome..."></textarea>
+            <div class="comment-submit-row">
+              <button class="comment-submit-btn" id="commentSubmitBtn">Post comment</button>
+            </div>
+          `;
+          document.getElementById('commentSubmitBtn').addEventListener('click', submitComment);
+        } else {
+          formEl.innerHTML = '<p class="comment-signin-msg"><a href="/library">Sign in</a> to leave a comment.</p>';
+        }
+
+        // Comments list
+        const listEl = document.getElementById('commentsList');
+        if (data.comments.length === 0) {
+          listEl.innerHTML = '<p class="no-comments">No comments yet. Be the first to share your thoughts.</p>';
+        } else {
+          listEl.innerHTML = data.comments.map(c => renderComment(c)).join('');
+        }
+      } catch {}
+    }
+
+    function renderComment(c) {
+      const avatarHtml = c.userAvatar
+        ? `<img src="${c.userAvatar}" alt="">`
+        : (c.userName || 'A').charAt(0).toUpperCase();
+
+      const repliesHtml = (c.replies || []).length > 0
+        ? `<div class="comment-replies">${c.replies.map(r => renderComment(r)).join('')}</div>`
+        : '';
+
+      return `
+        <div class="comment-item">
+          <div class="comment-header">
+            <div class="comment-avatar">${avatarHtml}</div>
+            <span class="comment-name">${escapeHtml(c.userName || 'Anonymous')}</span>
+            <span class="comment-time">${timeAgo(c.createdAt)}</span>
+          </div>
+          <div class="comment-text">${escapeHtml(c.text)}</div>
+          <div class="comment-actions">
+            <button class="comment-action-btn" onclick="likeComment('${c.id}', this)">&#9825; ${c.likesCount || 0}</button>
+          </div>
+          ${repliesHtml}
+        </div>
+      `;
+    }
+
+    async function submitComment() {
+      const input = document.getElementById('commentInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const btn = document.getElementById('commentSubmitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Posting...';
+
+      try {
+        const res = await fetch('/api/tomes/' + tomeId + '/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        if (res.ok) {
+          input.value = '';
+          loadComments();
+        } else {
+          const err = await res.json();
+          alert(err.error || 'Failed to post comment');
+        }
+      } catch {
+        alert('Failed to post comment');
+      }
+      btn.disabled = false;
+      btn.textContent = 'Post comment';
+    }
+
+    async function likeComment(commentId, btn) {
+      try {
+        const res = await fetch(`/api/tomes/${tomeId}/comments/${commentId}/like`, { method: 'POST' });
+        const data = await res.json();
+        btn.innerHTML = `&#9825; ${data.likesCount}`;
+      } catch {}
+    }
+
+    // --- Related tomes ---
+    async function loadRelated() {
+      if (!tomeData.topicTags || tomeData.topicTags.length === 0) return;
+      try {
+        const tag = tomeData.topicTags[0];
+        const res = await fetch('/api/tomes?topic=' + tag + '&limit=6&sort=trending');
+        const data = await res.json();
+        const related = data.tomes.filter(t => t.id !== tomeId).slice(0, 5);
+        if (related.length === 0) return;
+
+        document.getElementById('relatedSection').style.display = 'block';
+        document.getElementById('relatedGrid').innerHTML = related.map(t => {
+          const coverHtml = t.coverUrl
+            ? `<img src="${t.coverUrl}" alt="${escapeHtml(t.title)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-cover\\'>&#9733;</div>'">`
+            : '<div class="no-cover">&#9733;</div>';
+          return `
+            <div class="related-card" onclick="window.location.href='/tome/${t.id}'">
+              <div class="related-cover">${coverHtml}</div>
+              <div class="related-body">
+                <div class="related-title">${escapeHtml(t.title)}</div>
+                <div class="related-author">${escapeHtml(t.authorName || 'Anonymous Seeker')}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch {}
+    }
+
+    // --- Reading view ---
+    async function loadChaptersAndRead(chapterIdx) {
+      try {
+        const res = await fetch('/api/tomes/' + tomeId + '/chapters');
+        if (!res.ok) throw new Error();
+        chaptersData = await res.json();
+        enterReading(chapterIdx || 0);
+      } catch {
+        alert('Could not load chapters.');
+      }
+    }
+
+    async function enterReading(chapterIdx = 0) {
+      if (!chaptersData) {
+        // Load chapters first
+        try {
+          const res = await fetch('/api/tomes/' + tomeId + '/chapters');
+          if (!res.ok) throw new Error();
+          chaptersData = await res.json();
+        } catch {
+          alert('Could not load chapters.');
+          return;
+        }
+      }
+
+      currentChapter = chapterIdx;
+      detailView.style.display = 'none';
+      readingView.style.display = 'block';
+
+      // Populate TOC sidebar
+      const tocItems = document.getElementById('tocItems');
+      tocItems.innerHTML = (chaptersData.chapters || []).map((ch, i) =>
+        `<div class="toc-sidebar-item ${i === currentChapter ? 'active' : ''}" onclick="goToChapter(${i})">${String(i + 1).padStart(2, '0')}. ${escapeHtml(ch.title)}</div>`
+      ).join('');
+
+      renderChapter();
+      window.scrollTo(0, 0);
+
+      // Update URL
+      history.pushState(null, '', '/tome/' + tomeId + '/read');
+    }
+
+    function exitReading() {
+      readingView.style.display = 'none';
+      detailView.style.display = 'block';
+      history.pushState(null, '', '/tome/' + tomeId);
+      window.scrollTo(0, 0);
+    }
+
+    function renderChapter() {
+      if (!chaptersData || !chaptersData.chapters) return;
+      const ch = chaptersData.chapters[currentChapter];
+      if (!ch) return;
+
+      const design = chaptersData.designConfig || {};
+      const divider = design.divider || '\u2014\u2014\u2014';
+      const endMark = design.endMark || '~ ~ ~';
+
+      // Convert content to paragraphs
+      const paragraphs = (ch.content || '').split(/\n\n+/).filter(p => p.trim());
+      const bodyHtml = paragraphs.map(p => `<p>${escapeHtml(p.trim())}</p>`).join('');
+
+      document.getElementById('readingContent').innerHTML = `
+        <div class="reading-chapter-num">Chapter ${currentChapter + 1}</div>
+        <h1 class="reading-chapter-title">${escapeHtml(ch.title)}</h1>
+        <div class="reading-divider">${escapeHtml(divider)}</div>
+        <div class="reading-body" style="font-size: ${readingFontSize}px">${bodyHtml}</div>
+        <div class="reading-end-mark">${escapeHtml(endMark)}</div>
+      `;
+
+      // Chapter indicator
+      document.getElementById('chapterIndicator').textContent = `${currentChapter + 1} / ${chaptersData.chapters.length}`;
+
+      // Pagination buttons
+      document.getElementById('prevChapter').disabled = currentChapter <= 0;
+      document.getElementById('nextChapter').disabled = currentChapter >= chaptersData.chapters.length - 1;
+
+      // Update TOC active state
+      document.querySelectorAll('.toc-sidebar-item').forEach((item, i) => {
+        item.classList.toggle('active', i === currentChapter);
+      });
+    }
+
+    function goToChapter(idx) {
+      currentChapter = idx;
+      renderChapter();
+      window.scrollTo(0, 0);
+      closeToc();
+    }
+
+    // Reading controls
+    document.getElementById('readingBackBtn').addEventListener('click', exitReading);
+    document.getElementById('prevChapter').addEventListener('click', () => { goToChapter(currentChapter - 1); });
+    document.getElementById('nextChapter').addEventListener('click', () => { goToChapter(currentChapter + 1); });
+
+    document.getElementById('fontUp').addEventListener('click', () => {
+      readingFontSize = Math.min(24, readingFontSize + 1);
+      const body = document.querySelector('.reading-body');
+      if (body) body.style.fontSize = readingFontSize + 'px';
+    });
+    document.getElementById('fontDown').addEventListener('click', () => {
+      readingFontSize = Math.max(13, readingFontSize - 1);
+      const body = document.querySelector('.reading-body');
+      if (body) body.style.fontSize = readingFontSize + 'px';
+    });
+
+    // TOC sidebar toggle
+    function closeToc() {
+      document.getElementById('tocSidebar').classList.remove('open');
+      document.getElementById('tocOverlay').classList.remove('open');
+    }
+    document.getElementById('tocToggle').addEventListener('click', () => {
+      const sidebar = document.getElementById('tocSidebar');
+      const overlay = document.getElementById('tocOverlay');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('open');
+    });
+    document.getElementById('tocOverlay').addEventListener('click', closeToc);
+
+    // Reading progress bar
+    window.addEventListener('scroll', () => {
+      if (readingView.style.display !== 'block') return;
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0;
+      document.getElementById('readingProgress').style.width = (progress * 100) + '%';
+    });
+
+    // Handle back button
+    window.addEventListener('popstate', () => {
+      if (readingView.style.display === 'block' && !window.location.pathname.endsWith('/read')) {
+        readingView.style.display = 'none';
+        detailView.style.display = 'block';
+      }
+    });
+
+    // --- Init ---
+    loadTome();
+  </script>
+</body>
+</html>
