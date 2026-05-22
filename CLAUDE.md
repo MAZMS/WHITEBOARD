@@ -17,9 +17,10 @@ An AI-powered ebook generator disguised as a mystical library experience. Users 
 - **Image (covers)**: Gemini 2.5 Flash Image ("Nano Banana") → Imagen 3 fallback, both via Vertex AI
 - **Auth for Google models**: `google-auth-library` — service-account token (bills to GCP credits) or API key
 - **Fonts**: On-demand Google Fonts download to `fonts/` — `ensureFont()` fetches TTF from Google Fonts API. Fonts are referenced by name in the DOCX.
-- **Deps**: `express`, `openai`, `docx`, `google-auth-library`, `dotenv`
+- **Database**: PostgreSQL via `pg` (node-postgres) when `DATABASE_URL` is set (Railway Postgres addon). Falls back to JSON files for local dev. Schema auto-migrates on startup. Data layer in `db.js`.
+- **Deps**: `express`, `openai`, `docx`, `google-auth-library`, `dotenv`, `pg`
 - **Hosting**: Railway (port 8080), custom domain greatlibrary.ai
-- **Ebooks**: Generated as `.docx` to `/tmp/ebooks` on Railway (when `RAILWAY_ENVIRONMENT` is set), else `./ebooks`. Job state mirrored to `jobs.json` for crash recovery.
+- **Ebooks**: Generated as `.docx` to `/tmp/ebooks` on Railway (when `RAILWAY_ENVIRONMENT` is set), else `./ebooks`. When DB is connected, DOCX binary + cover stored as BYTEA for persistence across redeploys.
 
 ## Guardian Persona — THE MOST IMPORTANT THING
 The Guardian is a **sphinx**, not a chatbot. It follows **Law 4: Always Say Less Than Necessary**.
@@ -125,6 +126,7 @@ Clients are constructed at startup from whichever API keys are present; `activeP
 
 ## Repo Layout
 - `server.js` — entire backend (Express app, LLM routing, ebook + cover + DOCX pipeline)
+- `db.js` — PostgreSQL data layer (connection, schema migration, all CRUD operations). Falls back to JSON when `DATABASE_URL` not set.
 - `public/index.html` — entire frontend (HTML/CSS/JS in one file)
 - `public/favicon.jpg`
 - `fonts/*.ttf` — bundled fonts (more downloaded on demand into this dir)
@@ -177,6 +179,10 @@ These emails have admin/privileged access everywhere (library gate, admin dashbo
 - **Simple > fancy** — if something gets complex and buggy, strip it back
 - **Don't fight the tools** — if a library resists a design, simplify the design
 - **Settings panel** — title is "Chamber of Secrets", order: Account → Appearance → Mode → Sound → Progress
+
+## Environment Variables (Database)
+- `DATABASE_URL` — PostgreSQL connection string. Railway provides this automatically when you add the Postgres addon. If not set, the app falls back to JSON file storage.
+- `IP_HASH_SALT` — Salt for hashing visitor IPs before storage. Set a random string in production. Falls back to a default for local dev.
 
 ## Workflow
 - Run locally with `npm start` (needs `.env` with at least one provider key)

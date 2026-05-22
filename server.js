@@ -2326,6 +2326,147 @@ app.post('/api/auth/email/signin', async (req, res) => {
   res.json({ success: true, user: { id: account.id, email: account.email, name: account.name, avatar: account.avatar, tomesCount: account.tomesCount, membershipStatus: account.membershipStatus } });
 });
 
+// POST /api/auth/forgot-password — generate a password reset token
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  const normalized = email.toLowerCase().trim();
+  if (!normalized.match(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/)) {
+    return res.status(400).json({ error: 'Invalid email' });
+  }
+
+  // Always respond with success to prevent email enumeration
+  let account;
+  if (useDB()) {
+    try { account = await db.findAccountByEmail(normalized); } catch (err) { console.warn('[DB] findAccountByEmail error:', err.message); }
+  }
+  if (!account) account = findAccountByEmail(normalized);
+
+  if (!account) {
+    // Don't reveal that the email doesn't exist
+    return res.json({ success: true });
+  }
+
+  // Generate a reset token (random, URL-safe)
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expiry = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+  // Store hashed token in the account
+  if (useDB()) {
+    try {
+      await db.query(
+        `UPDATE accounts SET reset_token_hash = $1, reset_token_expiry = $2 WHERE email = $3`,
+        [tokenHash, expiry, normalized]
+      );
+    } catch (err) {
+      console.warn('[DB] forgot-password update error:', err.message);
+    }
+  }
+  // Always update JSON (fallback or primary)
+  const data = loadAccounts();
+  const acc = data.accounts.find(a => a.email === normalized);
+  if (acc) {
+    acc.resetTokenHash = tokenHash;
+    acc.resetTokenExpiry = expiry;
+    saveAccounts(data);
+  }
+
+  // Log the reset link (no email service yet)
+  const resetLink = `${req.protocol}://${req.get('host')}/library?resetToken=${rawToken}&email=${encodeURIComponent(normalized)}`;
+  console.log(`[Auth] Password reset requested for ${normalized}`);
+  console.log(`[Auth] Reset link: ${resetLink}`);
+
+  res.json({ success: true });
+});
+
+// POST /api/auth/reset-password — validate token and set new password
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { email, token, password } = req.body;
+  if (!email || !token || !password) return res.status(400).json({ error: 'Email, token, and new password required' });
+  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+
+  const normalized = email.toLowerCase().trim();
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+  let account;
+  if (useDB()) {
+    try { account = await db.findAccountByEmail(normalized); } catch (err) { console.warn('[DB] findAccountByEmail error:', err.message); }
+  }
+  if (!account) account = findAccountByEmail(normalized);
+
+  if (!account) {
+    return res.status(400).json({ error: 'Invalid or expired reset link' });
+  }
+
+  // Check token match and expiry
+  if (!account.resetTokenHash || account.resetTokenHash !== tokenHash) {
+    return res.status(400).json({ error: 'Invalid or expired reset link' });
+  }
+  if (!account.resetTokenExpiry || new Date(account.resetTokenExpiry) < new Date()) {
+    return res.status(400).json({ error: 'Reset link has expired. Request a new one.' });
+  }
+
+  // Hash new password and update
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  if (useDB()) {
+    try {
+      await db.setAccountPasswordHash(normalized, passwordHash);
+      await db.query(
+        `UPDATE accounts SET reset_token_hash = NULL, reset_token_expiry = NULL WHERE email = $1`,
+        [normalized]
+      );
+      if (!account.providers || !account.providers.includes('email')) {
+        await db.addProviderToAccount(normalized, 'email');
+      }
+    } catch (err) {
+      console.warn('[DB] reset-password update error:', err.message);
+    }
+  }
+
+  // Always update JSON
+  const data = loadAccounts();
+  const acc = data.accounts.find(a => a.email === normalized);
+  if (acc) {
+    acc.passwordHash = passwordHash;
+    acc.resetTokenHash = null;
+    acc.resetTokenExpiry = null;
+    if (!acc.providers) acc.providers = ['email'];
+    if (!acc.providers.includes('email')) acc.providers.push('email');
+    saveAccounts(data);
+  }
+
+  console.log(`[Auth] Password reset completed for ${normalized}`);
+  res.json({ success: true });
+});
+
+// POST /api/auth/check-email — check if an email already has an account (for waitlist flow)
+app.post('/api/auth/check-email', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  const normalized = email.toLowerCase().trim();
+  let account;
+  if (useDB()) {
+    try { account = await db.findAccountByEmail(normalized); } catch (err) { console.warn('[DB] findAccountByEmail error:', err.message); }
+  }
+  if (!account) account = findAccountByEmail(normalized);
+
+  if (account) {
+    // Has an account — tell the frontend which providers are linked
+    return res.json({
+      exists: true,
+      hasPassword: !!account.passwordHash,
+      providers: account.providers || [],
+      name: account.name || null
+    });
+  }
+
+  res.json({ exists: false });
+});
+
 // POST /api/auth/signout
 app.post('/api/auth/signout', (req, res) => {
   clearAuthCookie(res);
@@ -2785,7 +2926,10 @@ app.post('/api/tomes/:id/comments/:commentId/like', optionalAuth, (req, res) => 
 });
 
 // GET /api/tomes/:id/download — download and track
-app.get('/api/tomes/:id/download', (req, res) => {
+app.get('/api/tomes/:id/download', async (req, res) => {
+  if (useDB()) {
+    db.incrementTomeDownloads(req.params.id).catch(err => console.warn('[DB] incrementTomeDownloads:', err.message));
+  }
   const data = loadTomes();
   const tome = data.tomes.find(t => t.id === req.params.id);
   if (tome) {
@@ -2794,11 +2938,22 @@ app.get('/api/tomes/:id/download', (req, res) => {
     saveTomes(data);
   }
 
-  const job = getJob(req.params.id);
-  if (!job || job.status !== 'ready') {
-    return res.status(404).json({ error: 'Ebook not ready' });
+  const job = await getJobAsync(req.params.id);
+  if (job && job.status === 'ready' && job.path && fs.existsSync(job.path)) {
+    return res.download(job.path, `${job.title || 'ebook'}.docx`);
   }
-  res.download(job.path, `${job.title || 'ebook'}.docx`);
+  if (useDB()) {
+    try {
+      const fileData = await db.getJobFileData(req.params.id);
+      if (fileData && fileData.buffer) {
+        const safeName = (fileData.title || 'ebook').replace(/[^a-zA-Z0-9\s\-_.]/g, '');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', `attachment; filename="${safeName}.docx"`);
+        return res.send(fileData.buffer);
+      }
+    } catch (err) { console.warn('[DB] getJobFileData:', err.message); }
+  }
+  res.status(404).json({ error: 'Ebook not ready' });
 });
 
 // GET /api/tomes/:id/user-state — check if current user has liked/saved/disliked
