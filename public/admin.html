@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Great Library -- Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; min-height: 100vh;
+      background: #0a0a0a;
+      font-family: Georgia, 'Times New Roman', serif;
+      color: #c8b88a;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    body::-webkit-scrollbar { display: none; }
+
+    .admin-header {
+      text-align: center;
+      padding: 40px 20px 20px;
+      border-bottom: 1px solid #1a1814;
+    }
+    .admin-title {
+      font-size: 28px;
+      font-weight: normal;
+      color: #c8b88a;
+      letter-spacing: 2px;
+    }
+    .admin-subtitle {
+      font-size: 13px;
+      color: #4a4030;
+      margin-top: 8px;
+      font-style: italic;
+    }
+    .admin-refresh-info {
+      font-size: 11px;
+      color: #3a3528;
+      margin-top: 12px;
+    }
+    .admin-refresh-info span { color: #5a5038; }
+
+    .admin-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: #0f0e0c;
+      border: 1px solid #1a1814;
+      border-radius: 8px;
+      padding: 24px;
+      transition: border-color 0.3s;
+    }
+    .card:hover { border-color: #2a2520; }
+    .card-full { grid-column: 1 / -1; }
+
+    .card-title {
+      font-size: 14px;
+      color: #6a6050;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #1a1814;
+    }
+
+    .stat-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      margin-bottom: 16px;
+    }
+    .stat-row:last-child { margin-bottom: 0; }
+
+    .stat {
+      flex: 1;
+      min-width: 100px;
+    }
+    .stat-value {
+      font-size: 32px;
+      color: #c8b88a;
+      line-height: 1.2;
+    }
+    .stat-value.accent { color: #8a7d55; }
+    .stat-value.success { color: #5a7a4a; }
+    .stat-value.danger { color: #7a4a4a; }
+    .stat-value.small { font-size: 20px; }
+    .stat-label {
+      font-size: 12px;
+      color: #4a4030;
+      margin-top: 4px;
+    }
+
+    /* CSS-only bar chart */
+    .bar-group { margin-top: 16px; }
+    .bar-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .bar-label {
+      font-size: 12px;
+      color: #6a6050;
+      min-width: 80px;
+      text-align: right;
+    }
+    .bar-track {
+      flex: 1;
+      height: 18px;
+      background: #141210;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3a3528, #5a5038);
+      border-radius: 3px;
+      transition: width 0.6s ease;
+      min-width: 2px;
+    }
+    .bar-count {
+      font-size: 12px;
+      color: #5a5038;
+      min-width: 36px;
+    }
+
+    /* Progress ring for success rates */
+    .rate-ring {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rate-ring-circle {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      border: 3px solid #1a1814;
+      position: relative;
+      overflow: hidden;
+    }
+    .rate-ring-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #3a3528;
+      transition: height 0.6s ease;
+    }
+    .rate-ring-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #c8b88a;
+      z-index: 1;
+    }
+
+    /* Data table */
+    .data-table-wrap {
+      overflow-x: auto;
+      margin-top: 12px;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .data-table-wrap::-webkit-scrollbar { display: none; }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 8px 12px;
+      color: #5a5038;
+      font-weight: normal;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid #1a1814;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .data-table th:hover { color: #8a7d55; }
+    .data-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #0f0e0c;
+      color: #8a8070;
+      white-space: nowrap;
+    }
+    .data-table tr:hover td { background: #121110; }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+    }
+    .tag-ready { background: rgba(90, 122, 74, 0.2); color: #6a9a5a; }
+    .tag-generating { background: rgba(138, 125, 85, 0.2); color: #b8a86a; }
+    .tag-failed { background: rgba(122, 74, 74, 0.2); color: #9a5a5a; }
+    .tag-yes { background: rgba(90, 122, 74, 0.15); color: #6a9a5a; }
+    .tag-no { background: rgba(122, 74, 74, 0.15); color: #7a5a5a; }
+
+    /* Search input */
+    .search-input {
+      width: 100%;
+      background: #141210;
+      border: 1px solid #1a1814;
+      border-radius: 4px;
+      padding: 8px 12px;
+      color: #c8b88a;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      outline: none;
+      margin-bottom: 12px;
+      transition: border-color 0.3s;
+    }
+    .search-input::placeholder { color: #3a3528; }
+    .search-input:focus { border-color: #3a3528; }
+
+    /* Export button */
+    .btn-export {
+      background: rgba(180, 160, 100, 0.06);
+      border: 1px solid #1a1814;
+      border-radius: 4px;
+      color: #5a5038;
+      font-family: Georgia, serif;
+      font-size: 12px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+      float: right;
+      margin-top: -6px;
+    }
+    .btn-export:hover {
+      background: rgba(180, 160, 100, 0.12);
+      border-color: #2a2520;
+      color: #8a7d55;
+    }
+
+    /* System info inline */
+    .sys-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #0f0e0c;
+    }
+    .sys-row:last-child { border-bottom: none; }
+    .sys-label { font-size: 13px; color: #5a5038; }
+    .sys-value { font-size: 13px; color: #8a8070; }
+
+    /* Pulse dot for "live" indicators */
+    .pulse {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #5a7a4a;
+      margin-right: 6px;
+      animation: pulse-anim 2s ease-in-out infinite;
+    }
+    .pulse.warn { background: #8a7d55; }
+    @keyframes pulse-anim {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Loading state */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #3a3528;
+      font-style: italic;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: #2a2520;
+      font-style: italic;
+      font-size: 13px;
+    }
+
+    @media (max-width: 720px) {
+      .admin-grid { grid-template-columns: 1fr; padding: 16px 12px 40px; }
+      .card { padding: 18px; }
+      .stat-value { font-size: 24px; }
+      .stat-row { gap: 16px; }
+      .card-full { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="admin-header">
+    <div class="admin-title">The Great Library -- Admin</div>
+    <div class="admin-subtitle">Every metric. One scroll.</div>
+    <div class="admin-refresh-info">Auto-refreshes every <span>30s</span> -- Last: <span id="lastRefresh">--</span></div>
+  </div>
+
+  <div class="admin-grid" id="dashboard">
+    <div class="loading" id="loadingState">The archives open...</div>
+  </div>
+
+<script>
+(function() {
+  const $ = (sel, ctx) => (ctx || document).querySelector(sel);
+  const $$ = (sel, ctx) => [...(ctx || document).querySelectorAll(sel)];
+
+  let metricsData = null;
+  let waitlistData = null;
+  let ebooksData = null;
+  let sortState = {}; // table -> { col, asc }
+
+  async function fetchAll() {
+    try {
+      const [mRes, wRes, eRes] = await Promise.all([
+        fetch('/api/admin/metrics'),
+        fetch('/api/admin/waitlist'),
+        fetch('/api/admin/ebooks')
+      ]);
+      metricsData = await mRes.json();
+      waitlistData = await wRes.json();
+      ebooksData = await eRes.json();
+      render();
+      $('#lastRefresh').textContent = new Date().toLocaleTimeString();
+    } catch (err) {
+      console.error('Dashboard fetch failed:', err);
+    }
+  }
+
+  function render() {
+    if (!metricsData || !waitlistData || !ebooksData) return;
+    const d = metricsData;
+    const w = waitlistData;
+    const e = ebooksData;
+    const grid = $('#dashboard');
+
+    grid.innerHTML = `
+      ${renderWaitlistOverview(w, d)}
+      ${renderEbookOverview(e)}
+      ${renderApiUsage(d)}
+      ${renderSystem(d)}
+      ${renderTraffic(d)}
+      ${renderCoverStats(d)}
+      ${renderSurveyInsights(w)}
+      ${renderWaitlistTable(w)}
+      ${renderEbookTable(e)}
+      ${renderReferrers(d)}
+    `;
+    bindTableSort();
+    bindSearch();
+    bindExport();
+  }
+
+  // --- Card renderers ---
+
+  function renderWaitlistOverview(w, d) {
+    const convRate = d.pageVisits.waitlist > 0
+      ? Math.round(w.total / d.pageVisits.waitlist * 100) : 0;
+    const surveyRate = w.surveyStats.completionRate;
+
+    return `
+    <div class="card">
+      <div class="card-title">Waitlist</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value">${w.total}</div>
+          <div class="stat-label">Total signups</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value accent">${w.rate.today}</div>
+          <div class="stat-label">Today</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value accent">${w.rate.thisWeek}</div>
+          <div class="stat-label">This week</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value small">${convRate}%</div>
+          <div class="stat-label">Visit-to-signup rate</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value small">${surveyRate}%</div>
+          <div class="stat-label">Survey completion</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value small">${w.surveyStats.completed}</div>
+          <div class="stat-label">Surveys done</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderEbookOverview(e) {
+    return `
+    <div class="card">
+      <div class="card-title">Ebook Generation</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value">${e.completed}</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value${e.active > 0 ? ' accent' : ''}">${e.active}</div>
+          <div class="stat-label">${e.active > 0 ? '<span class="pulse warn"></span>' : ''}In progress</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value danger">${e.failed}</div>
+          <div class="stat-label">Failed</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value small">${e.avgDurationSeconds}s</div>
+          <div class="stat-label">Avg generation time</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value small">${e.successRate}%</div>
+          <div class="stat-label">Success rate</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value small">${e.total}</div>
+          <div class="stat-label">Total attempts</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderApiUsage(d) {
+    const calls = d.apiCalls;
+    const total = Object.values(calls).reduce((s, v) => s + v, 0);
+    const maxCall = Math.max(...Object.values(calls), 1);
+
+    const bars = Object.entries(calls)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => `
+        <div class="bar-item">
+          <div class="bar-label">${name}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / maxCall * 100)}%"></div></div>
+          <div class="bar-count">${count}</div>
+        </div>
+      `).join('');
+
+    return `
+    <div class="card">
+      <div class="card-title">API Calls</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value">${total}</div>
+          <div class="stat-label">Total API calls</div>
+        </div>
+      </div>
+      <div class="bar-group">${bars}</div>
+    </div>`;
+  }
+
+  function renderSystem(d) {
+    const sys = d.system;
+    const mem = sys.memoryMB;
+
+    return `
+    <div class="card">
+      <div class="card-title"><span class="pulse"></span>System</div>
+      <div class="sys-row"><span class="sys-label">Uptime</span><span class="sys-value">${sys.uptimeHuman}</span></div>
+      <div class="sys-row"><span class="sys-label">Provider</span><span class="sys-value">${sys.activeProvider}</span></div>
+      <div class="sys-row"><span class="sys-label">Model</span><span class="sys-value">${sys.activeModel}</span></div>
+      <div class="sys-row"><span class="sys-label">Active sessions</span><span class="sys-value">${sys.activeSessions}</span></div>
+      <div class="sys-row"><span class="sys-label">Memory (RSS)</span><span class="sys-value">${mem.rss} MB</span></div>
+      <div class="sys-row"><span class="sys-label">Heap</span><span class="sys-value">${mem.heapUsed} / ${mem.heapTotal} MB</span></div>
+      <div class="sys-row"><span class="sys-label">Node</span><span class="sys-value">${sys.nodeVersion}</span></div>
+      <div class="sys-row"><span class="sys-label">Platform</span><span class="sys-value">${sys.platform}</span></div>
+      <div class="sys-row"><span class="sys-label">Started</span><span class="sys-value">${formatTime(d.serverStartTime)}</span></div>
+    </div>`;
+  }
+
+  function renderTraffic(d) {
+    const errors = d.errors;
+    return `
+    <div class="card">
+      <div class="card-title">Traffic & Errors</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value">${d.pageVisits.waitlist}</div>
+          <div class="stat-label">Waitlist visits</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">${d.pageVisits.library}</div>
+          <div class="stat-label">Library visits</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">${d.uniqueVisitors}</div>
+          <div class="stat-label">Unique IPs</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value small">${d.devices.mobile}</div>
+          <div class="stat-label">Mobile hits</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value small">${d.devices.desktop}</div>
+          <div class="stat-label">Desktop hits</div>
+        </div>
+      </div>
+      <div class="stat-row" style="margin-top:12px;">
+        <div class="stat">
+          <div class="stat-value${errors.total > 0 ? ' danger' : ''} small">${errors.total}</div>
+          <div class="stat-label">Total errors</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value danger small">${errors.e500}</div>
+          <div class="stat-label">500s</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value danger small">${errors.e429}</div>
+          <div class="stat-label">429s (rate limited)</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderCoverStats(d) {
+    const c = d.covers;
+    const total = c.geminiSuccess + c.imagenFallback + c.failed;
+    if (total === 0) {
+      return `
+      <div class="card">
+        <div class="card-title">Cover Generation</div>
+        <div class="empty-state">No covers generated yet.</div>
+      </div>`;
+    }
+    const fallbackRate = total > 0 ? Math.round(c.imagenFallback / total * 100) : 0;
+    const failRate = total > 0 ? Math.round(c.failed / total * 100) : 0;
+
+    return `
+    <div class="card">
+      <div class="card-title">Cover Generation</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value success small">${c.geminiSuccess}</div>
+          <div class="stat-label">Gemini (direct)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value accent small">${c.imagenFallback}</div>
+          <div class="stat-label">Imagen fallback</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value danger small">${c.failed}</div>
+          <div class="stat-label">Failed</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value small">${fallbackRate}%</div>
+          <div class="stat-label">Fallback rate</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value small">${failRate}%</div>
+          <div class="stat-label">Failure rate</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderSurveyInsights(w) {
+    const stats = w.surveyStats;
+
+    // Top topics bar chart
+    const topics = stats.topTopics || [];
+    const maxTopicCount = topics.length > 0 ? topics[0][1] : 1;
+    const topicBars = topics.slice(0, 10).map(([name, count]) => `
+      <div class="bar-item">
+        <div class="bar-label" style="min-width:120px">${name}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / maxTopicCount * 100)}%"></div></div>
+        <div class="bar-count">${count}</div>
+      </div>
+    `).join('');
+
+    // Would-pay breakdown
+    const payEntries = Object.entries(stats.wouldPay || {});
+    const payBars = payEntries.map(([answer, count]) => `
+      <div class="bar-item">
+        <div class="bar-label">${answer}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / Math.max(...payEntries.map(e => e[1]), 1) * 100)}%"></div></div>
+        <div class="bar-count">${count}</div>
+      </div>
+    `).join('');
+
+    // Format breakdown
+    const fmtEntries = Object.entries(stats.formats || {});
+    const fmtBars = fmtEntries.map(([fmt, count]) => `
+      <div class="bar-item">
+        <div class="bar-label">${fmt}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / Math.max(...fmtEntries.map(e => e[1]), 1) * 100)}%"></div></div>
+        <div class="bar-count">${count}</div>
+      </div>
+    `).join('');
+
+    return `
+    <div class="card card-full">
+      <div class="card-title">Survey Insights</div>
+      ${topics.length === 0 && payEntries.length === 0 ? '<div class="empty-state">No survey data yet.</div>' : ''}
+      ${topics.length > 0 ? `
+        <div style="margin-bottom:20px">
+          <div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Top Topics</div>
+          <div class="bar-group">${topicBars}</div>
+        </div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        ${payEntries.length > 0 ? `
+        <div>
+          <div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Would Pay?</div>
+          <div class="bar-group">${payBars}</div>
+        </div>` : ''}
+        ${fmtEntries.length > 0 ? `
+        <div>
+          <div style="color:#5a5038;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Preferred Format</div>
+          <div class="bar-group">${fmtBars}</div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  function renderWaitlistTable(w) {
+    const signups = w.signups || [];
+    if (signups.length === 0) {
+      return `
+      <div class="card card-full">
+        <div class="card-title">Waitlist Signups</div>
+        <div class="empty-state">The ledger is empty.</div>
+      </div>`;
+    }
+
+    const rows = signups.map(s => `
+      <tr>
+        <td>${escHtml(s.email)}</td>
+        <td>${formatTime(s.timestamp)}</td>
+        <td>${s.referrer ? escHtml(tryHostname(s.referrer)) : '--'}</td>
+        <td>${s.hasSurvey ? '<span class="tag tag-yes">yes</span>' : '<span class="tag tag-no">no</span>'}</td>
+        <td>${s.survey ? escHtml(s.survey.topics || '--') : '--'}</td>
+        <td>${s.survey ? escHtml(s.survey.wouldPay || '--') : '--'}</td>
+      </tr>
+    `).join('');
+
+    return `
+    <div class="card card-full">
+      <div class="card-title">
+        Waitlist Signups (${signups.length})
+        <button class="btn-export" data-export="waitlist">Export JSON</button>
+      </div>
+      <input class="search-input" type="text" placeholder="Search emails..." data-search="waitlist-table">
+      <div class="data-table-wrap">
+        <table class="data-table" id="waitlist-table">
+          <thead>
+            <tr>
+              <th data-sort="0">Email</th>
+              <th data-sort="1">Date</th>
+              <th data-sort="2">Referrer</th>
+              <th data-sort="3">Survey</th>
+              <th data-sort="4">Topics</th>
+              <th data-sort="5">Would Pay</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  function renderEbookTable(e) {
+    const jobs = e.jobs || [];
+    if (jobs.length === 0) {
+      return `
+      <div class="card card-full">
+        <div class="card-title">Ebook History</div>
+        <div class="empty-state">No tomes forged yet.</div>
+      </div>`;
+    }
+
+    const rows = jobs.map(j => {
+      const statusClass = j.status === 'ready' ? 'tag-ready' : j.status === 'generating' ? 'tag-generating' : 'tag-failed';
+      return `
+      <tr>
+        <td>${escHtml(j.title || '--')}</td>
+        <td><span class="tag ${statusClass}">${j.status}</span></td>
+        <td>${j.chapters || '--'}</td>
+        <td>${j.durationHuman || '--'}</td>
+        <td>${formatTime(j.generatedAt)}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${j.error ? escHtml(j.error) : '--'}</td>
+      </tr>`;
+    }).join('');
+
+    return `
+    <div class="card card-full">
+      <div class="card-title">
+        Ebook History (${jobs.length})
+        <button class="btn-export" data-export="ebooks">Export JSON</button>
+      </div>
+      <input class="search-input" type="text" placeholder="Search titles..." data-search="ebook-table">
+      <div class="data-table-wrap">
+        <table class="data-table" id="ebook-table">
+          <thead>
+            <tr>
+              <th data-sort="0">Title</th>
+              <th data-sort="1">Status</th>
+              <th data-sort="2">Chapters</th>
+              <th data-sort="3">Duration</th>
+              <th data-sort="4">Date</th>
+              <th data-sort="5">Error</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  function renderReferrers(d) {
+    const refs = Object.entries(d.referrers || {}).sort((a, b) => b[1] - a[1]);
+    if (refs.length === 0) {
+      return `
+      <div class="card">
+        <div class="card-title">Referrers</div>
+        <div class="empty-state">No external referrers yet.</div>
+      </div>`;
+    }
+    const maxRef = refs[0][1];
+    const bars = refs.slice(0, 15).map(([host, count]) => `
+      <div class="bar-item">
+        <div class="bar-label" style="min-width:140px">${escHtml(host)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(count / maxRef * 100)}%"></div></div>
+        <div class="bar-count">${count}</div>
+      </div>
+    `).join('');
+
+    return `
+    <div class="card">
+      <div class="card-title">Referrers</div>
+      <div class="bar-group">${bars}</div>
+    </div>`;
+  }
+
+  // --- Helpers ---
+
+  function formatTime(iso) {
+    if (!iso) return '--';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+             d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    } catch { return iso; }
+  }
+
+  function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function tryHostname(url) {
+    try { return new URL(url).hostname; } catch { return url; }
+  }
+
+  // --- Table sorting ---
+
+  function bindTableSort() {
+    $$('.data-table th[data-sort]').forEach(th => {
+      th.addEventListener('click', function() {
+        const table = this.closest('table');
+        const colIdx = parseInt(this.dataset.sort);
+        const tableId = table.id;
+        const state = sortState[tableId] || { col: -1, asc: true };
+        state.asc = state.col === colIdx ? !state.asc : true;
+        state.col = colIdx;
+        sortState[tableId] = state;
+
+        const tbody = table.querySelector('tbody');
+        const rows = [...tbody.querySelectorAll('tr')];
+        rows.sort((a, b) => {
+          const aText = a.children[colIdx]?.textContent || '';
+          const bText = b.children[colIdx]?.textContent || '';
+          const cmp = aText.localeCompare(bText, undefined, { numeric: true });
+          return state.asc ? cmp : -cmp;
+        });
+        rows.forEach(r => tbody.appendChild(r));
+      });
+    });
+  }
+
+  // --- Search ---
+
+  function bindSearch() {
+    $$('.search-input[data-search]').forEach(input => {
+      input.addEventListener('input', function() {
+        const tableId = this.dataset.search;
+        const query = this.value.toLowerCase();
+        const rows = $$(`#${tableId} tbody tr`);
+        rows.forEach(r => {
+          const text = r.textContent.toLowerCase();
+          r.style.display = text.includes(query) ? '' : 'none';
+        });
+      });
+    });
+  }
+
+  // --- Export ---
+
+  function bindExport() {
+    $$('.btn-export[data-export]').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const type = this.dataset.export;
+        let data, filename;
+        if (type === 'waitlist') {
+          data = waitlistData;
+          filename = 'waitlist-export.json';
+        } else if (type === 'ebooks') {
+          data = ebooksData;
+          filename = 'ebooks-export.json';
+        } else {
+          data = metricsData;
+          filename = 'metrics-export.json';
+        }
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    });
+  }
+
+  // --- Init ---
+  fetchAll();
+  setInterval(fetchAll, 30000);
+})();
+</script>
+</body>
+</html>
