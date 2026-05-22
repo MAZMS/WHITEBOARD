@@ -360,11 +360,11 @@ async function generateCover(title, subtitle, designTheme, styleSeedText) {
   // Build a brand brief — colors for matching only, NOT to display as text
   const colorMood = d.accent ? `Use a color palette that includes tones similar to ${d.accent} and ${d.accentLight || d.accent}. Match the mood: ${d.coverStyle || 'matching the book topic'}.` : '';
 
-  const coverPrompt = `A flat 2D digital book cover. Title: "${title}". Subtitle: "${subtitle}". No author name. Not a 3D render. CRITICAL: The edges of this image WILL BE CROPPED by 15% on all sides. ALL text and important elements must be in the CENTER 70% of the image — nothing important near any edge. Leave at least 15% margin on all sides. ${colorMood} NEVER display font names, hex codes, or technical info — only the title and subtitle.`;
+  const coverPrompt = `A flat 2D digital book cover. Title: "${title}". Subtitle: "${subtitle}". No author name. Not a 3D render. The artwork must go EDGE TO EDGE — NO borders, NO frames, NO margins, NO decorative edges. The illustration must fill the ENTIRE image with zero empty space at any edge. ${colorMood} NEVER display font names, hex codes, or technical info — only the title and subtitle.`;
   // AI-written art direction from coverStyle, topic keywords only (no title text)
   const topicWords = title.replace(/[^a-zA-Z\s]/g, '').split(' ').slice(0, 3).join(' ');
   const artDirection = d.coverStyle || `Artwork about ${topicWords}`;
-  const imagenPrompt = `${artDirection}. Theme: ${topicWords}. NO text, NO letters, NO words anywhere. Pure visual art.`;
+  const imagenPrompt = `${artDirection}. Theme: ${topicWords}. NO text, NO letters, NO words anywhere. NO borders, NO frames, NO decorative edges — artwork must fill the entire image edge to edge. Pure visual art.`;
 
   try {
     // 1. Try Nano Banana models via Vertex AI (bills to GCP $300 credits)
@@ -404,7 +404,7 @@ async function generateCover(title, subtitle, designTheme, styleSeedText) {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           instances: [{ prompt: imagenPrompt }],
-          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'text, letters, words, title, subtitle, author name, typography, writing, font, watermark, 3D, mockup, book spine' }
+          parameters: { sampleCount: 1, aspectRatio: '3:4', negativePrompt: 'text, letters, words, title, subtitle, author name, typography, writing, font, watermark, 3D, mockup, book spine, border, frame, decorative edge, margin, vignette' }
         })
       });
       const imgData = await imgRes.json();
