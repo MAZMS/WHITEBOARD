@@ -2,8 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const OpenAI = require('openai');
 const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, Header, Footer, PageNumber, PageBreak } = require('docx');
-const libre = require('libreoffice-convert');
-const libreConvert = require('util').promisify(libre.convert);
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -550,28 +548,26 @@ Write in a knowledgeable, engaging, and authoritative tone. Include insights, ex
   }
 
 
-  // Step 3: Generate DOCX and convert to PDF
+  // Step 3: Generate DOCX
   saveJob(ebookId, { status: 'generating', progress: (totalSteps - 1) / totalSteps, step: 'binding' });
   const docxFilepath = path.join(EBOOKS_DIR, ebookId + '.docx');
-  const pdfFilepath = path.join(EBOOKS_DIR, ebookId + '.pdf');
 
-  await createDocxAndConvert(docxFilepath, pdfFilepath, outline, chapters, coverPath, designConfig);
+  await createDocx(docxFilepath, outline, chapters, coverPath, designConfig);
 
-  // Clean up cover image and intermediate DOCX
+  // Clean up cover image
   if (coverPath) try { fs.unlinkSync(coverPath); } catch (e) {}
-  try { fs.unlinkSync(docxFilepath); } catch (e) {}
 
   saveJob(ebookId, {
     status: 'ready',
     title: outline.title,
-    filename: ebookId + '.pdf',
-    path: pdfFilepath
+    filename: ebookId + '.docx',
+    path: docxFilepath
   });
 
-  console.log('Ebook "' + outline.title + '" ready: ' + ebookId + '.pdf');
+  console.log('Ebook "' + outline.title + '" ready: ' + ebookId + '.docx');
 }
 
-async function createDocxAndConvert(docxPath, pdfPath, outline, chapters, coverPath, design) {
+async function createDocx(docxPath, outline, chapters, coverPath, design) {
   const d = design || {};
   const accent = (d.accent || '#8B7D45').replace('#', '');
   const headingColor = (d.headingColor || '#1a1a1a').replace('#', '');
@@ -750,17 +746,6 @@ async function createDocxAndConvert(docxPath, pdfPath, outline, chapters, coverP
   var docxBuffer = await Packer.toBuffer(doc);
   fs.writeFileSync(docxPath, docxBuffer);
   console.log('  DOCX created: ' + docxPath);
-
-  // Convert DOCX to PDF via LibreOffice
-  try {
-    var pdfBuffer = await libreConvert(docxBuffer, '.pdf', undefined);
-    fs.writeFileSync(pdfPath, pdfBuffer);
-    console.log('  PDF converted: ' + pdfPath);
-  } catch (err) {
-    console.warn('  LibreOffice conversion failed: ' + err.message);
-    console.warn('  Saving DOCX as fallback — install LibreOffice for PDF conversion');
-    fs.copyFileSync(docxPath, pdfPath);
-  }
 }
 
 // --- Ebook status + download ---
@@ -825,7 +810,7 @@ app.get('/api/ebook/:id/download', (req, res) => {
   if (!job || job.status !== 'ready') {
     return res.status(404).json({ error: 'Ebook not ready' });
   }
-  res.download(job.path, `${job.title || 'ebook'}.pdf`);
+  res.download(job.path, `${job.title || 'ebook'}.docx`);
 });
 
 // --- Outro (seek again text) ---
