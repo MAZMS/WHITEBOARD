@@ -13,6 +13,7 @@
       --bg: #0a0a0a;
       --bg-card: #111110;
       --bg-hover: #1a1917;
+      --bg-surface: #161614;
       --gold: #c8b88a;
       --gold-dim: #8a7d5a;
       --gold-bright: #e0d4a8;
@@ -21,8 +22,12 @@
       --accent-bright: #5a5038;
       --text-muted: #6a6050;
       --border: #2a2520;
+      --border-light: #332e26;
       --red: #8a4040;
       --font: Georgia, 'Times New Roman', serif;
+      --card-radius: 12px;
+      --glow-gold: rgba(200, 184, 138, 0.08);
+      --glow-gold-hover: rgba(200, 184, 138, 0.15);
     }
 
     html, body {
@@ -34,6 +39,25 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    /* Light mode */
+    body.light-mode {
+      --bg: #F0EBE0;
+      --bg-card: #E8E2D4;
+      --bg-hover: #DDD7C8;
+      --bg-surface: #EAE4D6;
+      --gold: #3a3020;
+      --gold-dim: #6a5d40;
+      --gold-bright: #2a2010;
+      --accent: #D8D0C0;
+      --accent-hover: #CCC4B0;
+      --accent-bright: #B8B098;
+      --text-muted: #8a8070;
+      --border: #C8C0B0;
+      --border-light: #D0C8B8;
+      --glow-gold: rgba(60, 50, 20, 0.06);
+      --glow-gold-hover: rgba(60, 50, 20, 0.12);
+    }
+
     /* Hide scrollbars */
     ::-webkit-scrollbar { width: 0; height: 0; }
     * { scrollbar-width: none; }
@@ -41,24 +65,28 @@
     /* --- Header --- */
     .header {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       z-index: 100;
-      background: rgba(10, 10, 10, 0.92);
-      backdrop-filter: blur(12px);
+      background: rgba(10, 10, 10, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
-      padding: 0 24px;
+      padding: 0 32px;
       height: 64px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 16px;
+    }
+    body.light-mode .header {
+      background: rgba(240, 235, 224, 0.94);
     }
 
     .header-left {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 20px;
+      flex-shrink: 0;
     }
 
     .header-logo {
@@ -68,20 +96,21 @@
       letter-spacing: 1px;
       font-weight: normal;
       transition: color 0.3s;
+      white-space: nowrap;
     }
     .header-logo:hover { color: var(--gold-bright); }
     .header-logo span { opacity: 0.4; }
 
     .header-nav {
       display: flex;
-      gap: 8px;
+      gap: 4px;
     }
     .header-nav a {
       color: var(--gold-dim);
       text-decoration: none;
       font-size: 14px;
-      padding: 6px 12px;
-      border-radius: 4px;
+      padding: 8px 14px;
+      border-radius: 6px;
       transition: all 0.2s;
     }
     .header-nav a:hover, .header-nav a.active {
@@ -89,15 +118,16 @@
       background: var(--accent);
     }
 
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    /* Center search */
+    .header-center {
+      flex: 1;
+      max-width: 560px;
+      margin: 0 auto;
     }
 
     .search-box {
       position: relative;
-      width: 280px;
+      width: 100%;
     }
     .search-box input {
       width: 100%;
@@ -106,21 +136,31 @@
       color: var(--gold);
       font-family: var(--font);
       font-size: 16px;
-      padding: 8px 36px 8px 14px;
-      border-radius: 6px;
+      padding: 10px 44px 10px 18px;
+      border-radius: 24px;
       outline: none;
-      transition: border-color 0.3s;
+      transition: all 0.3s;
     }
     .search-box input::placeholder { color: var(--text-muted); }
-    .search-box input:focus { border-color: var(--gold-dim); }
+    .search-box input:focus {
+      border-color: var(--gold-dim);
+      box-shadow: 0 0 0 1px var(--glow-gold-hover);
+    }
     .search-icon {
       position: absolute;
-      right: 10px;
+      right: 14px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--text-muted);
-      font-size: 14px;
+      font-size: 16px;
       pointer-events: none;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
     }
 
     .create-btn {
@@ -129,11 +169,12 @@
       color: var(--gold);
       font-family: var(--font);
       font-size: 13px;
-      padding: 8px 16px;
-      border-radius: 6px;
+      padding: 9px 18px;
+      border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s;
       text-decoration: none;
+      white-space: nowrap;
     }
     .create-btn:hover {
       background: var(--accent-bright);
@@ -144,124 +185,197 @@
     /* --- Main content --- */
     .main {
       padding-top: 88px;
-      padding-bottom: 60px;
-      max-width: 1400px;
+      padding-bottom: 80px;
+      max-width: 1500px;
       margin: 0 auto;
-      padding-left: 24px;
-      padding-right: 24px;
+      padding-left: 32px;
+      padding-right: 32px;
     }
 
-    /* --- Hero section --- */
+    /* --- Hero / Featured Section --- */
     .hero {
       position: relative;
-      border-radius: 12px;
+      border-radius: 16px;
       overflow: hidden;
       margin-bottom: 40px;
-      min-height: 280px;
+      height: 320px;
       display: flex;
       align-items: flex-end;
       background: linear-gradient(135deg, #1a1815 0%, #0d0c0a 100%);
       border: 1px solid var(--border);
       cursor: pointer;
-      transition: border-color 0.4s;
+      transition: all 0.5s ease;
     }
-    .hero:hover { border-color: var(--accent-bright); }
+    .hero:hover {
+      border-color: var(--accent-bright);
+      box-shadow: 0 8px 40px var(--glow-gold-hover);
+    }
 
     .hero-cover {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       object-fit: cover;
-      opacity: 0.3;
-      transition: opacity 0.5s;
+      opacity: 0.35;
+      transition: all 0.7s ease;
     }
-    .hero:hover .hero-cover { opacity: 0.4; }
+    .hero:hover .hero-cover { opacity: 0.45; transform: scale(1.02); }
 
     .hero-gradient {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 70%;
-      background: linear-gradient(to top, rgba(10, 10, 10, 0.95) 0%, rgba(10, 10, 10, 0.6) 50%, transparent 100%);
+      bottom: 0; left: 0; right: 0;
+      height: 80%;
+      background: linear-gradient(to top, var(--bg) 0%, rgba(10, 10, 10, 0.7) 50%, transparent 100%);
+      pointer-events: none;
     }
 
     .hero-content {
       position: relative;
       z-index: 2;
-      padding: 32px;
+      padding: 36px;
       width: 100%;
     }
-    .hero-label {
-      font-size: 11px;
+    .hero-badge {
+      display: inline-block;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 3px;
-      color: var(--gold-dim);
-      margin-bottom: 12px;
+      color: var(--gold);
+      background: var(--accent-hover);
+      padding: 4px 12px;
+      border-radius: 4px;
+      margin-bottom: 14px;
+      border: 1px solid var(--accent-bright);
     }
     .hero-title {
-      font-size: 32px;
+      font-size: 34px;
       color: var(--gold-bright);
       margin-bottom: 8px;
       line-height: 1.2;
+      max-width: 600px;
     }
     .hero-subtitle {
       font-size: 16px;
       color: var(--gold-dim);
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       font-style: italic;
+      max-width: 500px;
     }
     .hero-meta {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 18px;
       font-size: 13px;
       color: var(--text-muted);
     }
     .hero-meta span {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
     }
 
-    /* --- Filters bar --- */
-    .filters {
+    /* --- Trending Row --- */
+    .trending-section {
+      margin-bottom: 40px;
+    }
+    .section-header {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 28px;
-      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-bottom: 18px;
     }
-
-    .filter-tags {
+    .section-title {
+      font-size: 20px;
+      color: var(--gold);
+      font-weight: normal;
       display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      flex: 1;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title .icon {
+      font-size: 18px;
+      opacity: 0.6;
+    }
+    .section-see-all {
+      font-size: 13px;
+      color: var(--gold-dim);
+      text-decoration: none;
+      transition: color 0.2s;
+      cursor: pointer;
+    }
+    .section-see-all:hover { color: var(--gold); }
+
+    .trending-scroll {
+      display: flex;
+      gap: 20px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scroll-snap-type: x mandatory;
+    }
+    .trending-scroll::-webkit-scrollbar { display: none; }
+
+    .trending-card {
+      flex: 0 0 260px;
+      scroll-snap-align: start;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.35s ease;
+      position: relative;
+    }
+    .trending-card:hover {
+      border-color: var(--accent-bright);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px var(--glow-gold-hover);
     }
 
-    .tag-pill {
+    /* --- Topic Bar (horizontal scroll like YouTube) --- */
+    .topic-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 28px;
+      padding-bottom: 4px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .topic-bar::-webkit-scrollbar { display: none; }
+
+    .topic-pill {
       background: var(--accent);
       border: 1px solid var(--border);
       color: var(--gold-dim);
       font-family: var(--font);
-      font-size: 12px;
-      padding: 5px 14px;
+      font-size: 13px;
+      padding: 8px 18px;
       border-radius: 20px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.25s;
       white-space: nowrap;
+      flex-shrink: 0;
     }
-    .tag-pill:hover, .tag-pill.active {
+    .topic-pill:hover {
       background: var(--accent-hover);
       color: var(--gold);
       border-color: var(--accent-bright);
     }
-    .tag-pill.active {
-      background: var(--accent-bright);
-      color: var(--gold-bright);
+    .topic-pill.active {
+      background: var(--gold-dim);
+      color: var(--bg);
+      border-color: var(--gold-dim);
+    }
+    body.light-mode .topic-pill.active {
+      background: #6a5d40;
+      color: #F0EBE0;
+    }
+
+    .topic-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      flex-shrink: 0;
     }
 
     .sort-select {
@@ -269,44 +383,50 @@
       border: 1px solid var(--border);
       color: var(--gold-dim);
       font-family: var(--font);
-      font-size: 16px;
-      padding: 6px 12px;
-      border-radius: 6px;
+      font-size: 13px;
+      padding: 8px 14px;
+      border-radius: 20px;
       cursor: pointer;
       outline: none;
+      flex-shrink: 0;
     }
     .sort-select:focus { border-color: var(--gold-dim); }
     .sort-select option { background: var(--bg); color: var(--gold); }
 
-    /* --- Tome Grid --- */
+    /* --- Tome Grid (YouTube-style) --- */
     .tome-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 24px;
     }
 
     .tome-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
+      background: transparent;
+      border-radius: var(--card-radius);
       cursor: pointer;
-      transition: all 0.35s ease;
+      transition: all 0.3s ease;
       position: relative;
     }
     .tome-card:hover {
-      border-color: var(--accent-bright);
-      transform: translateY(-4px);
-      box-shadow: 0 8px 32px rgba(200, 184, 138, 0.06);
+      transform: translateY(-2px);
     }
 
+    /* Cover (thumbnail) */
     .card-cover {
       width: 100%;
       aspect-ratio: 3 / 4;
-      background: linear-gradient(135deg, #1a1815, #0d0c0a);
-      position: relative;
+      border-radius: var(--card-radius);
       overflow: hidden;
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      transition: all 0.35s ease;
     }
+    .tome-card:hover .card-cover {
+      border-color: var(--accent-bright);
+      box-shadow: 0 8px 32px var(--glow-gold-hover);
+    }
+
     .card-cover img {
       width: 100%;
       height: 100%;
@@ -314,21 +434,96 @@
       transition: transform 0.5s ease;
     }
     .tome-card:hover .card-cover img {
-      transform: scale(1.04);
+      transform: scale(1.05);
     }
-    .card-cover .no-cover {
+
+    /* Placeholder cover when no image */
+    .card-cover .placeholder-cover {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       width: 100%;
       height: 100%;
-      font-size: 48px;
-      color: var(--accent-bright);
-      background: linear-gradient(135deg, #181714 0%, #0f0e0c 100%);
+      padding: 20px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .placeholder-cover .placeholder-title {
+      font-size: 16px;
+      color: var(--gold);
+      line-height: 1.3;
+      z-index: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .placeholder-cover .placeholder-ornament {
+      position: absolute;
+      bottom: 16px;
+      font-size: 24px;
+      opacity: 0.2;
+      color: var(--gold-dim);
     }
 
+    /* Hover overlay with extra info */
+    .card-hover-info {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 12px;
+      background: linear-gradient(to top, rgba(10, 10, 10, 0.92) 0%, rgba(10, 10, 10, 0.4) 70%, transparent 100%);
+      opacity: 0;
+      transform: translateY(4px);
+      transition: all 0.3s ease;
+      border-radius: 0 0 var(--card-radius) var(--card-radius);
+      pointer-events: none;
+    }
+    .tome-card:hover .card-hover-info {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .card-hover-info .hover-stats {
+      display: flex;
+      gap: 12px;
+      font-size: 11px;
+      color: #c8b88a;
+    }
+    .card-hover-info .hover-stats span {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    /* Card body (below cover) */
     .card-body {
-      padding: 14px;
+      padding: 12px 4px 4px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .card-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: var(--gold-dim);
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .card-avatar img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+
+    .card-meta {
+      flex: 1;
+      min-width: 0;
     }
 
     .card-title {
@@ -340,64 +535,53 @@
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+      transition: color 0.2s;
     }
+    .tome-card:hover .card-title { color: var(--gold-bright); }
 
     .card-author {
       font-size: 12px;
       color: var(--text-muted);
-      margin-bottom: 8px;
+      margin-bottom: 2px;
+      transition: color 0.2s;
     }
-
-    .card-tags {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-    .card-tag {
-      font-size: 10px;
-      color: var(--gold-dim);
-      background: var(--accent);
-      padding: 2px 8px;
-      border-radius: 10px;
-    }
+    .tome-card:hover .card-author { color: var(--gold-dim); }
 
     .card-stats {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-size: 11px;
+      gap: 6px;
+      font-size: 12px;
       color: var(--text-muted);
     }
-    .card-stats span {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-    }
-
-    .card-time {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 4px;
+    .card-stats .dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--text-muted);
     }
 
     /* --- Empty / Loading states --- */
     .loading-state, .empty-state {
       text-align: center;
-      padding: 80px 20px;
+      padding: 100px 20px;
       color: var(--text-muted);
     }
-    .loading-state { font-style: italic; }
+    .loading-state { font-style: italic; font-size: 16px; }
 
     .empty-state h3 {
       color: var(--gold-dim);
-      font-size: 20px;
+      font-size: 22px;
       margin-bottom: 12px;
       font-weight: normal;
     }
     .empty-state p {
-      font-size: 14px;
-      margin-bottom: 20px;
+      font-size: 15px;
+      margin-bottom: 24px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.5;
     }
 
     .empty-cta {
@@ -407,8 +591,8 @@
       color: var(--gold);
       font-family: var(--font);
       font-size: 14px;
-      padding: 10px 24px;
-      border-radius: 6px;
+      padding: 12px 28px;
+      border-radius: 8px;
       text-decoration: none;
       transition: all 0.3s;
     }
@@ -420,7 +604,7 @@
     /* --- Load more --- */
     .load-more {
       text-align: center;
-      padding: 40px 20px;
+      padding: 48px 20px;
     }
     .load-more-btn {
       background: var(--accent);
@@ -428,8 +612,8 @@
       color: var(--gold-dim);
       font-family: var(--font);
       font-size: 14px;
-      padding: 10px 32px;
-      border-radius: 6px;
+      padding: 12px 40px;
+      border-radius: 24px;
       cursor: pointer;
       transition: all 0.3s;
     }
@@ -443,10 +627,17 @@
       cursor: default;
     }
 
+    /* --- Result count --- */
+    .result-count {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
     /* --- Footer --- */
     .footer {
       text-align: center;
-      padding: 32px 20px;
+      padding: 36px 20px;
       font-size: 12px;
       color: var(--text-muted);
       border-top: 1px solid var(--border);
@@ -454,6 +645,7 @@
     .footer a {
       color: var(--gold-dim);
       text-decoration: none;
+      transition: color 0.2s;
     }
     .footer a:hover { color: var(--gold); }
 
@@ -462,58 +654,108 @@
       background: linear-gradient(90deg, var(--accent) 25%, var(--accent-hover) 50%, var(--accent) 75%);
       background-size: 200% 100%;
       animation: skeleton-shimmer 1.5s infinite;
-      border-radius: 6px;
+      border-radius: 8px;
     }
     @keyframes skeleton-shimmer {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
 
-    .skeleton-card .card-cover { background: none; }
-    .skeleton-card .card-cover .skeleton { width: 100%; height: 100%; border-radius: 0; }
-    .skeleton-card .card-body .skeleton { height: 14px; margin-bottom: 8px; }
-    .skeleton-card .card-body .skeleton:first-child { width: 85%; height: 16px; }
-    .skeleton-card .card-body .skeleton:nth-child(2) { width: 50%; }
-    .skeleton-card .card-body .skeleton:nth-child(3) { width: 70%; }
+    .skeleton-card .card-cover { background: none; border: none; }
+    .skeleton-card .card-cover .skeleton { width: 100%; height: 100%; border-radius: var(--card-radius); }
+    .skeleton-card .card-body { padding-top: 12px; }
+    .skeleton-card .skeleton-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+    .skeleton-card .skeleton-lines { flex: 1; }
+    .skeleton-card .skeleton-lines .skeleton { height: 14px; margin-bottom: 8px; }
+    .skeleton-card .skeleton-lines .skeleton:first-child { width: 90%; }
+    .skeleton-card .skeleton-lines .skeleton:nth-child(2) { width: 60%; }
+    .skeleton-card .skeleton-lines .skeleton:nth-child(3) { width: 40%; height: 12px; }
+
+    /* --- Fade-in animation --- */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(14px);
+      animation: fadeInUp 0.5s ease forwards;
+    }
+    @keyframes fadeInUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Staggered entries */
+    .stagger-1 { animation-delay: 0.03s; }
+    .stagger-2 { animation-delay: 0.06s; }
+    .stagger-3 { animation-delay: 0.09s; }
+    .stagger-4 { animation-delay: 0.12s; }
+    .stagger-5 { animation-delay: 0.15s; }
+    .stagger-6 { animation-delay: 0.18s; }
+    .stagger-7 { animation-delay: 0.21s; }
+    .stagger-8 { animation-delay: 0.24s; }
+    .stagger-9 { animation-delay: 0.27s; }
+    .stagger-10 { animation-delay: 0.30s; }
+    .stagger-11 { animation-delay: 0.33s; }
+    .stagger-12 { animation-delay: 0.36s; }
 
     /* --- Responsive --- */
+    @media (max-width: 1200px) {
+      .tome-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; }
+      .trending-card { flex: 0 0 230px; }
+    }
+
+    @media (max-width: 900px) {
+      .tome-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .main { padding-left: 20px; padding-right: 20px; }
+      .header { padding: 0 16px; }
+      .trending-card { flex: 0 0 200px; }
+    }
+
     @media (max-width: 768px) {
-      .header { padding: 0 16px; height: 56px; }
+      .header { height: 56px; gap: 10px; }
       .header-nav { display: none; }
-      .search-box { width: 160px; }
-      .create-btn { padding: 6px 12px; font-size: 12px; min-height: 44px; display: flex; align-items: center; }
+      .header-center { max-width: none; margin: 0; }
+      .search-box input { padding: 9px 40px 9px 14px; }
+      .create-btn { padding: 8px 14px; font-size: 12px; min-height: 44px; display: flex; align-items: center; }
       .main {
         padding-top: 76px;
-        padding-left: 16px;
-        padding-right: 16px;
+        padding-left: 14px;
+        padding-right: 14px;
         padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
       }
-      .hero { min-height: 200px; }
-      .hero-title { font-size: 22px; }
-      .hero-content { padding: 20px; }
-      .tome-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
-      .card-body { padding: 10px; }
-      .card-title { font-size: 13px; }
-      .tag-pill { min-height: 36px; display: inline-flex; align-items: center; }
-      .sort-select { min-height: 36px; }
+      .hero { height: 240px; border-radius: 12px; }
+      .hero-title { font-size: 24px; }
+      .hero-content { padding: 24px; }
+      .tome-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+      .card-body { gap: 8px; }
+      .card-avatar { width: 32px; height: 32px; font-size: 12px; }
+      .card-title { font-size: 14px; }
+      .topic-pill { min-height: 40px; display: inline-flex; align-items: center; padding: 6px 16px; }
+      .sort-select { min-height: 40px; }
       .load-more-btn { min-height: 44px; }
+      .section-title { font-size: 18px; }
+      .trending-card { flex: 0 0 180px; }
+      .trending-scroll { gap: 12px; }
     }
 
     @media (max-width: 480px) {
       .tome-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .search-box { width: 100px; }
-      .search-box input { font-size: 16px; padding: 8px 30px 8px 10px; }
       .header-logo { font-size: 15px; }
-      .hero-title { font-size: 18px; }
-      .create-btn { font-size: 0; padding: 6px 10px; }
+      .hero { height: 200px; }
+      .hero-title { font-size: 20px; }
+      .hero-content { padding: 18px; }
+      .hero-subtitle { font-size: 14px; }
+      .create-btn span { display: none; }
       .create-btn::before { content: '+'; font-size: 18px; }
+      .card-avatar { width: 28px; height: 28px; font-size: 11px; }
+      .card-title { font-size: 13px; }
+      .card-author, .card-stats { font-size: 11px; }
+      .placeholder-cover .placeholder-title { font-size: 13px; }
+      .trending-card { flex: 0 0 160px; }
     }
 
     @media (max-width: 360px) {
-      .header { padding: 0 10px; gap: 6px; }
-      .search-box { width: 80px; }
+      .header { padding: 0 10px; }
+      .hero { height: 170px; }
+      .hero-title { font-size: 17px; }
       .hero-content { padding: 14px; }
-      .hero-title { font-size: 16px; }
     }
 
     /* --- Reduced motion --- */
@@ -525,25 +767,15 @@
       }
     }
 
-    /* --- Fade-in animation --- */
-    .fade-in {
-      opacity: 0;
-      transform: translateY(12px);
-      animation: fadeInUp 0.4s ease forwards;
-    }
-    @keyframes fadeInUp {
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .tome-card:nth-child(1) { animation-delay: 0.02s; }
-    .tome-card:nth-child(2) { animation-delay: 0.06s; }
-    .tome-card:nth-child(3) { animation-delay: 0.10s; }
-    .tome-card:nth-child(4) { animation-delay: 0.14s; }
-    .tome-card:nth-child(5) { animation-delay: 0.18s; }
-    .tome-card:nth-child(6) { animation-delay: 0.22s; }
-    .tome-card:nth-child(7) { animation-delay: 0.26s; }
-    .tome-card:nth-child(8) { animation-delay: 0.30s; }
-    .tome-card:nth-child(9) { animation-delay: 0.34s; }
-    .tome-card:nth-child(10) { animation-delay: 0.38s; }
+    /* Placeholder cover gradients */
+    .cover-grad-0 { background: linear-gradient(145deg, #1c1916, #2a2318, #1a1510); }
+    .cover-grad-1 { background: linear-gradient(145deg, #1a1520, #28202a, #151018); }
+    .cover-grad-2 { background: linear-gradient(145deg, #101820, #182830, #0c1418); }
+    .cover-grad-3 { background: linear-gradient(145deg, #1a1810, #2a2818, #181610); }
+    .cover-grad-4 { background: linear-gradient(145deg, #1c1012, #2a1820, #180c10); }
+    .cover-grad-5 { background: linear-gradient(145deg, #121a18, #1a2a28, #0e1816); }
+    .cover-grad-6 { background: linear-gradient(145deg, #181418, #281c28, #161016); }
+    .cover-grad-7 { background: linear-gradient(145deg, #1a1a10, #2a2a18, #18180e); }
   </style>
 </head>
 <body>
@@ -557,12 +789,14 @@
         <a href="/library">Create</a>
       </nav>
     </div>
-    <div class="header-right">
+    <div class="header-center">
       <div class="search-box">
         <input type="text" id="searchInput" placeholder="Search tomes..." autocomplete="off">
         <span class="search-icon">&#9906;</span>
       </div>
-      <a href="/library" class="create-btn">+ Create Tome</a>
+    </div>
+    <div class="header-right">
+      <a href="/library" class="create-btn"><span>+ Create Tome</span></a>
     </div>
   </header>
 
@@ -573,26 +807,29 @@
       <img class="hero-cover" id="heroCover" src="" alt="">
       <div class="hero-gradient"></div>
       <div class="hero-content">
-        <div class="hero-label" id="heroLabel">Featured Tome</div>
+        <div class="hero-badge" id="heroBadge">Trending</div>
         <div class="hero-title" id="heroTitle"></div>
         <div class="hero-subtitle" id="heroSubtitle"></div>
         <div class="hero-meta" id="heroMeta"></div>
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="filters">
-      <div class="filter-tags" id="filterTags">
-        <button class="tag-pill active" data-topic="all">All</button>
+    <!-- Trending Row -->
+    <div class="trending-section" id="trendingSection" style="display: none;">
+      <div class="section-header">
+        <h2 class="section-title"><span class="icon">&#9733;</span> Trending Tomes</h2>
+        <span class="section-see-all" id="trendingSeeAll">See all</span>
       </div>
-      <select class="sort-select" id="sortSelect">
-        <option value="newest">Newest</option>
-        <option value="trending">Trending</option>
-        <option value="most-liked">Most Liked</option>
-        <option value="most-viewed">Most Viewed</option>
-        <option value="oldest">Oldest</option>
-      </select>
+      <div class="trending-scroll" id="trendingScroll"></div>
     </div>
+
+    <!-- Topic Bar + Sort -->
+    <div class="topic-bar" id="topicBar">
+      <button class="topic-pill active" data-topic="all">All</button>
+    </div>
+
+    <!-- Result count (shown during search) -->
+    <div class="result-count" id="resultCount" style="display: none;"></div>
 
     <!-- Tome Grid -->
     <div class="tome-grid" id="tomeGrid"></div>
@@ -621,6 +858,12 @@
   </footer>
 
   <script>
+    // --- Theme ---
+    (function initTheme() {
+      const theme = localStorage.getItem('gl-theme');
+      if (theme === 'light') document.body.classList.add('light-mode');
+    })();
+
     // --- State ---
     let currentPage = 1;
     let currentTopic = 'all';
@@ -638,46 +881,152 @@
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     const heroSection = document.getElementById('heroSection');
     const searchInput = document.getElementById('searchInput');
-    const sortSelect = document.getElementById('sortSelect');
-    const filterTags = document.getElementById('filterTags');
+    const topicBar = document.getElementById('topicBar');
+    const trendingSection = document.getElementById('trendingSection');
+    const resultCount = document.getElementById('resultCount');
 
-    // --- Time ago helper ---
+    // --- Read URL params ---
+    (function readParams() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('topic')) {
+        currentTopic = params.get('topic');
+      }
+      if (params.get('q')) {
+        currentSearch = params.get('q');
+        searchInput.value = currentSearch;
+      }
+      if (params.get('sort')) {
+        currentSort = params.get('sort');
+      }
+    })();
+
+    // --- Helpers ---
     function timeAgo(dateStr) {
       const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
       if (seconds < 60) return 'just now';
-      if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
-      if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
-      if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
-      if (seconds < 2592000) return Math.floor(seconds / 604800) + 'w ago';
-      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return minutes + (minutes === 1 ? ' minute ago' : ' minutes ago');
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return hours + (hours === 1 ? ' hour ago' : ' hours ago');
+      const days = Math.floor(hours / 24);
+      if (days < 7) return days + (days === 1 ? ' day ago' : ' days ago');
+      const weeks = Math.floor(days / 7);
+      if (weeks < 5) return weeks + (weeks === 1 ? ' week ago' : ' weeks ago');
+      const months = Math.floor(days / 30);
+      if (months < 12) return months + (months === 1 ? ' month ago' : ' months ago');
+      const years = Math.floor(days / 365);
+      return years + (years === 1 ? ' year ago' : ' years ago');
     }
 
-    // --- Render a tome card ---
-    function createTomeCard(tome) {
+    function formatCount(n) {
+      if (!n || n === 0) return '0';
+      if (n < 1000) return String(n);
+      if (n < 10000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+      if (n < 1000000) return Math.floor(n / 1000) + 'K';
+      return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    function getInitial(name) {
+      return (name || 'A').charAt(0).toUpperCase();
+    }
+
+    function getPlaceholderGradient(title) {
+      let hash = 0;
+      for (let i = 0; i < (title || '').length; i++) {
+        hash = ((hash << 5) - hash) + title.charCodeAt(i);
+        hash = hash & hash;
+      }
+      return 'cover-grad-' + (Math.abs(hash) % 8);
+    }
+
+    // --- Render tome card (YouTube style) ---
+    function createTomeCard(tome, idx) {
       const card = document.createElement('div');
-      card.className = 'tome-card fade-in';
+      card.className = 'tome-card fade-in stagger-' + Math.min(12, (idx % 12) + 1);
       card.onclick = () => window.location.href = '/tome/' + tome.id;
 
+      const gradClass = getPlaceholderGradient(tome.title);
+
       const coverHtml = tome.coverUrl
-        ? `<img src="${tome.coverUrl}" alt="${tome.title}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-cover\\'>&#9733;</div>'">`
-        : `<div class="no-cover">&#9733;</div>`;
+        ? `<img src="${tome.coverUrl}" alt="${escapeHtml(tome.title)}" loading="lazy"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+           <div class="placeholder-cover ${gradClass}" style="display:none">
+             <span class="placeholder-title">${escapeHtml(tome.title)}</span>
+             <span class="placeholder-ornament">&#10022;</span>
+           </div>`
+        : `<div class="placeholder-cover ${gradClass}">
+             <span class="placeholder-title">${escapeHtml(tome.title)}</span>
+             <span class="placeholder-ornament">&#10022;</span>
+           </div>`;
 
-      const tagsHtml = (tome.topicTags || []).slice(0, 3).map(t =>
-        `<span class="card-tag">${t}</span>`
-      ).join('');
+      const chapterLabel = tome.chapterCount ? tome.chapterCount + ' ch' : '';
+      const hoverStats = `
+        <div class="card-hover-info">
+          <div class="hover-stats">
+            ${chapterLabel ? `<span>&#9776; ${chapterLabel}</span>` : ''}
+            <span>&#9825; ${formatCount(tome.likesCount)}</span>
+            <span>&#9673; ${formatCount(tome.viewsCount)}</span>
+          </div>
+        </div>
+      `;
 
+      const initial = getInitial(tome.authorName);
+
+      card.innerHTML = `
+        <div class="card-cover">
+          ${coverHtml}
+          ${hoverStats}
+        </div>
+        <div class="card-body">
+          <div class="card-avatar">${initial}</div>
+          <div class="card-meta">
+            <div class="card-title">${escapeHtml(tome.title)}</div>
+            <div class="card-author">${escapeHtml(tome.authorName || 'Anonymous Seeker')}</div>
+            <div class="card-stats">
+              <span>${formatCount(tome.viewsCount)} views</span>
+              <span class="dot"></span>
+              <span>${timeAgo(tome.createdAt)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+      return card;
+    }
+
+    // --- Render trending card (compact horizontal) ---
+    function createTrendingCard(tome) {
+      const gradClass = getPlaceholderGradient(tome.title);
+      const coverHtml = tome.coverUrl
+        ? `<img src="${tome.coverUrl}" alt="${escapeHtml(tome.title)}" loading="lazy"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+           <div class="placeholder-cover ${gradClass}" style="display:none">
+             <span class="placeholder-title">${escapeHtml(tome.title)}</span>
+           </div>`
+        : `<div class="placeholder-cover ${gradClass}">
+             <span class="placeholder-title">${escapeHtml(tome.title)}</span>
+           </div>`;
+
+      const card = document.createElement('div');
+      card.className = 'trending-card fade-in';
+      card.onclick = () => window.location.href = '/tome/' + tome.id;
       card.innerHTML = `
         <div class="card-cover">${coverHtml}</div>
         <div class="card-body">
-          <div class="card-title">${escapeHtml(tome.title)}</div>
-          <div class="card-author">${escapeHtml(tome.authorName || 'Anonymous Seeker')}</div>
-          <div class="card-tags">${tagsHtml}</div>
-          <div class="card-stats">
-            <span title="Likes">&#9825; ${tome.likesCount || 0}</span>
-            <span title="Views">&#9673; ${tome.viewsCount || 0}</span>
-            ${tome.chapterCount ? `<span title="Chapters">&#9776; ${tome.chapterCount}</span>` : ''}
+          <div class="card-avatar">${getInitial(tome.authorName)}</div>
+          <div class="card-meta">
+            <div class="card-title">${escapeHtml(tome.title)}</div>
+            <div class="card-stats">
+              <span>${formatCount(tome.viewsCount)} views</span>
+              <span class="dot"></span>
+              <span>${formatCount(tome.likesCount)} likes</span>
+            </div>
           </div>
-          <div class="card-time">${timeAgo(tome.createdAt)}</div>
         </div>
       `;
       return card;
@@ -688,12 +1037,15 @@
       let html = '';
       for (let i = 0; i < count; i++) {
         html += `
-          <div class="tome-card skeleton-card fade-in">
-            <div class="card-cover"><div class="skeleton" style="width:100%;height:100%;border-radius:0"></div></div>
+          <div class="tome-card skeleton-card fade-in stagger-${Math.min(12, (i % 12) + 1)}">
+            <div class="card-cover"><div class="skeleton" style="width:100%;height:100%"></div></div>
             <div class="card-body">
-              <div class="skeleton" style="width:85%;height:16px;margin-bottom:8px"></div>
-              <div class="skeleton" style="width:50%;height:12px;margin-bottom:8px"></div>
-              <div class="skeleton" style="width:70%;height:10px"></div>
+              <div class="skeleton skeleton-avatar"></div>
+              <div class="skeleton-lines" style="flex:1">
+                <div class="skeleton" style="width:90%;height:14px;margin-bottom:8px"></div>
+                <div class="skeleton" style="width:60%;height:12px;margin-bottom:8px"></div>
+                <div class="skeleton" style="width:40%;height:12px"></div>
+              </div>
             </div>
           </div>
         `;
@@ -701,8 +1053,36 @@
       return html;
     }
 
+    // --- Load trending tomes ---
+    async function loadTrending() {
+      try {
+        const res = await fetch('/api/tomes/trending');
+        const data = await res.json();
+        if (!data.tomes || data.tomes.length < 2) return;
+
+        trendingSection.style.display = 'block';
+        const scroll = document.getElementById('trendingScroll');
+        scroll.innerHTML = '';
+        data.tomes.forEach(tome => {
+          scroll.appendChild(createTrendingCard(tome));
+        });
+
+        // Also show hero from the top trending tome
+        if (data.tomes.length > 0 && !currentSearch && currentTopic === 'all') {
+          showHero(data.tomes[0]);
+        }
+
+        document.getElementById('trendingSeeAll').onclick = () => {
+          const sortEl = document.querySelector('.sort-select');
+          if (sortEl) { sortEl.value = 'trending'; currentSort = 'trending'; currentPage = 1; loadTomes(); }
+        };
+      } catch (err) {
+        console.warn('Trending load failed:', err);
+      }
+    }
+
     // --- Load tomes ---
-    async function loadTomes(append = false) {
+    async function loadTomes(append) {
       if (isLoading) return;
       isLoading = true;
 
@@ -710,6 +1090,7 @@
         tomeGrid.innerHTML = createSkeletonCards(8);
         emptyState.style.display = 'none';
         loadMore.style.display = 'none';
+        resultCount.style.display = 'none';
       } else {
         loadMoreBtn.textContent = 'Searching...';
         loadMoreBtn.disabled = true;
@@ -718,7 +1099,7 @@
       try {
         const params = new URLSearchParams({
           page: currentPage,
-          limit: 20,
+          limit: 24,
           sort: currentSort,
           topic: currentTopic
         });
@@ -729,10 +1110,10 @@
 
         totalPages = data.totalPages;
 
-        // Update tags if first load
+        // Update topic pills on first load
         if (!append && data.tags && data.tags.length > 0) {
           allTags = data.tags;
-          renderFilterTags();
+          renderTopicBar();
         }
 
         if (!append) {
@@ -744,25 +1125,35 @@
           if (currentSearch || currentTopic !== 'all') {
             emptyState.querySelector('h3').textContent = 'No tomes found';
             emptyState.querySelector('p').textContent = currentSearch
-              ? `No tomes match "${currentSearch}". Try a different search.`
-              : `No tomes in this category yet.`;
+              ? 'No tomes match "' + currentSearch + '". Try a different search.'
+              : 'No tomes in this category yet.';
           } else {
             emptyState.querySelector('h3').textContent = 'The shelves are empty';
             emptyState.querySelector('p').textContent = 'No tomes have been inscribed yet. Be the first to create one.';
           }
           emptyState.style.display = 'block';
+          // Hide trending and hero when nothing exists at all
+          if (!currentSearch && currentTopic === 'all') {
+            heroSection.style.display = 'none';
+            trendingSection.style.display = 'none';
+          }
         } else {
           emptyState.style.display = 'none';
-          data.tomes.forEach(tome => {
-            tomeGrid.appendChild(createTomeCard(tome));
+          const startIdx = append ? tomeGrid.children.length : 0;
+          data.tomes.forEach((tome, i) => {
+            tomeGrid.appendChild(createTomeCard(tome, startIdx + i));
           });
+        }
 
-          // Show hero for featured tome on first load
-          if (!append && data.tomes.length > 0 && currentPage === 1 && !currentSearch && currentTopic === 'all') {
-            showHero(data.tomes[0]);
-          } else if (!append) {
-            heroSection.style.display = 'none';
-          }
+        // Show result count for search/filter
+        if (currentSearch || currentTopic !== 'all') {
+          resultCount.style.display = 'block';
+          let label = '';
+          if (currentSearch) label += '"' + currentSearch + '"';
+          if (currentTopic !== 'all') label += (label ? ' in ' : '') + currentTopic;
+          resultCount.textContent = data.total + ' tome' + (data.total !== 1 ? 's' : '') + ' found' + (label ? ' for ' + label : '');
+        } else {
+          resultCount.style.display = 'none';
         }
 
         // Show/hide load more
@@ -791,54 +1182,77 @@
       heroSection.style.display = 'flex';
       heroSection.onclick = () => window.location.href = '/tome/' + tome.id;
 
+      const coverEl = document.getElementById('heroCover');
       if (tome.coverUrl) {
-        document.getElementById('heroCover').src = tome.coverUrl;
-        document.getElementById('heroCover').style.display = 'block';
+        coverEl.src = tome.coverUrl;
+        coverEl.style.display = 'block';
       } else {
-        document.getElementById('heroCover').style.display = 'none';
+        coverEl.style.display = 'none';
       }
 
-      document.getElementById('heroLabel').textContent = (tome.topicTags || [])[0]
-        ? 'Featured in ' + tome.topicTags[0]
-        : 'Featured Tome';
+      const badge = document.getElementById('heroBadge');
+      badge.textContent = (tome.topicTags || [])[0]
+        ? 'Trending in ' + tome.topicTags[0].charAt(0).toUpperCase() + tome.topicTags[0].slice(1)
+        : 'Trending';
+
       document.getElementById('heroTitle').textContent = tome.title;
       document.getElementById('heroSubtitle').textContent = tome.subtitle || '';
       document.getElementById('heroMeta').innerHTML = `
         <span>${escapeHtml(tome.authorName || 'Anonymous Seeker')}</span>
-        <span>&#9825; ${tome.likesCount || 0}</span>
-        <span>&#9673; ${tome.viewsCount || 0}</span>
+        <span>&#9825; ${formatCount(tome.likesCount)}</span>
+        <span>&#9673; ${formatCount(tome.viewsCount)} views</span>
         <span>${timeAgo(tome.createdAt)}</span>
       `;
     }
 
-    // --- Render filter tags ---
-    function renderFilterTags() {
-      let html = '<button class="tag-pill ' + (currentTopic === 'all' ? 'active' : '') + '" data-topic="all">All</button>';
+    // --- Render topic bar ---
+    function renderTopicBar() {
+      let html = '<button class="topic-pill ' + (currentTopic === 'all' ? 'active' : '') + '" data-topic="all">All</button>';
+      html += '<div class="topic-divider"></div>';
+
       allTags.forEach(tag => {
         const label = tag.charAt(0).toUpperCase() + tag.slice(1);
-        html += `<button class="tag-pill ${currentTopic === tag ? 'active' : ''}" data-topic="${tag}">${label}</button>`;
+        html += '<button class="topic-pill ' + (currentTopic === tag ? 'active' : '') + '" data-topic="' + tag + '">' + label + '</button>';
       });
-      filterTags.innerHTML = html;
 
-      // Attach click handlers
-      filterTags.querySelectorAll('.tag-pill').forEach(pill => {
+      html += '<div class="topic-divider"></div>';
+      html += '<select class="sort-select" id="sortSelect">';
+      ['newest', 'trending', 'most-liked', 'most-viewed', 'oldest'].forEach(val => {
+        const labels = { newest: 'Newest', trending: 'Trending', 'most-liked': 'Most Liked', 'most-viewed': 'Most Viewed', oldest: 'Oldest' };
+        html += '<option value="' + val + '"' + (currentSort === val ? ' selected' : '') + '>' + labels[val] + '</option>';
+      });
+      html += '</select>';
+
+      topicBar.innerHTML = html;
+
+      // Attach click handlers for pills
+      topicBar.querySelectorAll('.topic-pill').forEach(pill => {
         pill.addEventListener('click', () => {
           currentTopic = pill.dataset.topic;
           currentPage = 1;
-          filterTags.querySelectorAll('.tag-pill').forEach(p => p.classList.remove('active'));
+          topicBar.querySelectorAll('.topic-pill').forEach(p => p.classList.remove('active'));
           pill.classList.add('active');
+          // Hide hero/trending when filtering
+          if (currentTopic !== 'all') {
+            heroSection.style.display = 'none';
+            trendingSection.style.display = 'none';
+          }
           loadTomes();
         });
       });
+
+      // Sort handler
+      const sortEl = topicBar.querySelector('.sort-select');
+      if (sortEl) {
+        sortEl.addEventListener('change', () => {
+          currentSort = sortEl.value;
+          currentPage = 1;
+          loadTomes();
+        });
+      }
     }
 
     // --- Event listeners ---
-    sortSelect.addEventListener('change', () => {
-      currentSort = sortSelect.value;
-      currentPage = 1;
-      loadTomes();
-    });
-
     loadMoreBtn.addEventListener('click', () => {
       currentPage++;
       loadTomes(true);
@@ -851,18 +1265,30 @@
       searchTimeout = setTimeout(() => {
         currentSearch = searchInput.value.trim();
         currentPage = 1;
+        if (currentSearch) {
+          heroSection.style.display = 'none';
+          trendingSection.style.display = 'none';
+        }
         loadTomes();
       }, 400);
     });
 
-    // --- Escape HTML helper ---
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
+    // Enter key in search
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        clearTimeout(searchTimeout);
+        currentSearch = searchInput.value.trim();
+        currentPage = 1;
+        if (currentSearch) {
+          heroSection.style.display = 'none';
+          trendingSection.style.display = 'none';
+        }
+        loadTomes();
+      }
+    });
 
     // --- Init ---
+    loadTrending();
     loadTomes();
   </script>
 </body>
