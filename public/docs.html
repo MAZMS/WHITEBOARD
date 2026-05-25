@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en" class="bg-[#0a0a0a]">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Developer Docs — GreatLibrary CLI</title>
+  <meta name="description" content="Documentation for the GreatLibrary CLI. Learn how to install, authenticate, and publish your Claude Code agent blueprints to the marketplace." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; }
+    [x-cloak] { display: none !important; }
+    html { scrollbar-width: none; }
+    html::-webkit-scrollbar { display: none; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.5s ease-out both; }
+    .fade-up-d1 { animation-delay: 0.08s; }
+    .fade-up-d2 { animation-delay: 0.16s; }
+    .fade-up-d3 { animation-delay: 0.24s; }
+    .fade-up-d4 { animation-delay: 0.32s; }
+    .fade-up-d5 { animation-delay: 0.40s; }
+    .glow { box-shadow: 0 0 0 1px rgba(200,184,138,0.1); }
+    .glow:hover { box-shadow: 0 0 20px rgba(200,184,138,0.08), 0 0 0 1px rgba(200,184,138,0.2); }
+    code { font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace; }
+    .code-block {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 0.75rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .code-block::-webkit-scrollbar { display: none; }
+    .code-block code { display: block; padding: 1.25rem 1.5rem; font-size: 0.8125rem; line-height: 1.8; white-space: pre; color: rgba(255,255,255,0.7); }
+    .code-inline {
+      background: rgba(200,184,138,0.08);
+      border: 1px solid rgba(200,184,138,0.12);
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.375rem;
+      font-size: 0.8125rem;
+      color: #c8b88a;
+    }
+    .comment { color: rgba(255,255,255,0.25); }
+    .key { color: #c8b88a; }
+    .string { color: #a8d8a8; }
+    .keyword { color: #d4a0d4; }
+    .punct { color: rgba(255,255,255,0.35); }
+    .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(200,184,138,0.3); transition: all 0.3s; }
+    .nav-dot.active { background: #c8b88a; box-shadow: 0 0 8px rgba(200,184,138,0.3); }
+  </style>
+</head>
+<body class="bg-[#0a0a0a] text-white/90 min-h-screen overflow-x-hidden">
+
+  <!-- Nav -->
+  <nav class="border-b border-white/5 backdrop-blur-sm sticky top-0 z-40 bg-[#0a0a0a]/80">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center text-[#0a0a0a] font-bold text-sm">GL</div>
+        <span class="text-lg font-semibold tracking-tight text-white">GreatLibrary</span>
+      </a>
+      <div class="flex items-center gap-6 text-sm text-white/50">
+        <a href="/" class="hover:text-white transition-colors">Store</a>
+        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace</a>
+        <a href="/docs.html" class="text-white">Docs</a>
+        <a href="/admin.html" class="hover:text-white transition-colors">Admin</a>
+        <a href="/invest.html" class="hover:text-[#c8b88a] transition-colors">Investors</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-6xl mx-auto px-6" x-data="{ activeSection: 'getting-started' }">
+
+    <div class="lg:flex gap-12">
+
+      <!-- Sidebar Navigation -->
+      <aside class="hidden lg:block w-52 shrink-0 pt-12 sticky top-16 self-start">
+        <p class="text-[10px] text-white/25 uppercase tracking-widest font-medium mb-5">On this page</p>
+        <nav class="space-y-1">
+          <a href="#getting-started" @click.prevent="document.getElementById('getting-started').scrollIntoView({ behavior: 'smooth' })" class="flex items-center gap-3 py-1.5 text-sm transition-colors" :class="activeSection === 'getting-started' ? 'text-[#c8b88a]' : 'text-white/30 hover:text-white/60'">
+            <div class="nav-dot" :class="activeSection === 'getting-started' && 'active'"></div>
+            Getting Started
+          </a>
+          <a href="#authentication" @click.prevent="document.getElementById('authentication').scrollIntoView({ behavior: 'smooth' })" class="flex items-center gap-3 py-1.5 text-sm transition-colors" :class="activeSection === 'authentication' ? 'text-[#c8b88a]' : 'text-white/30 hover:text-white/60'">
+            <div class="nav-dot" :class="activeSection === 'authentication' && 'active'"></div>
+            Authentication
+          </a>
+          <a href="#publishing" @click.prevent="document.getElementById('publishing').scrollIntoView({ behavior: 'smooth' })" class="flex items-center gap-3 py-1.5 text-sm transition-colors" :class="activeSection === 'publishing' ? 'text-[#c8b88a]' : 'text-white/30 hover:text-white/60'">
+            <div class="nav-dot" :class="activeSection === 'publishing' && 'active'"></div>
+            Publishing
+          </a>
+          <a href="#blueprint-structure" @click.prevent="document.getElementById('blueprint-structure').scrollIntoView({ behavior: 'smooth' })" class="flex items-center gap-3 py-1.5 text-sm transition-colors" :class="activeSection === 'blueprint-structure' ? 'text-[#c8b88a]' : 'text-white/30 hover:text-white/60'">
+            <div class="nav-dot" :class="activeSection === 'blueprint-structure' && 'active'"></div>
+            Blueprint Structure
+          </a>
+          <a href="#examples" @click.prevent="document.getElementById('examples').scrollIntoView({ behavior: 'smooth' })" class="flex items-center gap-3 py-1.5 text-sm transition-colors" :class="activeSection === 'examples' ? 'text-[#c8b88a]' : 'text-white/30 hover:text-white/60'">
+            <div class="nav-dot" :class="activeSection === 'examples' && 'active'"></div>
+            Code Examples
+          </a>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="flex-1 min-w-0 pb-24">
+
+        <!-- Hero -->
+        <section class="pt-16 pb-14 fade-up">
+          <p class="text-[#c8b88a] text-sm font-medium tracking-widest uppercase mb-4">Developer Documentation</p>
+          <h1 class="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] text-white max-w-2xl">
+            Build and publish<br/>agent blueprints.
+          </h1>
+          <p class="text-white/40 text-lg mt-6 max-w-xl leading-relaxed">
+            Everything you need to package your Claude Code agent configuration
+            and publish it to the GreatLibrary marketplace.
+          </p>
+          <div class="flex items-center gap-4 mt-8">
+            <div class="code-block">
+              <code>npm install -g greatlibrary-core</code>
+            </div>
+          </div>
+        </section>
+
+        <!-- Divider -->
+        <div class="border-t border-white/5"></div>
+
+        <!-- Getting Started -->
+        <section id="getting-started" class="pt-14 pb-12 fade-up fade-up-d1">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-9 h-9 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center">
+              <svg class="w-4 h-4 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-white">Getting Started</h2>
+          </div>
+
+          <p class="text-white/40 leading-relaxed mb-6 max-w-2xl">
+            Install the GreatLibrary CLI globally to start publishing blueprints from any project on your machine.
+          </p>
+
+          <div class="space-y-4">
+            <div>
+              <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">Install via npm</p>
+              <div class="code-block">
+                <code>npm install -g greatlibrary-core</code>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">Verify installation</p>
+              <div class="code-block">
+                <code>greatlibrary --version</code>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-8 bg-[#c8b88a]/[0.04] border border-[#c8b88a]/10 rounded-xl p-5">
+            <div class="flex items-start gap-3">
+              <svg class="w-4 h-4 text-[#c8b88a] mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <p class="text-sm text-white/50 leading-relaxed">
+                Requires <code class="code-inline">Node.js 18+</code> and <code class="code-inline">npm</code> or <code class="code-inline">yarn</code>. The CLI works on macOS, Linux, and Windows.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Divider -->
+        <div class="border-t border-white/5"></div>
+
+        <!-- Authentication -->
+        <section id="authentication" class="pt-14 pb-12 fade-up fade-up-d2">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-9 h-9 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center">
+              <svg class="w-4 h-4 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-white">Authentication</h2>
+          </div>
+
+          <p class="text-white/40 leading-relaxed mb-6 max-w-2xl">
+            The CLI authenticates through GitHub OAuth. Running the login command opens your browser
+            and authorizes the CLI to publish blueprints on your behalf.
+          </p>
+
+          <div>
+            <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">Sign in with GitHub</p>
+            <div class="code-block">
+              <code>greatlibrary login</code>
+            </div>
+          </div>
+
+          <div class="mt-6 space-y-4">
+            <div class="flex items-start gap-4">
+              <div class="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="text-xs font-bold text-white/40">1</span>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-white">Browser opens automatically</p>
+                <p class="text-xs text-white/30 mt-1">You will be redirected to GitHub to authorize the GreatLibrary app.</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="text-xs font-bold text-white/40">2</span>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-white">Grant repository access</p>
+                <p class="text-xs text-white/30 mt-1">The CLI needs read access to detect your project's GitHub remote URL.</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="text-xs font-bold text-white/40">3</span>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-white">Token saved locally</p>
+                <p class="text-xs text-white/30 mt-1">Your auth token is stored in <code class="code-inline">~/.greatlibrary/credentials.json</code>. You only need to log in once.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-8">
+            <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">Check auth status</p>
+            <div class="code-block">
+              <code>greatlibrary whoami</code>
+            </div>
+          </div>
+        </section>
+
+        <!-- Divider -->
+        <div class="border-t border-white/5"></div>
+
+        <!-- Publishing a Blueprint -->
+        <section id="publishing" class="pt-14 pb-12 fade-up fade-up-d3">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-9 h-9 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center">
+              <svg class="w-4 h-4 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-white">Publishing a Blueprint</h2>
+          </div>
+
+          <p class="text-white/40 leading-relaxed mb-6 max-w-2xl">
+            Run <code class="code-inline">greatlibrary publish</code> from your project root. The CLI reads your
+            configuration files, detects the GitHub remote, and publishes the blueprint to the marketplace.
+          </p>
+
+          <div>
+            <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">Publish from project root</p>
+            <div class="code-block">
+              <code>cd your-project
+greatlibrary publish</code>
+            </div>
+          </div>
+
+          <div class="mt-8">
+            <p class="text-xs text-white/30 uppercase tracking-wider mb-4 font-medium">Requirements</p>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <div class="glow bg-white/[0.03] rounded-xl p-5 transition-all duration-300">
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-8 h-8 rounded-lg bg-emerald-400/10 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
+                  </div>
+                  <code class="text-sm text-white font-medium">CLAUDE.md</code>
+                </div>
+                <p class="text-xs text-white/30 leading-relaxed">Agent instructions file at your project root. This is the brain of your blueprint.</p>
+              </div>
+              <div class="glow bg-white/[0.03] rounded-xl p-5 transition-all duration-300">
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-8 h-8 rounded-lg bg-emerald-400/10 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
+                  </div>
+                  <code class="text-sm text-white font-medium">.claude/settings.json</code>
+                </div>
+                <p class="text-xs text-white/30 leading-relaxed">Permissions and tool configuration. Controls what the agent can and cannot do.</p>
+              </div>
+              <div class="glow bg-white/[0.03] rounded-xl p-5 transition-all duration-300">
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-8 h-8 rounded-lg bg-emerald-400/10 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
+                  </div>
+                  <span class="text-sm text-white font-medium">GitHub remote</span>
+                </div>
+                <p class="text-xs text-white/30 leading-relaxed">Your project must have a GitHub remote. The CLI links your blueprint to the source repo.</p>
+              </div>
+              <div class="glow bg-white/[0.03] rounded-xl p-5 transition-all duration-300">
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-8 h-8 rounded-lg bg-emerald-400/10 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
+                  </div>
+                  <span class="text-sm text-white font-medium">Authenticated</span>
+                </div>
+                <p class="text-xs text-white/30 leading-relaxed">You must be logged in via <code class="code-inline">greatlibrary login</code> before publishing.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-8">
+            <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">What the CLI does</p>
+            <div class="space-y-3 mt-4">
+              <div class="flex items-start gap-3">
+                <div class="w-5 h-5 rounded-full bg-[#c8b88a]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div class="w-1.5 h-1.5 rounded-full bg-[#c8b88a]"></div>
+                </div>
+                <p class="text-sm text-white/50">Reads <code class="code-inline">CLAUDE.md</code> and <code class="code-inline">.claude/settings.json</code> from your project root</p>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="w-5 h-5 rounded-full bg-[#c8b88a]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div class="w-1.5 h-1.5 rounded-full bg-[#c8b88a]"></div>
+                </div>
+                <p class="text-sm text-white/50">Detects the GitHub remote URL from your <code class="code-inline">.git/config</code></p>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="w-5 h-5 rounded-full bg-[#c8b88a]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div class="w-1.5 h-1.5 rounded-full bg-[#c8b88a]"></div>
+                </div>
+                <p class="text-sm text-white/50">Extracts permissions, tool configs, and generates a blueprint manifest</p>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="w-5 h-5 rounded-full bg-[#c8b88a]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div class="w-1.5 h-1.5 rounded-full bg-[#c8b88a]"></div>
+                </div>
+                <p class="text-sm text-white/50">Uploads to the GreatLibrary marketplace and returns a public URL</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Divider -->
+        <div class="border-t border-white/5"></div>
+
+        <!-- Blueprint Structure -->
+        <section id="blueprint-structure" class="pt-14 pb-12 fade-up fade-up-d4">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-9 h-9 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center">
+              <svg class="w-4 h-4 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-white">Blueprint Structure</h2>
+          </div>
+
+          <p class="text-white/40 leading-relaxed mb-8 max-w-2xl">
+            A great blueprint is more than just config files. Here is what separates a good blueprint from a great one.
+          </p>
+
+          <div class="space-y-6">
+            <div class="glow bg-white/[0.03] rounded-xl p-6 transition-all duration-300">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center flex-shrink-0">
+                  <span class="text-[#c8b88a] text-sm font-bold">1</span>
+                </div>
+                <div>
+                  <h3 class="text-base font-semibold text-white mb-2" style="font-family: 'Inter', sans-serif;">Clear CLAUDE.md instructions</h3>
+                  <p class="text-sm text-white/40 leading-relaxed">
+                    Write specific, actionable instructions. Define what the agent should do, what it should avoid,
+                    and how it should handle edge cases. Vague instructions produce vague agents.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="glow bg-white/[0.03] rounded-xl p-6 transition-all duration-300">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center flex-shrink-0">
+                  <span class="text-[#c8b88a] text-sm font-bold">2</span>
+                </div>
+                <div>
+                  <h3 class="text-base font-semibold text-white mb-2" style="font-family: 'Inter', sans-serif;">Minimal permissions in settings.json</h3>
+                  <p class="text-sm text-white/40 leading-relaxed">
+                    Only request the permissions your agent actually needs. Blueprints with narrow, well-scoped
+                    permissions rank higher and build more trust with users.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="glow bg-white/[0.03] rounded-xl p-6 transition-all duration-300">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center flex-shrink-0">
+                  <span class="text-[#c8b88a] text-sm font-bold">3</span>
+                </div>
+                <div>
+                  <h3 class="text-base font-semibold text-white mb-2" style="font-family: 'Inter', sans-serif;">Well-structured repository</h3>
+                  <p class="text-sm text-white/40 leading-relaxed">
+                    Keep your repo clean and navigable. A clear folder structure helps the agent understand the
+                    codebase and helps users trust your blueprint before deploying it.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="glow bg-white/[0.03] rounded-xl p-6 transition-all duration-300">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center flex-shrink-0">
+                  <span class="text-[#c8b88a] text-sm font-bold">4</span>
+                </div>
+                <div>
+                  <h3 class="text-base font-semibold text-white mb-2" style="font-family: 'Inter', sans-serif;">Descriptive metadata</h3>
+                  <p class="text-sm text-white/40 leading-relaxed">
+                    Add a clear description and category tags in your CLAUDE.md frontmatter. This helps users
+                    discover your blueprint in search and understand what it does at a glance.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- File tree -->
+          <div class="mt-10">
+            <p class="text-xs text-white/30 uppercase tracking-wider mb-3 font-medium">Minimum project structure</p>
+            <div class="code-block">
+              <code><span class="key">your-project/</span>
+<span class="punct">  ├──</span> <span class="string">CLAUDE.md</span>              <span class="comment"># Agent instructions</span>
+<span class="punct">  ├──</span> <span class="key">.claude/</span>
+<span class="punct">  │   └──</span> <span class="string">settings.json</span>      <span class="comment"># Permissions &amp; tools config</span>
+<span class="punct">  ├──</span> <span class="string">src/</span>                   <span class="comment"># Your source code</span>
+<span class="punct">  └──</span> <span class="string">package.json</span>           <span class="comment"># Or any project manifest</span></code>
+            </div>
+          </div>
+        </section>
+
+        <!-- Divider -->
+        <div class="border-t border-white/5"></div>
+
+        <!-- Code Examples -->
+        <section id="examples" class="pt-14 pb-12 fade-up fade-up-d5">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-9 h-9 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center">
+              <svg class="w-4 h-4 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-white">Code Examples</h2>
+          </div>
+
+          <p class="text-white/40 leading-relaxed mb-8 max-w-2xl">
+            Below are sample files for a code review agent blueprint. Use these as a starting point for your own.
+          </p>
+
+          <!-- CLAUDE.md Example -->
+          <div class="mb-10">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-6 h-6 rounded bg-white/5 flex items-center justify-center">
+                <svg class="w-3 h-3 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </div>
+              <p class="text-sm font-medium text-white">CLAUDE.md</p>
+              <span class="text-[10px] bg-white/5 text-white/30 px-2 py-0.5 rounded-full">Example</span>
+            </div>
+            <div class="code-block">
+              <code><span class="comment"># Code Review Agent</span>
+
+<span class="comment">## Role</span>
+<span class="punct">You are a senior code reviewer. You analyze pull requests for</span>
+<span class="punct">bugs, security issues, performance problems, and style violations.</span>
+
+<span class="comment">## Rules</span>
+<span class="key">1.</span> Review every changed file in the PR diff.
+<span class="key">2.</span> Flag any SQL injection, XSS, or auth bypass vulnerabilities.
+<span class="key">3.</span> Suggest performance improvements when you see O(n^2) or worse.
+<span class="key">4.</span> Enforce the project's existing code style — do not impose new rules.
+<span class="key">5.</span> Never approve a PR that has failing tests.
+
+<span class="comment">## Output Format</span>
+<span class="punct">Return a structured review with:</span>
+<span class="key">-</span> <span class="string">summary</span>: one-paragraph overview
+<span class="key">-</span> <span class="string">issues</span>: array of { file, line, severity, message }
+<span class="key">-</span> <span class="string">verdict</span>: APPROVE | REQUEST_CHANGES | COMMENT
+
+<span class="comment">## Constraints</span>
+<span class="key">-</span> Do not modify any files. Read-only analysis.
+<span class="key">-</span> Do not run tests — only read test results.
+<span class="key">-</span> Keep reviews under 2000 tokens.</code>
+            </div>
+          </div>
+
+          <!-- settings.json Example -->
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-6 h-6 rounded bg-white/5 flex items-center justify-center">
+                <svg class="w-3 h-3 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <p class="text-sm font-medium text-white">.claude/settings.json</p>
+              <span class="text-[10px] bg-white/5 text-white/30 px-2 py-0.5 rounded-full">Example</span>
+            </div>
+            <div class="code-block">
+              <code><span class="punct">{</span>
+  <span class="key">"permissions"</span><span class="punct">: {</span>
+    <span class="key">"allow"</span><span class="punct">: [</span>
+      <span class="string">"Read"</span><span class="punct">,</span>
+      <span class="string">"Glob"</span><span class="punct">,</span>
+      <span class="string">"Grep"</span><span class="punct">,</span>
+      <span class="string">"Bash(git diff *)"</span><span class="punct">,</span>
+      <span class="string">"Bash(git log *)"</span><span class="punct">,</span>
+      <span class="string">"Bash(git show *)"</span>
+    <span class="punct">],</span>
+    <span class="key">"deny"</span><span class="punct">: [</span>
+      <span class="string">"Edit"</span><span class="punct">,</span>
+      <span class="string">"Write"</span><span class="punct">,</span>
+      <span class="string">"Bash(rm *)"</span><span class="punct">,</span>
+      <span class="string">"Bash(git push *)"</span><span class="punct">,</span>
+      <span class="string">"Bash(git commit *)"</span>
+    <span class="punct">]</span>
+  <span class="punct">},</span>
+  <span class="key">"env"</span><span class="punct">: {</span>
+    <span class="key">"AGENT_MODE"</span><span class="punct">:</span> <span class="string">"review"</span><span class="punct">,</span>
+    <span class="key">"MAX_FILES"</span><span class="punct">:</span> <span class="string">"50"</span>
+  <span class="punct">}</span>
+<span class="punct">}</span></code>
+            </div>
+          </div>
+
+          <!-- Permission reference -->
+          <div class="mt-10">
+            <p class="text-xs text-white/30 uppercase tracking-wider mb-4 font-medium">Common permissions reference</p>
+            <div class="bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-white/5 text-xs uppercase tracking-wider text-white/30">
+                    <th class="text-left py-3 px-5">Permission</th>
+                    <th class="text-left py-3 px-5 hidden sm:table-cell">Description</th>
+                    <th class="text-left py-3 px-5">Scope</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-b border-white/[0.03]">
+                    <td class="py-3 px-5"><code class="code-inline">Read</code></td>
+                    <td class="py-3 px-5 text-white/40 hidden sm:table-cell">Read file contents</td>
+                    <td class="py-3 px-5 text-white/30 text-xs">Read-only</td>
+                  </tr>
+                  <tr class="border-b border-white/[0.03]">
+                    <td class="py-3 px-5"><code class="code-inline">Edit</code></td>
+                    <td class="py-3 px-5 text-white/40 hidden sm:table-cell">Modify existing files</td>
+                    <td class="py-3 px-5 text-white/30 text-xs">Write</td>
+                  </tr>
+                  <tr class="border-b border-white/[0.03]">
+                    <td class="py-3 px-5"><code class="code-inline">Write</code></td>
+                    <td class="py-3 px-5 text-white/40 hidden sm:table-cell">Create new files</td>
+                    <td class="py-3 px-5 text-white/30 text-xs">Write</td>
+                  </tr>
+                  <tr class="border-b border-white/[0.03]">
+                    <td class="py-3 px-5"><code class="code-inline">Glob</code></td>
+                    <td class="py-3 px-5 text-white/40 hidden sm:table-cell">Search file paths by pattern</td>
+                    <td class="py-3 px-5 text-white/30 text-xs">Read-only</td>
+                  </tr>
+                  <tr class="border-b border-white/[0.03]">
+                    <td class="py-3 px-5"><code class="code-inline">Grep</code></td>
+                    <td class="py-3 px-5 text-white/40 hidden sm:table-cell">Search file contents</td>
+                    <td class="py-3 px-5 text-white/30 text-xs">Read-only</td>
+                  </tr>
+                  <tr>
+                    <td class="py-3 px-5"><code class="code-inline">Bash(*)</code></td>
+                    <td class="py-3 px-5 text-white/40 hidden sm:table-cell">Execute shell commands (use patterns to scope)</td>
+                    <td class="py-3 px-5 text-white/30 text-xs">Varies</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- CTA -->
+        <div class="border-t border-white/5 pt-14">
+          <div class="bg-gradient-to-br from-[#c8b88a]/[0.06] to-transparent border border-[#c8b88a]/10 rounded-2xl p-8 sm:p-10 text-center">
+            <h3 class="text-2xl font-bold text-white mb-3">Ready to publish?</h3>
+            <p class="text-white/40 text-sm max-w-md mx-auto mb-6 leading-relaxed">
+              Install the CLI, add your CLAUDE.md and settings.json, and ship your first blueprint to the marketplace.
+            </p>
+            <div class="code-block max-w-sm mx-auto">
+              <code>npm install -g greatlibrary-core</code>
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/5 mt-20">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex justify-between items-center text-xs text-white/20">
+      <span>GreatLibrary</span>
+      <span>greatlibrary.ai</span>
+    </div>
+  </footer>
+
+</body>
+</html>
