@@ -38,6 +38,43 @@ blueprintRouter.get('/blueprints/search', async (req, res) => {
   }
 });
 
+blueprintRouter.get('/creators/:username', async (req, res) => {
+  try {
+    const creator = await admin.creator.findUnique({
+      where: { username: req.params.username },
+    });
+    if (!creator) {
+      res.status(404).json({ error: 'Creator not found' });
+      return;
+    }
+    const blueprints = await admin.blueprint.findMany({
+      where: { creatorId: creator.id },
+      include: { creator: { select: { username: true } } },
+      orderBy: { activeRuns: 'desc' },
+    });
+    const totalRuns = blueprints.reduce((sum: number, b: { activeRuns: number }) => sum + b.activeRuns, 0);
+    const avgStability = blueprints.length > 0
+      ? Math.round(blueprints.reduce((sum: number, b: { stability: number }) => sum + b.stability, 0) / blueprints.length * 10) / 10
+      : 0;
+    res.json({
+      creator: {
+        id: creator.id,
+        username: creator.username,
+        email: creator.email,
+        createdAt: creator.createdAt,
+      },
+      blueprints,
+      stats: {
+        totalRuns,
+        avgStability,
+        blueprintCount: blueprints.length,
+      },
+    });
+  } catch {
+    res.status(500).json({ error: 'Service unavailable' });
+  }
+});
+
 blueprintRouter.get('/blueprints/:slug', async (req, res) => {
   try {
     const blueprint = await admin.blueprint.findUnique({

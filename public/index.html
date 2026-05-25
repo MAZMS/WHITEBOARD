@@ -104,6 +104,17 @@
           class="w-full bg-white/5 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#c8b88a]/40 focus:ring-1 focus:ring-[#c8b88a]/20 transition-all"
         />
       </div>
+      <select
+        x-model="sort"
+        class="bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border-[#c8b88a]/40 focus:ring-1 focus:ring-[#c8b88a]/20 transition-all cursor-pointer"
+        style="appearance: auto;"
+      >
+        <option value="popular" class="bg-[#111]">Most Popular</option>
+        <option value="stability" class="bg-[#111]">Highest Stability</option>
+        <option value="cost" class="bg-[#111]">Lowest Cost</option>
+        <option value="newest" class="bg-[#111]">Newest</option>
+        <option value="az" class="bg-[#111]">A-Z</option>
+      </select>
       <div class="flex gap-2">
         <button
           @click="tag = ''"
@@ -170,7 +181,7 @@
               <span x-text="bp.activeRuns.toLocaleString() + ' runs'"></span>
               <span x-text="'~$' + bp.estimatedMonthlyCost + '/mo'"></span>
             </div>
-            <span class="text-xs text-white/30" x-text="bp.creator?.username || ''"></span>
+            <a x-show="bp.creator?.username" :href="'/creator.html?username=' + bp.creator?.username" class="text-xs text-white/30 hover:text-[#c8b88a] transition-colors" x-text="bp.creator?.username" @click.stop></a>
           </div>
         </div>
       </template>
@@ -319,6 +330,7 @@
       return {
         q: '',
         tag: '',
+        sort: 'popular',
         bps: [],
         loading: true,
         selected: null,
@@ -354,6 +366,24 @@
             };
             const slugs = tagMap[this.tag] || [];
             items = items.filter(b => slugs.includes(b.slug));
+          }
+          items = [...items];
+          switch (this.sort) {
+            case 'popular':
+              items.sort((a, b) => b.activeRuns - a.activeRuns);
+              break;
+            case 'stability':
+              items.sort((a, b) => b.stability - a.stability);
+              break;
+            case 'cost':
+              items.sort((a, b) => a.estimatedMonthlyCost - b.estimatedMonthlyCost);
+              break;
+            case 'newest':
+              items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+              break;
+            case 'az':
+              items.sort((a, b) => a.name.localeCompare(b.name));
+              break;
           }
           return items;
         },
