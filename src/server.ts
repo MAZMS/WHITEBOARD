@@ -10,6 +10,7 @@ import { adminRouter } from './control-plane/routes/admin';
 import { supportRouter } from './support/escalation';
 import { investRouter } from './control-plane/routes/invest';
 import { analyticsMiddleware } from './middleware/analytics';
+import { requestLogger, logInfo, logError } from './middleware/logger';
 import { authMiddleware } from './control-plane/middleware';
 
 const app = express();
@@ -27,7 +28,10 @@ app.use('/webhooks', express.raw({ type: 'application/json' }), githubAppWebhook
 // 2. JSON parser for everything else
 app.use(express.json());
 
-// 3. Analytics middleware (non-blocking)
+// 3. Request logger (API routes only)
+app.use(requestLogger);
+
+// 4. Analytics middleware (non-blocking)
 app.use(analyticsMiddleware);
 
 // 4. Auth routes (public)
@@ -89,20 +93,20 @@ async function seedIfEmpty(): Promise<void> {
     const { admin } = await import('./db/adminClient');
     const count = await admin.blueprint.count();
     if (count > 0) {
-      console.log(`Database has ${count} blueprints — skipping seed.`);
+      logInfo('Seed skipped — database already populated', { count });
       return;
     }
-    console.log('Database empty — seeding blueprints...');
+    logInfo('Database empty — seeding blueprints');
     const { seedDatabase } = await import('./db/seed');
     await seedDatabase(admin);
-    console.log('Seed complete.');
+    logInfo('Seed complete');
   } catch (e) {
-    console.error('Seed skipped (DB not ready):', (e as Error).message);
+    logError('Seed skipped (DB not ready)', { error: (e as Error).message });
   }
 }
 
 app.listen(PORT, async () => {
-  console.log(`GreatLibrary server running on port ${PORT}`);
+  logInfo('GreatLibrary server running', { port: Number(PORT) });
   await seedIfEmpty();
 });
 

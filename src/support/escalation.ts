@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { triageSupport } from './assistant';
 import { rateLimit } from '../middleware/rateLimit';
+import { logError } from '../middleware/logger';
 
 export const supportRouter = Router();
 
@@ -21,7 +22,8 @@ supportRouter.post('/support', rateLimit({ windowMs: 60_000, max: 10, keyPrefix:
         ? (process.env.SUPPORT_ESCALATION_EMAIL || 'support@greatlibrary.ai')
         : undefined,
     });
-  } catch {
+  } catch (err) {
+    logError('Support triage failed', { error: (err as Error).message });
     res.status(500).json({ error: 'Support service unavailable' });
   }
 });

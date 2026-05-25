@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { admin } from '../../db/adminClient';
 import { mirrorFeedbackToRepo } from '../../automation/feedbackBridge';
 import { AuthenticatedRequest } from '../middleware';
+import { logError } from '../../middleware/logger';
 
 export const feedbackRouter = Router();
 
@@ -22,7 +23,7 @@ feedbackRouter.post('/feedback', async (req, res) => {
     data: { userId: user.id, email: user.email, text },
   });
 
-  mirrorFeedbackToRepo(fb).catch((err) => console.error('mirror failed', err));
+  mirrorFeedbackToRepo(fb).catch((err) => logError('Feedback mirror failed', { error: (err as Error).message }));
 
   res.json({ ok: true, id: fb.id });
 });

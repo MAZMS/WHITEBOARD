@@ -93,3 +93,79 @@ adminRouter.get('/admin/traffic', async (req, res) => {
     res.status(500).json({ error: 'Failed to load traffic' });
   }
 });
+
+adminRouter.post('/admin/blueprints', async (req, res) => {
+  const { name, slug, description, githubUrl, estimatedMonthlyCost, requiredPermissions } = req.body;
+
+  if (!name || !slug || !description || !githubUrl) {
+    res.status(400).json({ error: 'name, slug, description, and githubUrl are required' });
+    return;
+  }
+
+  try {
+    const creatorEmail = (req as AuthenticatedRequest).user?.email || 'system@greatlibrary.ai';
+    const creator = await admin.creator.upsert({
+      where: { email: creatorEmail },
+      update: {},
+      create: {
+        username: creatorEmail.split('@')[0],
+        email: creatorEmail,
+      },
+    });
+
+    const blueprint = await admin.blueprint.create({
+      data: {
+        name,
+        slug,
+        description,
+        githubUrl,
+        estimatedMonthlyCost: estimatedMonthlyCost ?? 0,
+        requiredPermissions: requiredPermissions ?? [],
+        creatorId: creator.id,
+      },
+      include: { creator: { select: { username: true } } },
+    });
+
+    res.status(201).json(blueprint);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to create blueprint';
+    res.status(500).json({ error: message });
+  }
+});
+
+adminRouter.delete('/admin/blueprints/:id', async (req, res) => {
+  try {
+    await admin.blueprint.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch {
+    res.status(404).json({ error: 'Blueprint not found' });
+  }
+});
+
+adminRouter.patch('/admin/blueprints/:id', async (req, res) => {
+  const { name, slug, description, githubUrl, estimatedMonthlyCost, requiredPermissions } = req.body;
+
+  const data: Record<string, unknown> = {};
+  if (name !== undefined) data.name = name;
+  if (slug !== undefined) data.slug = slug;
+  if (description !== undefined) data.description = description;
+  if (githubUrl !== undefined) data.githubUrl = githubUrl;
+  if (estimatedMonthlyCost !== undefined) data.estimatedMonthlyCost = estimatedMonthlyCost;
+  if (requiredPermissions !== undefined) data.requiredPermissions = requiredPermissions;
+
+  if (Object.keys(data).length === 0) {
+    res.status(400).json({ error: 'No fields to update' });
+    return;
+  }
+
+  try {
+    const updated = await admin.blueprint.update({
+      where: { id: req.params.id },
+      data,
+      include: { creator: { select: { username: true } } },
+    });
+    res.json(updated);
+  } catch {
+    res.status(404).json({ error: 'Blueprint not found' });
+  }
+});
