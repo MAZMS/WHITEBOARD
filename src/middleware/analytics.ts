@@ -40,8 +40,12 @@ async function flushQueue(): Promise<void> {
       data: batch,
     });
   } catch {
-    // Re-enqueue on failure — best effort
-    queue.unshift(...batch);
+    // Drop on persistent failure to avoid unbounded growth
+    if (queue.length > BATCH_SIZE * 10) {
+      queue.length = 0;
+    } else {
+      queue.unshift(...batch);
+    }
   }
 }
 

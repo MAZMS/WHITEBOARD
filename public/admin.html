@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="bg-[#0a0a0a]">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -7,84 +7,175 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
-    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; }
+    [x-cloak] { display: none !important; }
+    html { scrollbar-width: none; }
+    html::-webkit-scrollbar { display: none; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.5s ease-out both; }
+    .fade-up-d1 { animation-delay: 0.1s; }
+    .fade-up-d2 { animation-delay: 0.2s; }
   </style>
 </head>
-<body class="bg-white text-black">
-  <main x-data="dashboard()" class="max-w-6xl mx-auto px-6 py-12">
-    <header class="border-b border-black/10 pb-8 mb-12 flex justify-between items-end">
-      <div>
-        <h1 class="text-3xl font-extrabold tracking-tight">Admin Dashboard</h1>
-        <p class="text-black/60 mt-1">Platform overview and management.</p>
+<body class="bg-[#0a0a0a] text-white/90 min-h-screen">
+
+  <!-- Nav -->
+  <nav class="border-b border-white/5 backdrop-blur-sm sticky top-0 z-40 bg-[#0a0a0a]/80">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center text-[#0a0a0a] font-bold text-sm">GL</div>
+        <span class="text-lg font-semibold tracking-tight text-white">GreatLibrary</span>
+      </a>
+      <div class="flex items-center gap-6 text-sm text-white/50">
+        <a href="/" class="hover:text-white transition-colors">Store</a>
+        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace</a>
+        <a href="/admin.html" class="text-white">Admin</a>
       </div>
-      <a href="/" class="text-sm uppercase tracking-wider hover:underline">Back to Store</a>
-    </header>
+    </div>
+  </nav>
+
+  <main x-data="dashboard()" class="max-w-6xl mx-auto px-6 py-12">
+
+    <!-- Header -->
+    <div class="mb-10 fade-up">
+      <p class="text-[#c8b88a] text-sm font-medium tracking-widest uppercase mb-2">Admin</p>
+      <h1 class="text-3xl font-bold text-white">Platform Dashboard</h1>
+    </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-px bg-black/10 mb-12">
-      <div class="bg-white p-6">
-        <p class="text-xs uppercase tracking-wider text-black/50">Blueprints</p>
-        <p class="text-3xl font-bold mt-2" x-text="stats.blueprints"></p>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 fade-up">
+      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+        <p class="text-xs text-white/30 uppercase tracking-wider mb-2">Blueprints</p>
+        <p class="text-3xl font-bold text-white" x-text="stats.blueprints"></p>
       </div>
-      <div class="bg-white p-6">
-        <p class="text-xs uppercase tracking-wider text-black/50">Active Runs</p>
-        <p class="text-3xl font-bold mt-2" x-text="stats.activeRuns"></p>
+      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+        <p class="text-xs text-white/30 uppercase tracking-wider mb-2">Active Runs</p>
+        <p class="text-3xl font-bold text-white" x-text="stats.activeRuns.toLocaleString()"></p>
       </div>
-      <div class="bg-white p-6">
-        <p class="text-xs uppercase tracking-wider text-black/50">Creators</p>
-        <p class="text-3xl font-bold mt-2" x-text="stats.creators"></p>
+      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+        <p class="text-xs text-white/30 uppercase tracking-wider mb-2">Creators</p>
+        <p class="text-3xl font-bold text-white" x-text="stats.creators"></p>
       </div>
-      <div class="bg-white p-6">
-        <p class="text-xs uppercase tracking-wider text-black/50">Pending Feedback</p>
-        <p class="text-3xl font-bold mt-2" x-text="stats.pendingFeedback"></p>
+      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+        <p class="text-xs text-white/30 uppercase tracking-wider mb-2">Pending Feedback</p>
+        <p class="text-3xl font-bold" :class="stats.pendingFeedback > 0 ? 'text-amber-400' : 'text-white'" x-text="stats.pendingFeedback"></p>
       </div>
     </div>
 
-    <!-- Blueprints Table -->
-    <section class="mb-12">
-      <h2 class="text-xl font-bold mb-4">Blueprints</h2>
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-black/10 text-left text-xs uppercase tracking-wider text-black/50">
-            <th class="py-3">Name</th>
-            <th class="py-3">Creator</th>
-            <th class="py-3 text-right">Runs</th>
-            <th class="py-3 text-right">Stability</th>
-          </tr>
-        </thead>
-        <tbody>
-          <template x-for="bp in blueprints" :key="bp.id">
-            <tr class="border-b border-black/5 hover:bg-black/[0.02]">
-              <td class="py-3 font-medium" x-text="bp.name"></td>
-              <td class="py-3 text-black/60" x-text="bp.creator?.username || 'Unknown'"></td>
-              <td class="py-3 text-right" x-text="bp.activeRuns"></td>
-              <td class="py-3 text-right" x-text="bp.stability + '%'"></td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Recent Feedback -->
-    <section>
-      <h2 class="text-xl font-bold mb-4">Recent Feedback</h2>
-      <div class="space-y-2">
-        <template x-for="fb in feedback" :key="fb.id">
-          <div class="border border-black/10 p-4">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-sm font-medium" x-text="fb.email"></span>
-              <span :class="{
-                'text-yellow-600': fb.status === 'PENDING',
-                'text-green-600': fb.status === 'REFACTORED',
-                'text-red-600': fb.status === 'REJECTED'
-              }" class="text-xs uppercase tracking-wider" x-text="fb.status"></span>
-            </div>
-            <p class="text-sm text-black/60" x-text="fb.text.slice(0, 200)"></p>
+    <!-- Traffic Overview -->
+    <section class="mb-12 fade-up fade-up-d1">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-white" style="font-family: 'Inter', sans-serif;">Traffic</h2>
+        <div class="flex gap-2">
+          <button @click="loadTraffic(7)" :class="trafficPeriod === 7 ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">7d</button>
+          <button @click="loadTraffic(30)" :class="trafficPeriod === 30 ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">30d</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+          <p class="text-xs text-white/30 uppercase tracking-wider mb-3">Unique Visitors</p>
+          <p class="text-4xl font-bold text-[#c8b88a]" x-text="traffic.uniqueVisitors?.toLocaleString() || '—'"></p>
+          <p class="text-xs text-white/20 mt-1" x-text="'Last ' + trafficPeriod + ' days'"></p>
+        </div>
+        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+          <p class="text-xs text-white/30 uppercase tracking-wider mb-3">Top Pages</p>
+          <div class="space-y-2">
+            <template x-for="page in (traffic.topPages || []).slice(0, 5)" :key="page.path">
+              <div class="flex justify-between text-sm">
+                <span class="text-white/50 truncate mr-4" x-text="page.path"></span>
+                <span class="text-white font-medium shrink-0" x-text="page.views.toLocaleString()"></span>
+              </div>
+            </template>
+            <p x-show="!traffic.topPages || traffic.topPages.length === 0" class="text-sm text-white/20">No data yet</p>
           </div>
-        </template>
+        </div>
       </div>
     </section>
+
+    <!-- Blueprints Table -->
+    <section class="mb-12 fade-up fade-up-d1">
+      <h2 class="text-xl font-bold text-white mb-4" style="font-family: 'Inter', sans-serif;">Blueprints</h2>
+      <div class="bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/5 text-xs uppercase tracking-wider text-white/30">
+              <th class="text-left py-3 px-5">Name</th>
+              <th class="text-left py-3 px-5 hidden sm:table-cell">Creator</th>
+              <th class="text-right py-3 px-5">Runs</th>
+              <th class="text-right py-3 px-5">Stability</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="bp in blueprints" :key="bp.id">
+              <tr class="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                <td class="py-3 px-5">
+                  <p class="font-medium text-white" x-text="bp.name"></p>
+                  <p class="text-xs text-white/30 mt-0.5 truncate max-w-xs" x-text="bp.description"></p>
+                </td>
+                <td class="py-3 px-5 text-white/40 hidden sm:table-cell" x-text="bp.creator?.username || '—'"></td>
+                <td class="py-3 px-5 text-right text-white/70 font-medium" x-text="bp.activeRuns.toLocaleString()"></td>
+                <td class="py-3 px-5 text-right">
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full" :class="bp.stability >= 97 ? 'bg-emerald-400' : bp.stability >= 93 ? 'bg-amber-400' : 'bg-red-400'"></span>
+                    <span class="text-white/50" x-text="bp.stability + '%'"></span>
+                  </span>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <p x-show="blueprints.length === 0" class="text-center text-white/20 py-8 text-sm">No blueprints</p>
+      </div>
+    </section>
+
+    <!-- Feedback Queue -->
+    <section class="fade-up fade-up-d2">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-white" style="font-family: 'Inter', sans-serif;">Feedback</h2>
+        <div class="flex gap-2">
+          <button @click="fbFilter = ''" :class="fbFilter === '' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">All</button>
+          <button @click="fbFilter = 'PENDING'" :class="fbFilter === 'PENDING' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">Pending</button>
+          <button @click="fbFilter = 'REFACTORED'" :class="fbFilter === 'REFACTORED' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">Resolved</button>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <template x-for="fb in filteredFeedback()" :key="fb.id">
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+            <div class="flex justify-between items-start mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-xs text-white/40" x-text="fb.email.charAt(0).toUpperCase()"></div>
+                <span class="text-sm text-white/60" x-text="fb.email"></span>
+              </div>
+              <span
+                class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
+                :class="{
+                  'bg-amber-400/10 text-amber-400': fb.status === 'PENDING',
+                  'bg-emerald-400/10 text-emerald-400': fb.status === 'REFACTORED',
+                  'bg-red-400/10 text-red-400': fb.status === 'REJECTED'
+                }"
+                x-text="fb.status"
+              ></span>
+            </div>
+            <p class="text-sm text-white/50 leading-relaxed" x-text="fb.text.length > 250 ? fb.text.slice(0, 250) + '...' : fb.text"></p>
+            <p class="text-xs text-white/15 mt-3" x-text="new Date(fb.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })"></p>
+          </div>
+        </template>
+        <p x-show="filteredFeedback().length === 0" class="text-center text-white/20 py-8 text-sm">No feedback items</p>
+      </div>
+    </section>
+
   </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/5 mt-20">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex justify-between items-center text-xs text-white/20">
+      <span>GreatLibrary</span>
+      <span>greatlibrary.ai</span>
+    </div>
+  </footer>
 
   <script>
     function dashboard() {
@@ -92,6 +183,9 @@
         stats: { blueprints: 0, activeRuns: 0, creators: 0, pendingFeedback: 0 },
         blueprints: [],
         feedback: [],
+        traffic: {},
+        trafficPeriod: 7,
+        fbFilter: '',
         token: '',
         async init() {
           this.token = localStorage.getItem('gl_token') || '';
@@ -112,8 +206,7 @@
           } else {
             this.stats.blueprints = this.blueprints.length;
             this.stats.activeRuns = this.blueprints.reduce((s, b) => s + b.activeRuns, 0);
-            const creators = new Set(this.blueprints.map(b => b.creatorId));
-            this.stats.creators = creators.size;
+            this.stats.creators = new Set(this.blueprints.map(b => b.creatorId)).size;
           }
 
           if (fbRes.status === 'fulfilled' && fbRes.value.ok) {
@@ -122,7 +215,21 @@
               this.stats.pendingFeedback = this.feedback.filter(f => f.status === 'PENDING').length;
             }
           }
-        }
+
+          await this.loadTraffic(7);
+        },
+        async loadTraffic(days) {
+          this.trafficPeriod = days;
+          const headers = this.token ? { 'Authorization': 'Bearer ' + this.token } : {};
+          try {
+            const res = await fetch('/api/admin/traffic?days=' + days, { headers });
+            if (res.ok) this.traffic = await res.json();
+          } catch { this.traffic = {}; }
+        },
+        filteredFeedback() {
+          if (!this.fbFilter) return this.feedback;
+          return this.feedback.filter(f => f.status === this.fbFilter);
+        },
       };
     }
   </script>

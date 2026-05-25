@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="bg-[#0a0a0a]">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -7,72 +7,153 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
-    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; }
+    [x-cloak] { display: none !important; }
+    html { scrollbar-width: none; }
+    html::-webkit-scrollbar { display: none; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.5s ease-out both; }
+    @keyframes pulse-gold { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+    .glow { box-shadow: 0 0 0 1px rgba(200,184,138,0.1); }
+    .glow:hover { box-shadow: 0 0 20px rgba(200,184,138,0.08), 0 0 0 1px rgba(200,184,138,0.2); }
   </style>
 </head>
-<body class="bg-white text-black">
-  <main x-data="workspace()" class="max-w-6xl mx-auto px-6 py-12">
-    <header class="border-b border-black/10 pb-8 mb-12 flex justify-between items-end">
-      <div>
-        <h1 class="text-3xl font-extrabold tracking-tight">Workspace</h1>
-        <p class="text-black/60 mt-1">Manage your containers and deployments.</p>
-      </div>
-      <a href="/" class="text-sm uppercase tracking-wider hover:underline">Back to Store</a>
-    </header>
+<body class="bg-[#0a0a0a] text-white/90 min-h-screen">
 
-    <div x-show="!authenticated" class="text-center py-20 text-black/40">
-      <p class="text-xl mb-4">Sign in to access your workspace</p>
-      <div class="flex gap-4 justify-center">
-        <a href="/auth/signin/google" class="bg-black text-white px-6 py-3 text-sm uppercase tracking-wider hover:bg-black/80">Google</a>
-        <a href="/auth/signin/microsoft" class="bg-black text-white px-6 py-3 text-sm uppercase tracking-wider hover:bg-black/80">Microsoft</a>
-        <a href="/auth/signin/github" class="bg-black text-white px-6 py-3 text-sm uppercase tracking-wider hover:bg-black/80">GitHub</a>
+  <!-- Nav -->
+  <nav class="border-b border-white/5 backdrop-blur-sm sticky top-0 z-40 bg-[#0a0a0a]/80">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center text-[#0a0a0a] font-bold text-sm">GL</div>
+        <span class="text-lg font-semibold tracking-tight text-white">GreatLibrary</span>
+      </a>
+      <div class="flex items-center gap-6 text-sm text-white/50">
+        <a href="/" class="hover:text-white transition-colors">Store</a>
+        <a href="/workspace.html" class="text-white">Workspace</a>
+        <a href="/admin.html" class="hover:text-white transition-colors">Admin</a>
+      </div>
+    </div>
+  </nav>
+
+  <main x-data="workspace()" class="max-w-6xl mx-auto px-6 py-12">
+
+    <!-- Auth Gate -->
+    <div x-show="!authenticated" x-cloak class="flex flex-col items-center justify-center min-h-[60vh] fade-up">
+      <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center mb-8">
+        <svg class="w-10 h-10 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold text-white mb-3">Sign in to your workspace</h1>
+      <p class="text-white/40 text-sm mb-10 max-w-sm text-center">Manage your agent deployments, monitor containers, and track performance.</p>
+
+      <div class="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+        <a href="/auth/signin/google" class="flex-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 rounded-lg py-3 text-sm font-medium hover:bg-white/10 transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#c8b88a" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#c8b88a80" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#c8b88a60" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#c8b88a40" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Google
+        </a>
+        <a href="/auth/signin/microsoft" class="flex-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 rounded-lg py-3 text-sm font-medium hover:bg-white/10 transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24"><rect x="1" y="1" width="10" height="10" fill="#c8b88a"/><rect x="13" y="1" width="10" height="10" fill="#c8b88a80"/><rect x="1" y="13" width="10" height="10" fill="#c8b88a60"/><rect x="13" y="13" width="10" height="10" fill="#c8b88a40"/></svg>
+          Microsoft
+        </a>
+        <a href="/auth/signin/github" class="flex-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 rounded-lg py-3 text-sm font-medium hover:bg-white/10 transition-colors">
+          <svg class="w-4 h-4 text-[#c8b88a]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
       </div>
     </div>
 
-    <div x-show="authenticated">
-      <div class="flex justify-between items-center mb-8">
-        <h2 class="text-xl font-bold">Your Workspaces</h2>
-        <button @click="showCreate = true" class="bg-black text-white px-4 py-2 text-sm uppercase tracking-wider hover:bg-black/80">New Workspace</button>
+    <!-- Authenticated Workspace -->
+    <div x-show="authenticated" x-cloak>
+
+      <!-- Header -->
+      <div class="flex justify-between items-end mb-10 fade-up">
+        <div>
+          <p class="text-[#c8b88a] text-sm font-medium tracking-widest uppercase mb-2">Workspace</p>
+          <h1 class="text-3xl font-bold text-white">Your Deployments</h1>
+        </div>
+        <button @click="showCreate = true" class="bg-[#c8b88a] text-[#0a0a0a] px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#d4c494] transition-colors">
+          New Workspace
+        </button>
       </div>
 
-      <div x-show="showCreate" class="mb-8 p-6 border border-black/10">
-        <input x-model="newName" placeholder="Workspace name" class="w-full border border-black/10 px-4 py-3 mb-4 focus:outline-none focus:border-black" />
-        <div class="flex gap-4">
-          <button @click="createWorkspace()" class="bg-black text-white px-6 py-2 text-sm">Create</button>
-          <button @click="showCreate = false" class="text-black/60 px-6 py-2 text-sm">Cancel</button>
+      <!-- Create Workspace Form -->
+      <div x-show="showCreate" x-transition class="mb-8 bg-white/[0.03] border border-white/10 rounded-xl p-6 fade-up">
+        <p class="text-sm font-semibold text-white mb-4">Create Workspace</p>
+        <div class="flex gap-3">
+          <input x-model="newName" placeholder="Workspace name..." class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#c8b88a]/40" @keyup.enter="createWorkspace()" />
+          <button @click="createWorkspace()" class="bg-[#c8b88a] text-[#0a0a0a] px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#d4c494] transition-colors">Create</button>
+          <button @click="showCreate = false" class="text-white/40 hover:text-white px-4 py-2.5 text-sm transition-colors">Cancel</button>
         </div>
       </div>
 
+      <!-- Workspaces -->
       <div class="space-y-4">
         <template x-for="ws in workspaces" :key="ws.id">
-          <div class="border border-black/10 p-6">
-            <div class="flex justify-between items-center">
-              <h3 class="font-bold text-lg" x-text="ws.name"></h3>
-              <button @click="deleteWorkspace(ws.id)" class="text-red-500 text-sm hover:underline">Delete</button>
+          <div class="glow bg-white/[0.03] rounded-xl p-6 transition-all duration-300">
+            <div class="flex justify-between items-center mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="font-semibold text-white" style="font-family: 'Inter', sans-serif;" x-text="ws.name"></h3>
+                  <p class="text-xs text-white/30" x-text="ws.containers.length + ' container' + (ws.containers.length !== 1 ? 's' : '')"></p>
+                </div>
+              </div>
+              <button @click="deleteWorkspace(ws.id)" class="text-red-400/50 hover:text-red-400 text-xs transition-colors">Delete</button>
             </div>
-            <div class="mt-4">
-              <p class="text-sm text-black/50 uppercase tracking-wider mb-2">Containers</p>
+
+            <div x-show="ws.containers.length > 0" class="space-y-2">
               <template x-for="c in ws.containers" :key="c.id">
-                <div class="flex justify-between items-center py-2 border-t border-black/5">
-                  <span x-text="c.name" class="text-sm"></span>
-                  <span :class="c.status === 'RUNNING' ? 'text-green-600' : 'text-black/40'" class="text-xs uppercase" x-text="c.status"></span>
+                <div class="flex justify-between items-center py-2.5 px-3 bg-white/[0.02] rounded-lg">
+                  <span class="text-sm text-white/70" x-text="c.name"></span>
+                  <div class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full" :class="c.status === 'RUNNING' ? 'bg-emerald-400' : c.status === 'STOPPED' ? 'bg-red-400' : 'bg-amber-400'"></div>
+                    <span class="text-xs text-white/40 uppercase" x-text="c.status"></span>
+                  </div>
                 </div>
               </template>
-              <p x-show="ws.containers.length === 0" class="text-sm text-black/30">No containers</p>
             </div>
+            <p x-show="ws.containers.length === 0" class="text-sm text-white/20 text-center py-4">No containers running</p>
           </div>
         </template>
       </div>
-    </div>
 
-    <!-- Feedback Form -->
-    <div x-show="authenticated" class="mt-16 border-t border-black/10 pt-8">
-      <h2 class="text-xl font-bold mb-4">Feedback</h2>
-      <textarea x-model="feedbackText" placeholder="Tell us how we can improve..." class="w-full border border-black/10 px-4 py-3 h-32 focus:outline-none focus:border-black"></textarea>
-      <button @click="submitFeedback()" class="mt-4 bg-black text-white px-6 py-2 text-sm uppercase tracking-wider hover:bg-black/80">Submit</button>
-      <p x-show="feedbackSent" class="mt-2 text-green-600 text-sm">Thank you for your feedback!</p>
+      <!-- Empty State -->
+      <div x-show="workspaces.length === 0" class="text-center py-20">
+        <div class="w-16 h-16 rounded-2xl bg-white/5 mx-auto flex items-center justify-center mb-6">
+          <svg class="w-8 h-8 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+        </div>
+        <p class="text-white/40 text-lg">No workspaces yet</p>
+        <p class="text-white/20 text-sm mt-2">Create one to start deploying agents</p>
+      </div>
+
+      <!-- Feedback Section -->
+      <div class="mt-16 pt-10 border-t border-white/5">
+        <h2 class="text-xl font-bold text-white mb-6">Feedback</h2>
+        <textarea x-model="feedbackText" placeholder="Tell us how we can improve..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 h-28 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#c8b88a]/40 resize-none" style="scrollbar-width: none;"></textarea>
+        <div class="flex items-center gap-3 mt-3">
+          <button @click="submitFeedback()" class="bg-[#c8b88a] text-[#0a0a0a] px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#d4c494] transition-colors">Submit</button>
+          <p x-show="feedbackSent" x-transition class="text-emerald-400 text-sm">Sent. Thank you!</p>
+        </div>
+      </div>
     </div>
   </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/5 mt-20">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex justify-between items-center text-xs text-white/20">
+      <span>GreatLibrary</span>
+      <span>greatlibrary.ai</span>
+    </div>
+  </footer>
 
   <script>
     function workspace() {
@@ -91,18 +172,21 @@
             await this.loadWorkspaces();
           }
         },
+        headers() {
+          return { 'Authorization': 'Bearer ' + this.token, 'Content-Type': 'application/json' };
+        },
         async loadWorkspaces() {
-          const res = await fetch('/api/workspaces', {
-            headers: { 'Authorization': 'Bearer ' + this.token }
-          });
-          if (res.ok) this.workspaces = await res.json();
+          try {
+            const res = await fetch('/api/workspaces', { headers: this.headers() });
+            if (res.ok) this.workspaces = await res.json();
+          } catch { /* offline */ }
         },
         async createWorkspace() {
           if (!this.newName.trim()) return;
           await fetch('/api/workspaces', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
-            body: JSON.stringify({ name: this.newName })
+            headers: this.headers(),
+            body: JSON.stringify({ name: this.newName }),
           });
           this.newName = '';
           this.showCreate = false;
@@ -111,7 +195,7 @@
         async deleteWorkspace(id) {
           await fetch('/api/workspaces/' + id, {
             method: 'DELETE',
-            headers: { 'Authorization': 'Bearer ' + this.token }
+            headers: this.headers(),
           });
           await this.loadWorkspaces();
         },
@@ -119,13 +203,13 @@
           if (!this.feedbackText.trim()) return;
           await fetch('/api/feedback', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
-            body: JSON.stringify({ text: this.feedbackText })
+            headers: this.headers(),
+            body: JSON.stringify({ text: this.feedbackText }),
           });
           this.feedbackText = '';
           this.feedbackSent = true;
           setTimeout(() => this.feedbackSent = false, 3000);
-        }
+        },
       };
     }
   </script>

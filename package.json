@@ -7,6 +7,7 @@
     "greatlibrary": "dist/cli/index.js"
   },
   "scripts": {
+    "postinstall": "prisma generate --schema=prisma-admin/schema.prisma && prisma generate --schema=prisma-tenant/schema.prisma",
     "build": "tsc",
     "dev": "ts-node src/server.ts",
     "start": "node dist/server.js",
