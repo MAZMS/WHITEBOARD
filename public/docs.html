@@ -54,6 +54,33 @@
     .punct { color: rgba(255,255,255,0.35); }
     .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(200,184,138,0.3); transition: all 0.3s; }
     .nav-dot.active { background: #c8b88a; box-shadow: 0 0 8px rgba(200,184,138,0.3); }
+    .copy-wrapper { position: relative; }
+    .copy-btn {
+      position: absolute; top: 0.5rem; right: 0.5rem;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 0.375rem;
+      padding: 0.35rem;
+      cursor: pointer;
+      color: rgba(255,255,255,0.35);
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .copy-btn:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); }
+    .copy-btn svg { width: 14px; height: 14px; }
+    .copy-tooltip {
+      position: absolute; top: 0.5rem; right: 0.5rem;
+      background: #c8b88a; color: #0a0a0a;
+      font-size: 0.6875rem; font-weight: 600; font-family: 'Inter', sans-serif;
+      padding: 0.3rem 0.6rem; border-radius: 0.375rem;
+      pointer-events: none;
+      animation: tooltipFade 1.5s ease-out forwards;
+    }
+    @keyframes tooltipFade {
+      0% { opacity: 1; }
+      70% { opacity: 1; }
+      100% { opacity: 0; }
+    }
   </style>
 </head>
 <body class="bg-[#0a0a0a] text-white/90 min-h-screen overflow-x-hidden">
@@ -148,8 +175,14 @@
             and publish it to the GreatLibrary marketplace.
           </p>
           <div class="flex items-center gap-4 mt-8">
-            <div class="code-block">
-              <code>npm install -g greatlibrary-core</code>
+            <div class="copy-wrapper" x-data="copyCmd()">
+              <div class="code-block">
+                <code>npm install -g greatlibrary-core</code>
+              </div>
+              <button class="copy-btn" @click="copy('npm install -g greatlibrary-core')" x-show="!copied" x-transition>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+              <span class="copy-tooltip" x-show="copied" x-cloak>Copied!</span>
             </div>
           </div>
         </section>
@@ -173,15 +206,27 @@
           <div class="space-y-4">
             <div>
               <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">Install via npm</p>
-              <div class="code-block">
-                <code>npm install -g greatlibrary-core</code>
+              <div class="copy-wrapper" x-data="copyCmd()">
+                <div class="code-block">
+                  <code>npm install -g greatlibrary-core</code>
+                </div>
+                <button class="copy-btn" @click="copy('npm install -g greatlibrary-core')" x-show="!copied" x-transition>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                </button>
+                <span class="copy-tooltip" x-show="copied" x-cloak>Copied!</span>
               </div>
             </div>
 
             <div>
               <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">Verify installation</p>
-              <div class="code-block">
-                <code>greatlibrary --version</code>
+              <div class="copy-wrapper" x-data="copyCmd()">
+                <div class="code-block">
+                  <code>greatlibrary --version</code>
+                </div>
+                <button class="copy-btn" @click="copy('greatlibrary --version')" x-show="!copied" x-transition>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                </button>
+                <span class="copy-tooltip" x-show="copied" x-cloak>Copied!</span>
               </div>
             </div>
           </div>
@@ -215,8 +260,14 @@
 
           <div>
             <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">Sign in with GitHub</p>
-            <div class="code-block">
-              <code>greatlibrary login</code>
+            <div class="copy-wrapper" x-data="copyCmd()">
+              <div class="code-block">
+                <code>greatlibrary login</code>
+              </div>
+              <button class="copy-btn" @click="copy('greatlibrary login')" x-show="!copied" x-transition>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+              <span class="copy-tooltip" x-show="copied" x-cloak>Copied!</span>
             </div>
           </div>
 
@@ -252,8 +303,14 @@
 
           <div class="mt-8">
             <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">Check auth status</p>
-            <div class="code-block">
-              <code>greatlibrary whoami</code>
+            <div class="copy-wrapper" x-data="copyCmd()">
+              <div class="code-block">
+                <code>greatlibrary whoami</code>
+              </div>
+              <button class="copy-btn" @click="copy('greatlibrary whoami')" x-show="!copied" x-transition>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+              <span class="copy-tooltip" x-show="copied" x-cloak>Copied!</span>
             </div>
           </div>
         </section>
@@ -277,9 +334,15 @@
 
           <div>
             <p class="text-xs text-white/30 uppercase tracking-wider mb-2 font-medium">Publish from project root</p>
-            <div class="code-block">
-              <code>cd your-project
+            <div class="copy-wrapper" x-data="copyCmd()">
+              <div class="code-block">
+                <code>cd your-project
 greatlibrary publish</code>
+              </div>
+              <button class="copy-btn" @click="copy('cd your-project\ngreatlibrary publish')" x-show="!copied" x-transition>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+              <span class="copy-tooltip" x-show="copied" x-cloak>Copied!</span>
             </div>
           </div>
 
@@ -592,8 +655,14 @@ greatlibrary publish</code>
             <p class="text-white/40 text-sm max-w-md mx-auto mb-6 leading-relaxed">
               Install the CLI, add your CLAUDE.md and settings.json, and ship your first blueprint to the marketplace.
             </p>
-            <div class="code-block max-w-sm mx-auto">
-              <code>npm install -g greatlibrary-core</code>
+            <div class="copy-wrapper max-w-sm mx-auto" x-data="copyCmd()">
+              <div class="code-block">
+                <code>npm install -g greatlibrary-core</code>
+              </div>
+              <button class="copy-btn" @click="copy('npm install -g greatlibrary-core')" x-show="!copied" x-transition>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+              <span class="copy-tooltip" x-show="copied" x-cloak>Copied!</span>
             </div>
           </div>
         </div>
@@ -638,5 +707,29 @@ greatlibrary publish</code>
     </div>
   </footer>
 
+  <script>
+    function copyCmd() {
+      return {
+        copied: false,
+        async copy(text) {
+          try {
+            await navigator.clipboard.writeText(text);
+          } catch {
+            // fallback for older browsers
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          this.copied = true;
+          setTimeout(() => { this.copied = false; }, 1500);
+        },
+      };
+    }
+  </script>
 </body>
 </html>

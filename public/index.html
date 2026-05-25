@@ -30,6 +30,16 @@
     @keyframes pulse-gold { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
     .glow { box-shadow: 0 0 0 1px rgba(200,184,138,0.1); }
     .glow:hover { box-shadow: 0 0 20px rgba(200,184,138,0.08), 0 0 0 1px rgba(200,184,138,0.2); }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 0.5rem;
+    }
   </style>
 </head>
 <body class="bg-[#0a0a0a] text-white/90 min-h-screen overflow-x-hidden">
@@ -193,8 +203,40 @@
     </div>
 
 
+    <!-- Skeleton Loading State -->
+    <div x-show="loading" x-cloak class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12">
+      <template x-for="i in 6" :key="'skel-'+i">
+        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-6 flex flex-col">
+          <!-- Icon placeholder -->
+          <div class="flex items-start justify-between mb-4">
+            <div class="skeleton w-10 h-10 rounded-lg"></div>
+            <div class="skeleton w-10 h-4 rounded"></div>
+          </div>
+          <!-- Title -->
+          <div class="skeleton w-3/4 h-5 mb-3"></div>
+          <!-- Description lines -->
+          <div class="skeleton w-full h-3 mb-2"></div>
+          <div class="skeleton w-5/6 h-3 mb-4"></div>
+          <!-- Permission pills -->
+          <div class="flex gap-1.5 mt-auto">
+            <div class="skeleton w-14 h-5 rounded-full"></div>
+            <div class="skeleton w-16 h-5 rounded-full"></div>
+            <div class="skeleton w-12 h-5 rounded-full"></div>
+          </div>
+          <!-- Footer -->
+          <div class="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="skeleton w-16 h-3 rounded"></div>
+              <div class="skeleton w-14 h-3 rounded"></div>
+            </div>
+            <div class="skeleton w-12 h-3 rounded"></div>
+          </div>
+        </div>
+      </template>
+    </div>
+
     <!-- Blueprint Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12 fade-up fade-up-d3">
+    <div x-show="!loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12 fade-up fade-up-d3">
       <template x-for="(bp, i) in filtered()" :key="bp.id">
         <div class="glow bg-white/[0.03] rounded-xl p-6 flex flex-col transition-all duration-300 hover:bg-white/[0.05] group cursor-pointer relative" :class="compareSlugs.includes(bp.slug) ? 'ring-1 ring-[#c8b88a]/40' : ''" @click="compareMode ? toggleCompare(bp.slug) : (window.location.href = '/blueprint.html?slug=' + bp.slug)">
           <!-- Compare Checkbox -->
@@ -255,11 +297,6 @@
       </div>
       <p class="text-white/40 text-lg">No blueprints yet</p>
       <p class="text-white/20 text-sm mt-2">Publish your first with <code class="bg-white/5 px-2 py-1 rounded text-[#c8b88a]">greatlibrary publish</code></p>
-    </div>
-
-    <!-- Loading State -->
-    <div x-show="loading" class="text-center py-24">
-      <div class="w-3 h-3 rounded-full bg-[#c8b88a] mx-auto" style="animation: pulse-gold 1.5s ease-in-out infinite;"></div>
     </div>
 
     <!-- Blueprint Detail Modal -->
