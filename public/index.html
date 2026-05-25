@@ -295,17 +295,29 @@
         bps: [],
         loading: true,
         selected: null,
+        searchTimer: null,
         tags: ['Code Quality', 'DevOps', 'Security', 'Docs'],
         async init() {
           try {
             this.bps = await (await fetch('/api/blueprints')).json();
           } catch { this.bps = []; }
           this.loading = false;
+          this.$watch('q', () => {
+            clearTimeout(this.searchTimer);
+            this.searchTimer = setTimeout(() => this.search(), 300);
+          });
+        },
+        async search() {
+          if (!this.q.trim()) {
+            try { this.bps = await (await fetch('/api/blueprints')).json(); } catch {}
+            return;
+          }
+          try {
+            this.bps = await (await fetch('/api/blueprints/search?q=' + encodeURIComponent(this.q))).json();
+          } catch {}
         },
         filtered() {
           let items = this.bps;
-          const q = this.q.toLowerCase();
-          if (q) items = items.filter(b => b.name.toLowerCase().includes(q) || b.description.toLowerCase().includes(q));
           if (this.tag) {
             const tagMap = {
               'Code Quality': ['code-reviewer', 'refactor-agent', 'test-writer'],
@@ -317,6 +329,9 @@
             items = items.filter(b => slugs.includes(b.slug));
           }
           return items;
+        },
+        openBlueprint(bp) {
+          window.location.href = '/blueprint.html?slug=' + bp.slug;
         },
         deploy(bp) {
           this.selected = null;
