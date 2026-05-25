@@ -7,13 +7,14 @@ interface RateBucket {
 
 const buckets = new Map<string, RateBucket>();
 
-// Clean up expired buckets every 5 minutes
-setInterval(() => {
+// Clean up expired buckets every 5 minutes — unref to avoid blocking Jest/process exit
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, bucket] of buckets) {
     if (bucket.resetAt < now) buckets.delete(key);
   }
 }, 5 * 60 * 1000);
+cleanupTimer.unref();
 
 export function rateLimit(opts: { windowMs: number; max: number; keyPrefix?: string }) {
   return (req: Request, res: Response, next: NextFunction): void => {
