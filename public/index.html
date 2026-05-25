@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>GreatLibrary — Deployable Agent Blueprints</title>
   <meta name="description" content="A curated library of production-ready Claude Code agent blueprints. Browse, deploy, and run autonomous agents in seconds." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta property="og:site_name" content="GreatLibrary" />
+  <meta property="og:title" content="GreatLibrary — Deployable Agent Blueprints" />
+  <meta property="og:description" content="A curated library of production-ready Claude Code agent blueprints. Browse, deploy, and run autonomous agents in seconds." />
+  <meta property="og:image" content="https://greatlibrary.ai/favicon.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
@@ -105,7 +111,7 @@
     <!-- Blueprint Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12 fade-up fade-up-d3">
       <template x-for="(bp, i) in filtered()" :key="bp.id">
-        <div class="glow bg-white/[0.03] rounded-xl p-6 flex flex-col transition-all duration-300 hover:bg-white/[0.05] group cursor-pointer" @click="selected = bp">
+        <div class="glow bg-white/[0.03] rounded-xl p-6 flex flex-col transition-all duration-300 hover:bg-white/[0.05] group cursor-pointer" @click="window.location.href = '/blueprint.html?slug=' + bp.slug">
           <!-- Header -->
           <div class="flex items-start justify-between mb-4">
             <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center">

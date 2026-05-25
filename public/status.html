@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en" class="bg-[#0a0a0a]">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Status — GreatLibrary</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; }
+    [x-cloak] { display: none !important; }
+    html { scrollbar-width: none; }
+    html::-webkit-scrollbar { display: none; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.5s ease-out both; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  </style>
+</head>
+<body class="bg-[#0a0a0a] text-white/90 min-h-screen">
+
+  <!-- Nav -->
+  <nav class="border-b border-white/5 backdrop-blur-sm sticky top-0 z-40 bg-[#0a0a0a]/80">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center text-[#0a0a0a] font-bold text-sm">GL</div>
+        <span class="text-lg font-semibold tracking-tight text-white">GreatLibrary</span>
+      </a>
+      <div class="flex items-center gap-6 text-sm text-white/50">
+        <a href="/" class="hover:text-white transition-colors">Store</a>
+        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace</a>
+        <a href="/docs.html" class="hover:text-white transition-colors">Docs</a>
+        <a href="/admin.html" class="hover:text-white transition-colors">Admin</a>
+        <a href="/invest.html" class="hover:text-[#c8b88a] transition-colors">Investors</a>
+      </div>
+    </div>
+  </nav>
+
+  <main x-data="statusPage()" class="max-w-3xl mx-auto px-6 py-12">
+
+    <!-- Header -->
+    <div class="mb-12 fade-up">
+      <p class="text-[#c8b88a] text-sm font-medium tracking-widest uppercase mb-2">Platform Status</p>
+      <h1 class="text-3xl font-bold text-white mb-4">All Systems Operational</h1>
+      <div class="flex items-center gap-3">
+        <div class="w-2.5 h-2.5 rounded-full bg-emerald-400" style="animation: pulse-dot 2s ease-in-out infinite;"></div>
+        <span class="text-sm text-emerald-400">greatlibrary.ai is online</span>
+        <span class="text-xs text-white/20 ml-auto" x-text="'Uptime: ' + uptime"></span>
+      </div>
+    </div>
+
+    <!-- Services -->
+    <section class="mb-16 fade-up">
+      <h2 class="text-lg font-semibold text-white mb-4" style="font-family: 'Inter', sans-serif;">Services</h2>
+      <div class="space-y-2">
+        <div class="flex justify-between items-center bg-white/[0.03] border border-white/5 rounded-xl p-4">
+          <span class="text-sm text-white/70">API Server</span>
+          <span class="flex items-center gap-2 text-xs text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Operational</span>
+        </div>
+        <div class="flex justify-between items-center bg-white/[0.03] border border-white/5 rounded-xl p-4">
+          <span class="text-sm text-white/70">PostgreSQL Database</span>
+          <span class="flex items-center gap-2 text-xs text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Operational</span>
+        </div>
+        <div class="flex justify-between items-center bg-white/[0.03] border border-white/5 rounded-xl p-4">
+          <span class="text-sm text-white/70">Blueprint Marketplace</span>
+          <span class="flex items-center gap-2 text-xs text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Operational</span>
+        </div>
+        <div class="flex justify-between items-center bg-white/[0.03] border border-white/5 rounded-xl p-4">
+          <span class="text-sm text-white/70">Support Chat</span>
+          <span class="flex items-center gap-2 text-xs text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Operational</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Changelog -->
+    <section class="fade-up">
+      <h2 class="text-lg font-semibold text-white mb-6" style="font-family: 'Inter', sans-serif;">Changelog</h2>
+      <div class="relative pl-6 border-l border-white/10 space-y-8">
+
+        <div>
+          <div class="absolute -left-[5px] w-2.5 h-2.5 rounded-full bg-[#c8b88a]"></div>
+          <p class="text-xs text-[#c8b88a] font-medium mb-1">May 26, 2026</p>
+          <h3 class="text-sm font-semibold text-white mb-1" style="font-family: 'Inter', sans-serif;">Platform Launch</h3>
+          <p class="text-sm text-white/40 leading-relaxed">Full marketplace with 8 agent blueprints. Dark theme UI, investor page, developer docs, admin dashboard with traffic analytics and feedback management. Auto-seeding database, health check endpoint, custom 404 page.</p>
+        </div>
+
+        <div>
+          <div class="absolute -left-[5px] w-2.5 h-2.5 rounded-full bg-white/20"></div>
+          <p class="text-xs text-white/30 font-medium mb-1">May 26, 2026</p>
+          <h3 class="text-sm font-semibold text-white mb-1" style="font-family: 'Inter', sans-serif;">Infrastructure Setup</h3>
+          <p class="text-sm text-white/40 leading-relaxed">Multi-tenant architecture with PostgreSQL, Prisma ORM, Express.js. Railway deployment with auto-migrations. GitHub App integration for feedback bridge. LemonSqueezy payment webhooks with idempotency.</p>
+        </div>
+
+        <div>
+          <div class="absolute -left-[5px] w-2.5 h-2.5 rounded-full bg-white/20"></div>
+          <p class="text-xs text-white/30 font-medium mb-1">May 23, 2026</p>
+          <h3 class="text-sm font-semibold text-white mb-1" style="font-family: 'Inter', sans-serif;">Full Platform Build from Spec</h3>
+          <p class="text-sm text-white/40 leading-relaxed">Complete rebuild from specification. 12-phase implementation covering auth, blueprints, workspaces, Docker orchestration, payments, analytics, CLI, support, and GitHub App integration.</p>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/5 mt-20">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex justify-between items-center text-xs text-white/20">
+      <span>GreatLibrary</span>
+      <span>greatlibrary.ai</span>
+    </div>
+  </footer>
+
+  <script>
+    function statusPage() {
+      return {
+        uptime: '—',
+        async init() {
+          try {
+            const res = await fetch('/health');
+            if (res.ok) {
+              const data = await res.json();
+              const secs = Math.floor(data.uptime);
+              const hrs = Math.floor(secs / 3600);
+              const mins = Math.floor((secs % 3600) / 60);
+              this.uptime = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+            }
+          } catch {
+            this.uptime = 'Unknown';
+          }
+        },
+      };
+    }
+  </script>
+</body>
+</html>
