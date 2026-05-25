@@ -51,10 +51,41 @@ app.use('/api', authMiddleware, workspaceRouter);
 app.use('/api', authMiddleware, feedbackRouter);
 app.use('/api', authMiddleware, adminRouter);
 
-// 7. Static files
+// 7b. Dynamic blueprint sitemap
+app.get('/sitemap-blueprints.xml', async (_req, res) => {
+  res.set('Content-Type', 'application/xml');
+  try {
+    const { admin } = await import('./db/adminClient');
+    const blueprints: { slug: string; createdAt: Date }[] =
+      await admin.blueprint.findMany({
+        select: { slug: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      });
+    const urls = blueprints
+      .map((bp) => {
+        const lastmod = bp.createdAt.toISOString().split('T')[0];
+        return `  <url>
+    <loc>https://greatlibrary.ai/blueprint.html?slug=${encodeURIComponent(bp.slug)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <priority>0.6</priority>
+  </url>`;
+      })
+      .join('\n');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
+</urlset>`);
+  } catch {
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+</urlset>`);
+  }
+});
+
+// 8. Static files
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// 8. OpenGraph route for blueprints
+// 9. OpenGraph route for blueprints
 app.get('/b/:slug', async (req, res) => {
   try {
     const { admin } = await import('./db/adminClient');
@@ -83,7 +114,7 @@ app.get('/b/:slug', async (req, res) => {
   }
 });
 
-// 9. Catch-all 404 for unmatched routes
+// 10. Catch-all 404 for unmatched routes
 app.use((_req, res) => {
   res.status(404).sendFile(path.join(__dirname, '..', 'public', '404.html'));
 });
