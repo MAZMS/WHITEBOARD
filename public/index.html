@@ -20,6 +20,8 @@
     [x-cloak] { display: none !important; }
     html { scrollbar-width: none; }
     html::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     .fade-up { animation: fadeUp 0.5s ease-out both; }
     .fade-up-d1 { animation-delay: 0.05s; }
@@ -77,7 +79,7 @@
     </div>
   </nav>
 
-  <main x-data="store()" x-on:keyup.escape="compareMode = false; compareSlugs = []" class="max-w-6xl mx-auto px-6">
+  <main x-data="store()" class="max-w-6xl mx-auto px-6">
 
     <!-- Hero -->
     <section class="pt-20 pb-16 fade-up">
@@ -91,6 +93,55 @@
       </p>
     </section>
 
+    <!-- Trending Blueprints -->
+    <section x-show="trending().length > 0" class="mb-12 fade-up fade-up-d1">
+      <p class="text-xs text-white/30 uppercase tracking-widest font-medium mb-4">Trending Now</p>
+      <div class="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
+        <template x-for="bp in trending()" :key="bp.id">
+          <a
+            :href="'/blueprint.html?slug=' + bp.slug"
+            class="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-full px-4 py-2.5 hover:bg-white/[0.06] hover:border-[#c8b88a]/20 transition-all group shrink-0 cursor-pointer"
+          >
+            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center shrink-0">
+              <span class="text-[#c8b88a] text-xs font-semibold" x-text="bp.name.charAt(0)"></span>
+            </div>
+            <span class="text-sm text-white/80 font-medium whitespace-nowrap group-hover:text-white transition-colors" x-text="bp.name"></span>
+            <span class="text-[11px] text-[#c8b88a]/70 bg-[#c8b88a]/10 px-2 py-0.5 rounded-full whitespace-nowrap font-medium" x-text="bp.activeRuns.toLocaleString() + ' runs'"></span>
+            <svg class="w-3.5 h-3.5 text-white/20 group-hover:text-[#c8b88a] transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </template>
+      </div>
+    </section>
+
+    <!-- Platform Stats -->
+    <section class="mb-12 fade-up fade-up-d2">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <!-- Total Blueprints -->
+        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+          <p class="text-xs text-white/30 uppercase tracking-wider font-medium mb-2">Blueprints</p>
+          <p class="text-2xl font-bold text-white" x-text="bps.length"></p>
+        </div>
+        <!-- Active Runs -->
+        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+          <p class="text-xs text-white/30 uppercase tracking-wider font-medium mb-2">Active Runs</p>
+          <p class="text-2xl font-bold text-white" x-text="bps.reduce((s,b) => s + b.activeRuns, 0).toLocaleString()"></p>
+        </div>
+        <!-- Creators -->
+        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+          <p class="text-xs text-white/30 uppercase tracking-wider font-medium mb-2">Creators</p>
+          <p class="text-2xl font-bold text-white" x-text="new Set(bps.map(b => b.creatorId)).size"></p>
+        </div>
+        <!-- Avg. Stability -->
+        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+          <p class="text-xs text-white/30 uppercase tracking-wider font-medium mb-2">Avg. Stability</p>
+          <div class="flex items-center gap-2">
+            <p class="text-2xl font-bold" :class="avgStability() >= 95 ? 'text-emerald-400' : 'text-amber-400'" x-text="avgStability() + '%'"></p>
+            <div class="w-2 h-2 rounded-full" :class="avgStability() >= 95 ? 'bg-emerald-400' : 'bg-amber-400'"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Search + Filter -->
     <div class="flex flex-col sm:flex-row gap-3 mb-10 fade-up fade-up-d1">
       <div class="relative flex-1">
@@ -99,8 +150,9 @@
         </svg>
         <input
           type="search"
+          x-ref="searchInput"
           x-model="q"
-          placeholder="Search blueprints..."
+          placeholder="Search blueprints...  ( / )"
           class="w-full bg-white/5 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#c8b88a]/40 focus:ring-1 focus:ring-[#c8b88a]/20 transition-all"
         />
       </div>
@@ -140,21 +192,6 @@
       </div>
     </div>
 
-    <!-- Stats Bar -->
-    <div class="flex gap-8 mb-10 text-sm fade-up fade-up-d2">
-      <div>
-        <span class="text-white/30">Blueprints</span>
-        <span class="text-white font-semibold ml-2" x-text="bps.length"></span>
-      </div>
-      <div>
-        <span class="text-white/30">Active runs</span>
-        <span class="text-white font-semibold ml-2" x-text="bps.reduce((s,b) => s + b.activeRuns, 0).toLocaleString()"></span>
-      </div>
-      <div>
-        <span class="text-white/30">Creators</span>
-        <span class="text-white font-semibold ml-2" x-text="new Set(bps.map(b => b.creatorId)).size"></span>
-      </div>
-    </div>
 
     <!-- Blueprint Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12 fade-up fade-up-d3">
@@ -331,6 +368,72 @@
       </div>
     </div>
 
+    <!-- Keyboard Shortcuts Help -->
+    <div x-data="{ showShortcuts: false }" class="fixed bottom-6 left-6 z-50">
+      <button
+        @click="showShortcuts = !showShortcuts"
+        class="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white/40 flex items-center justify-center hover:bg-white/10 hover:text-white/70 transition-all text-sm font-semibold"
+        aria-label="Keyboard shortcuts"
+      >?</button>
+
+      <div
+        x-show="showShortcuts"
+        x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+        x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+        @click.outside="showShortcuts = false"
+        class="absolute bottom-14 left-0 w-72 bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+      >
+        <div class="p-4 border-b border-white/5">
+          <p class="text-sm font-semibold text-white">Keyboard Shortcuts</p>
+          <p class="text-xs text-white/30 mt-0.5">Navigate faster with your keyboard</p>
+        </div>
+        <div class="p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-white/60">Focus search</span>
+            <div class="flex items-center gap-1.5">
+              <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">/</kbd>
+              <span class="text-white/20 text-xs">or</span>
+              <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">Cmd+K</kbd>
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-white/60">Clear / Close</span>
+            <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">Esc</kbd>
+          </div>
+          <div class="border-t border-white/5 pt-3 mt-3">
+            <p class="text-[10px] text-white/20 uppercase tracking-wider font-medium mb-2">Category Tabs</p>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-white/60">All</span>
+                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">1</kbd>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-white/60">Code Quality</span>
+                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">2</kbd>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-white/60">DevOps</span>
+                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">3</kbd>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-white/60">Security</span>
+                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">4</kbd>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-white/60">Docs</span>
+                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">5</kbd>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <!-- Footer -->
@@ -399,6 +502,13 @@
           try {
             this.bps = await (await fetch('/api/blueprints/search?q=' + encodeURIComponent(this.q))).json();
           } catch {}
+        },
+        trending() {
+          return [...this.bps].sort((a, b) => b.activeRuns - a.activeRuns).slice(0, 3);
+        },
+        avgStability() {
+          if (!this.bps.length) return 0;
+          return Math.round(this.bps.reduce((s, b) => s + b.stability, 0) / this.bps.length);
         },
         filtered() {
           let items = this.bps;
@@ -482,6 +592,54 @@
         },
       };
     }
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      const tag = e.target.tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable;
+
+      // Cmd/Ctrl+K — focus search (always, even from inputs)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchEl = document.querySelector('[x-ref="searchInput"]');
+        if (searchEl) searchEl.focus();
+        return;
+      }
+
+      // Escape — clear search, deselect compare, close modal
+      if (e.key === 'Escape') {
+        const storeData = Alpine.$data(document.querySelector('[x-data*="store()"]'));
+        if (!storeData) return;
+        if (storeData.selected) { storeData.selected = null; return; }
+        if (storeData.q) { storeData.q = ''; }
+        storeData.compareMode = false;
+        storeData.compareSlugs = [];
+        const searchEl = document.querySelector('[x-ref="searchInput"]');
+        if (searchEl && document.activeElement === searchEl) searchEl.blur();
+        return;
+      }
+
+      // Skip remaining shortcuts when typing in an input
+      if (isInput) return;
+
+      // / — focus search
+      if (e.key === '/') {
+        e.preventDefault();
+        const searchEl = document.querySelector('[x-ref="searchInput"]');
+        if (searchEl) searchEl.focus();
+        return;
+      }
+
+      // 1-5 — switch category tabs
+      const num = parseInt(e.key, 10);
+      if (num >= 1 && num <= 5) {
+        const storeData = Alpine.$data(document.querySelector('[x-data*="store()"]'));
+        if (!storeData) return;
+        const cats = ['', 'Code Quality', 'DevOps', 'Security', 'Docs'];
+        if (num <= cats.length) {
+          storeData.tag = cats[num - 1];
+        }
+      }
+    });
   </script>
 </body>
 </html>
