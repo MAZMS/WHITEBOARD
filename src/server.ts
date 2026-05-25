@@ -70,8 +70,26 @@ app.get('/b/:slug', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+async function seedIfEmpty(): Promise<void> {
+  try {
+    const { admin } = await import('./db/adminClient');
+    const count = await admin.blueprint.count();
+    if (count > 0) {
+      console.log(`Database has ${count} blueprints — skipping seed.`);
+      return;
+    }
+    console.log('Database empty — seeding blueprints...');
+    const { seedDatabase } = await import('./db/seed');
+    await seedDatabase(admin);
+    console.log('Seed complete.');
+  } catch (e) {
+    console.error('Seed skipped (DB not ready):', (e as Error).message);
+  }
+}
+
+app.listen(PORT, async () => {
   console.log(`GreatLibrary server running on port ${PORT}`);
+  await seedIfEmpty();
 });
 
 export { app };

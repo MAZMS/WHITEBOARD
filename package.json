@@ -10,7 +10,7 @@
     "postinstall": "prisma generate --schema=prisma-admin/schema.prisma && prisma generate --schema=prisma-tenant/schema.prisma",
     "build": "tsc",
     "dev": "ts-node src/server.ts",
-    "start": "node dist/server.js",
+    "start": "prisma db push --schema=prisma-admin/schema.prisma --skip-generate --accept-data-loss && prisma db push --schema=prisma-tenant/schema.prisma --skip-generate --accept-data-loss && node dist/server.js",
     "test": "jest --forceExit --detectOpenHandles",
     "lint": "eslint src/ tests/ --ext .ts",
     "typecheck": "tsc --noEmit",
