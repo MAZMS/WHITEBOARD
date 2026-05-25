@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" class="bg-[#0a0a0a]">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>404 — GreatLibrary</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    h1 { font-family: Georgia, 'Times New Roman', serif; }
+    html { scrollbar-width: none; }
+    html::-webkit-scrollbar { display: none; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.5s ease-out both; }
+  </style>
+</head>
+<body class="bg-[#0a0a0a] text-white/90 min-h-screen flex items-center justify-center overflow-hidden">
+
+  <div class="text-center fade-up px-6">
+    <div class="w-12 h-12 rounded bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center text-[#0a0a0a] font-bold text-lg mx-auto mb-8">GL</div>
+    <h1 class="text-5xl font-bold tracking-tight text-white mb-4">404</h1>
+    <p class="text-white/40 text-lg mb-8">Page not found</p>
+    <a href="/" class="inline-block px-6 py-3 bg-[#c8b88a] text-[#0a0a0a] text-sm font-medium rounded-lg hover:bg-[#b8a87a] transition-colors">
+      Back to Library
+    </a>
+  </div>
+
+</body>
+</html>

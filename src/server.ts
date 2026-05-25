@@ -8,11 +8,17 @@ import { blueprintRouter } from './control-plane/routes/blueprints';
 import { feedbackRouter } from './control-plane/routes/feedback';
 import { adminRouter } from './control-plane/routes/admin';
 import { supportRouter } from './support/escalation';
+import { investRouter } from './control-plane/routes/invest';
 import { analyticsMiddleware } from './middleware/analytics';
 import { authMiddleware } from './control-plane/middleware';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 0. Health check — before all middleware for fast responses (Railway health checks)
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() });
+});
 
 // 1. Webhook routers FIRST — use raw body parser, must come before express.json
 app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRouter);
@@ -32,6 +38,9 @@ app.use('/api', blueprintRouter);
 
 // 6. Support chat (public)
 app.use('/api', supportRouter);
+
+// 6b. Investor routes (public)
+app.use('/api', investRouter);
 
 // 7. Protected routes
 app.use('/api', authMiddleware, workspaceRouter);
@@ -68,6 +77,11 @@ app.get('/b/:slug', async (req, res) => {
   } catch {
     res.status(500).send('Internal server error');
   }
+});
+
+// 9. Catch-all 404 for unmatched routes
+app.use((_req, res) => {
+  res.status(404).sendFile(path.join(__dirname, '..', 'public', '404.html'));
 });
 
 async function seedIfEmpty(): Promise<void> {

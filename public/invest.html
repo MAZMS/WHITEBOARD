@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en" class="bg-[#0a0a0a]">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Invest in GreatLibrary — The Agent Blueprint Marketplace</title>
+  <meta name="description" content="GreatLibrary is building the marketplace for deployable AI agent blueprints. Express your interest in our seed round." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; }
+    [x-cloak] { display: none !important; }
+    html { scrollbar-width: none; }
+    html::-webkit-scrollbar { display: none; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.6s ease-out both; }
+    .fade-up-d1 { animation-delay: 0.1s; }
+    .fade-up-d2 { animation-delay: 0.2s; }
+    .fade-up-d3 { animation-delay: 0.3s; }
+    .fade-up-d4 { animation-delay: 0.4s; }
+    .fade-up-d5 { animation-delay: 0.5s; }
+    @keyframes pulse-gold { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+    .glow { box-shadow: 0 0 0 1px rgba(200,184,138,0.1); }
+    .glow:hover { box-shadow: 0 0 20px rgba(200,184,138,0.08), 0 0 0 1px rgba(200,184,138,0.2); }
+    .metric-glow { box-shadow: inset 0 1px 0 rgba(200,184,138,0.1), 0 0 40px rgba(200,184,138,0.03); }
+  </style>
+</head>
+<body class="bg-[#0a0a0a] text-white/90 min-h-screen overflow-x-hidden">
+
+  <!-- Nav -->
+  <nav class="border-b border-white/5 backdrop-blur-sm sticky top-0 z-40 bg-[#0a0a0a]/80">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center text-[#0a0a0a] font-bold text-sm">GL</div>
+        <span class="text-lg font-semibold tracking-tight text-white">GreatLibrary</span>
+      </a>
+      <div class="flex items-center gap-6 text-sm text-white/50">
+        <a href="/" class="hover:text-white transition-colors">Marketplace</a>
+        <span class="text-[#c8b88a]">Investors</span>
+      </div>
+    </div>
+  </nav>
+
+  <main x-data="investPage()" class="max-w-5xl mx-auto px-6">
+
+    <!-- Hero -->
+    <section class="pt-24 pb-20 text-center fade-up">
+      <p class="text-[#c8b88a] text-sm font-medium tracking-widest uppercase mb-6">Seed Round Open</p>
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] text-white max-w-3xl mx-auto">
+        Invest in the future of autonomous agents.
+      </h1>
+      <p class="text-white/40 text-lg mt-8 max-w-2xl mx-auto leading-relaxed">
+        GreatLibrary is building the marketplace where developers publish, discover, and deploy
+        production-ready AI agent blueprints. One click from code to running agent.
+      </p>
+      <a href="#interest" class="inline-block mt-10 bg-[#c8b88a] text-[#0a0a0a] px-8 py-3.5 rounded-lg text-sm font-semibold hover:bg-[#d4c494] transition-colors">
+        Express Interest
+      </a>
+    </section>
+
+    <!-- Key Metrics -->
+    <section class="pb-20 fade-up fade-up-d1">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="metric-glow bg-white/[0.03] border border-white/5 rounded-xl p-6 text-center">
+          <p class="text-3xl font-bold text-white" x-text="metrics.blueprints"></p>
+          <p class="text-xs text-white/30 uppercase tracking-wider mt-2">Blueprints</p>
+        </div>
+        <div class="metric-glow bg-white/[0.03] border border-white/5 rounded-xl p-6 text-center">
+          <p class="text-3xl font-bold text-white" x-text="metrics.activeRuns.toLocaleString()"></p>
+          <p class="text-xs text-white/30 uppercase tracking-wider mt-2">Active Runs</p>
+        </div>
+        <div class="metric-glow bg-white/[0.03] border border-white/5 rounded-xl p-6 text-center">
+          <p class="text-3xl font-bold text-white" x-text="metrics.creators"></p>
+          <p class="text-xs text-white/30 uppercase tracking-wider mt-2">Creators</p>
+        </div>
+        <div class="metric-glow bg-white/[0.03] border border-white/5 rounded-xl p-6 text-center">
+          <p class="text-3xl font-bold text-[#c8b88a]" x-text="metrics.monthlyGrowth + '%'"></p>
+          <p class="text-xs text-white/30 uppercase tracking-wider mt-2">Monthly Growth</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vision -->
+    <section class="pb-20 fade-up fade-up-d2">
+      <div class="max-w-3xl mx-auto">
+        <p class="text-[#c8b88a] text-xs font-medium tracking-widest uppercase mb-4">The Vision</p>
+        <h2 class="text-3xl font-bold text-white mb-6">
+          npm for AI agents.
+        </h2>
+        <p class="text-white/40 leading-relaxed mb-6">
+          Today, every team building with AI agents starts from scratch. There is no standard way
+          to package, share, or deploy an agent configuration. GreatLibrary changes that.
+        </p>
+        <div class="grid sm:grid-cols-3 gap-4 mt-10">
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+            <div class="w-9 h-9 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center mb-4">
+              <svg class="w-4 h-4 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            </div>
+            <h3 class="text-sm font-semibold text-white mb-2" style="font-family: 'Inter', sans-serif;">Publish</h3>
+            <p class="text-xs text-white/30 leading-relaxed">Creators package agent blueprints with permissions, configs, and cost estimates.</p>
+          </div>
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+            <div class="w-9 h-9 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center mb-4">
+              <svg class="w-4 h-4 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+            <h3 class="text-sm font-semibold text-white mb-2" style="font-family: 'Inter', sans-serif;">Discover</h3>
+            <p class="text-xs text-white/30 leading-relaxed">Developers browse a curated catalog sorted by stability, usage, and category.</p>
+          </div>
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+            <div class="w-9 h-9 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center mb-4">
+              <svg class="w-4 h-4 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <h3 class="text-sm font-semibold text-white mb-2" style="font-family: 'Inter', sans-serif;">Deploy</h3>
+            <p class="text-xs text-white/30 leading-relaxed">One-click deployment into isolated workspaces with full audit trails.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Market Opportunity -->
+    <section class="pb-20 fade-up fade-up-d3">
+      <div class="max-w-3xl mx-auto">
+        <p class="text-[#c8b88a] text-xs font-medium tracking-widest uppercase mb-4">Market Opportunity</p>
+        <h2 class="text-3xl font-bold text-white mb-6">
+          A new infrastructure layer for AI.
+        </h2>
+        <p class="text-white/40 leading-relaxed mb-10">
+          Every company will run autonomous agents within two years. The missing piece is a trusted
+          registry with built-in deployment, permissions, and cost controls. That is what we are building.
+        </p>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-6 text-center">
+            <p class="text-2xl font-bold text-white">$65B+</p>
+            <p class="text-xs text-white/30 uppercase tracking-wider mt-2">TAM by 2030</p>
+            <p class="text-[10px] text-white/20 mt-1">AI agent platforms & tooling</p>
+          </div>
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-6 text-center">
+            <p class="text-2xl font-bold text-white">$8B</p>
+            <p class="text-xs text-white/30 uppercase tracking-wider mt-2">SAM</p>
+            <p class="text-[10px] text-white/20 mt-1">Developer agent tooling</p>
+          </div>
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-6 text-center">
+            <p class="text-2xl font-bold text-white">$500M</p>
+            <p class="text-xs text-white/30 uppercase tracking-wider mt-2">SOM Year 5</p>
+            <p class="text-[10px] text-white/20 mt-1">Blueprint marketplace share</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why Now -->
+    <section class="pb-20 fade-up fade-up-d4">
+      <div class="max-w-3xl mx-auto">
+        <p class="text-[#c8b88a] text-xs font-medium tracking-widest uppercase mb-4">Why Now</p>
+        <h2 class="text-3xl font-bold text-white mb-8">
+          The timing is right.
+        </h2>
+        <div class="space-y-4">
+          <div class="flex gap-4 items-start">
+            <div class="w-8 h-8 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span class="text-[#c8b88a] text-xs font-bold">1</span>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-white">AI agents are moving from demos to production.</p>
+              <p class="text-xs text-white/30 mt-1">Claude, GPT, Gemini all ship agent frameworks. Developers need deployment infrastructure.</p>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start">
+            <div class="w-8 h-8 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span class="text-[#c8b88a] text-xs font-bold">2</span>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-white">No marketplace exists yet.</p>
+              <p class="text-xs text-white/30 mt-1">There is no npm, no Docker Hub, no App Store for agent blueprints. We are building the category.</p>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start">
+            <div class="w-8 h-8 rounded-lg bg-[#c8b88a]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span class="text-[#c8b88a] text-xs font-bold">3</span>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-white">Network effects compound early.</p>
+              <p class="text-xs text-white/30 mt-1">More blueprints attract more developers. More developers attract more creators. First mover wins.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Team -->
+    <section class="pb-20 fade-up fade-up-d4">
+      <div class="max-w-3xl mx-auto">
+        <p class="text-[#c8b88a] text-xs font-medium tracking-widest uppercase mb-4">Team</p>
+        <h2 class="text-3xl font-bold text-white mb-8">
+          Built by one engineer.
+        </h2>
+        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-6 flex items-start gap-5">
+          <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center text-[#0a0a0a] font-bold text-lg flex-shrink-0">M</div>
+          <div>
+            <p class="text-lg font-semibold text-white">Mohamed</p>
+            <p class="text-sm text-[#c8b88a] mb-3">Solo Founder &amp; Engineer</p>
+            <p class="text-sm text-white/40 leading-relaxed">
+              Full-stack engineer who built the entire GreatLibrary platform solo &mdash; backend,
+              frontend, multi-tenant infrastructure, CI/CD, and AI integrations. Ships fast using
+              AI-augmented development. Every line of production code, every architectural decision,
+              one person.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interest Form -->
+    <section id="interest" class="pb-24 fade-up fade-up-d5">
+      <div class="max-w-xl mx-auto">
+        <p class="text-[#c8b88a] text-xs font-medium tracking-widest uppercase mb-4 text-center">Get In Touch</p>
+        <h2 class="text-3xl font-bold text-white mb-8 text-center">
+          Express your interest.
+        </h2>
+
+        <!-- Success state -->
+        <div x-show="submitted" x-cloak x-transition class="bg-white/[0.03] border border-[#c8b88a]/20 rounded-xl p-10 text-center">
+          <div class="w-14 h-14 rounded-full bg-[#c8b88a]/10 mx-auto flex items-center justify-center mb-5">
+            <svg class="w-7 h-7 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <p class="text-lg font-semibold text-white mb-2">Thank you for your interest.</p>
+          <p class="text-sm text-white/40">We will be in touch shortly at the email you provided.</p>
+        </div>
+
+        <!-- Form -->
+        <form x-show="!submitted" @submit.prevent="submit()" class="bg-white/[0.03] border border-white/5 rounded-xl p-8 space-y-5">
+
+          <div>
+            <label class="block text-xs text-white/40 uppercase tracking-wider mb-2">Name</label>
+            <input
+              x-model="form.name"
+              type="text"
+              required
+              placeholder="Your name"
+              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/40 focus:ring-1 focus:ring-[#c8b88a]/20 transition-all"
+            />
+            <p x-show="errors.name" x-cloak class="text-xs text-red-400 mt-1" x-text="errors.name"></p>
+          </div>
+
+          <div>
+            <label class="block text-xs text-white/40 uppercase tracking-wider mb-2">Email</label>
+            <input
+              x-model="form.email"
+              type="email"
+              required
+              placeholder="you@example.com"
+              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/40 focus:ring-1 focus:ring-[#c8b88a]/20 transition-all"
+            />
+            <p x-show="errors.email" x-cloak class="text-xs text-red-400 mt-1" x-text="errors.email"></p>
+          </div>
+
+          <div>
+            <label class="block text-xs text-white/40 uppercase tracking-wider mb-2">Investment Range</label>
+            <select
+              x-model="form.range"
+              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-[#c8b88a]/40 focus:ring-1 focus:ring-[#c8b88a]/20 transition-all appearance-none"
+            >
+              <option value="" class="bg-[#111]">Select a range</option>
+              <option value="$10K - $25K" class="bg-[#111]">$10K - $25K</option>
+              <option value="$25K - $50K" class="bg-[#111]">$25K - $50K</option>
+              <option value="$50K - $100K" class="bg-[#111]">$50K - $100K</option>
+              <option value="$100K - $250K" class="bg-[#111]">$100K - $250K</option>
+              <option value="$250K+" class="bg-[#111]">$250K+</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs text-white/40 uppercase tracking-wider mb-2">Message <span class="text-white/20">(optional)</span></label>
+            <textarea
+              x-model="form.message"
+              rows="3"
+              placeholder="Tell us about yourself or any questions you have..."
+              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/40 focus:ring-1 focus:ring-[#c8b88a]/20 transition-all resize-none"
+            ></textarea>
+          </div>
+
+          <p x-show="submitError" x-cloak class="text-xs text-red-400" x-text="submitError"></p>
+
+          <button
+            type="submit"
+            :disabled="submitting"
+            class="w-full bg-[#c8b88a] text-[#0a0a0a] py-3.5 rounded-lg text-sm font-semibold hover:bg-[#d4c494] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span x-show="!submitting">Submit Interest</span>
+            <span x-show="submitting" x-cloak class="flex items-center justify-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-[#0a0a0a]/30" style="animation: pulse-gold 1s ease-in-out infinite;"></span>
+              Sending...
+            </span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/5">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-white/20">
+      <span>GreatLibrary</span>
+      <div class="flex items-center gap-6">
+        <a href="/" class="hover:text-white/40 transition-colors">Marketplace</a>
+        <a href="#interest" class="hover:text-white/40 transition-colors">Contact</a>
+      </div>
+      <span>greatlibrary.ai</span>
+    </div>
+  </footer>
+
+  <script>
+    function investPage() {
+      return {
+        metrics: { blueprints: 0, activeRuns: 0, creators: 0, monthlyGrowth: 0 },
+        form: { name: '', email: '', range: '', message: '' },
+        errors: { name: '', email: '' },
+        submitted: false,
+        submitting: false,
+        submitError: '',
+
+        async init() {
+          try {
+            const res = await fetch('/api/invest/metrics');
+            if (res.ok) {
+              this.metrics = await res.json();
+            }
+          } catch {
+            // Keep defaults — page still works without live metrics
+          }
+        },
+
+        validate() {
+          this.errors = { name: '', email: '' };
+          let valid = true;
+          if (!this.form.name.trim()) {
+            this.errors.name = 'Name is required.';
+            valid = false;
+          }
+          if (!this.form.email.trim() || !this.form.email.includes('@')) {
+            this.errors.email = 'A valid email is required.';
+            valid = false;
+          }
+          return valid;
+        },
+
+        async submit() {
+          if (!this.validate()) return;
+          this.submitting = true;
+          this.submitError = '';
+
+          try {
+            const res = await fetch('/api/invest/interest', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(this.form),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              this.submitted = true;
+            } else {
+              this.submitError = data.error || 'Something went wrong. Please try again.';
+            }
+          } catch {
+            this.submitError = 'Network error. Please try again or email greatlibraryai@gmail.com.';
+          }
+          this.submitting = false;
+        },
+      };
+    }
+  </script>
+</body>
+</html>
