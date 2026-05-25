@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { admin } from '../../db/adminClient';
+import { rateLimit } from '../../middleware/rateLimit';
 
 export const investRouter = Router();
 
@@ -55,8 +56,8 @@ investRouter.get('/invest/chat', async (req, res) => {
   });
 });
 
-// POST /api/invest/interest — capture investor interest
-investRouter.post('/invest/interest', async (req, res) => {
+// POST /api/invest/interest — capture investor interest (5 per hour per IP)
+investRouter.post('/invest/interest', rateLimit({ windowMs: 3_600_000, max: 5, keyPrefix: 'invest' }), async (req, res) => {
   const { name, email, range, message } = req.body;
 
   if (!name || typeof name !== 'string' || !name.trim()) {

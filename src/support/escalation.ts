@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { triageSupport } from './assistant';
+import { rateLimit } from '../middleware/rateLimit';
 
 export const supportRouter = Router();
 
-supportRouter.post('/support', async (req, res) => {
+// 10 messages per minute per IP
+supportRouter.post('/support', rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'support' }), async (req, res) => {
   const { message, logs } = req.body;
   if (!message || typeof message !== 'string') {
     res.status(400).json({ error: 'message is required' });
