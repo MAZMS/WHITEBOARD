@@ -92,14 +92,36 @@
         stats: { blueprints: 0, activeRuns: 0, creators: 0, pendingFeedback: 0 },
         blueprints: [],
         feedback: [],
+        token: '',
         async init() {
-          try {
-            this.blueprints = await (await fetch('/api/blueprints')).json();
+          this.token = localStorage.getItem('gl_token') || '';
+          const headers = this.token ? { 'Authorization': 'Bearer ' + this.token } : {};
+
+          const [bpRes, statsRes, fbRes] = await Promise.allSettled([
+            fetch('/api/blueprints'),
+            fetch('/api/admin/stats', { headers }),
+            fetch('/api/admin/feedback', { headers }),
+          ]);
+
+          if (bpRes.status === 'fulfilled' && bpRes.value.ok) {
+            this.blueprints = await bpRes.value.json();
+          }
+
+          if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
+            this.stats = await statsRes.value.json();
+          } else {
             this.stats.blueprints = this.blueprints.length;
             this.stats.activeRuns = this.blueprints.reduce((s, b) => s + b.activeRuns, 0);
             const creators = new Set(this.blueprints.map(b => b.creatorId));
             this.stats.creators = creators.size;
-          } catch { /* admin may not have access */ }
+          }
+
+          if (fbRes.status === 'fulfilled' && fbRes.value.ok) {
+            this.feedback = await fbRes.value.json();
+            if (!this.stats.pendingFeedback) {
+              this.stats.pendingFeedback = this.feedback.filter(f => f.status === 'PENDING').length;
+            }
+          }
         }
       };
     }

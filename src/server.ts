@@ -1,18 +1,22 @@
 import express from 'express';
 import path from 'path';
 import { webhookRouter } from './control-plane/routes/webhooks';
+import { githubAppWebhookRouter } from './github-app/webhooks';
 import { authRouter } from './control-plane/routes/auth';
 import { workspaceRouter } from './control-plane/routes/workspaces';
 import { blueprintRouter } from './control-plane/routes/blueprints';
 import { feedbackRouter } from './control-plane/routes/feedback';
+import { adminRouter } from './control-plane/routes/admin';
+import { supportRouter } from './support/escalation';
 import { analyticsMiddleware } from './middleware/analytics';
 import { authMiddleware } from './control-plane/middleware';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. Webhook router FIRST — uses raw body parser, must come before express.json
+// 1. Webhook routers FIRST — use raw body parser, must come before express.json
 app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRouter);
+app.use('/webhooks', express.raw({ type: 'application/json' }), githubAppWebhookRouter);
 
 // 2. JSON parser for everything else
 app.use(express.json());
@@ -26,9 +30,13 @@ app.use('/auth', authRouter);
 // 5. Blueprint routes — public listing, protected mutations
 app.use('/api', blueprintRouter);
 
-// 6. Protected routes
+// 6. Support chat (public)
+app.use('/api', supportRouter);
+
+// 7. Protected routes
 app.use('/api', authMiddleware, workspaceRouter);
 app.use('/api', authMiddleware, feedbackRouter);
+app.use('/api', authMiddleware, adminRouter);
 
 // 7. Static files
 app.use(express.static(path.join(__dirname, '..', 'public')));

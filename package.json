@@ -17,7 +17,8 @@
     "prisma:admin:generate": "prisma generate --schema=prisma-admin/schema.prisma",
     "prisma:tenant:migrate": "prisma migrate dev --schema=prisma-tenant/schema.prisma",
     "prisma:admin:migrate": "prisma migrate dev --schema=prisma-admin/schema.prisma",
-    "reconcile-feedback": "ts-node scripts/reconcile-feedback.ts"
+    "reconcile-feedback": "ts-node scripts/reconcile-feedback.ts",
+    "seed": "ts-node scripts/seed.ts"
   },
   "dependencies": {
     "@auth/express": "^0.7.0",
