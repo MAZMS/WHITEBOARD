@@ -35,6 +35,21 @@ non-trivial edit.
 - Prefer narrow imports (`import { X } from`) over namespace imports.
 - 2-space indent. Single quotes. Trailing commas. Semicolons on.
 
+## Railway deployment
+- The app is deployed to Railway at **greatlibrary.ai**.
+- Railway CLI is installed globally — always use it to check status, logs, and
+  deploy issues. Do not guess at deployment problems.
+- Common commands:
+  - `railway status` — check service status (online/crashed/deploying)
+  - `railway logs` — read recent deploy & runtime logs
+  - `railway logs -n 50` — read more lines
+  - `railway variables` — list env vars (never echo values)
+  - `railway up` — manual deploy from local (prefer git push)
+- After every push to `main`, check `railway status` to confirm the deploy
+  succeeded. If it crashes, read `railway logs` and fix immediately.
+- Build pipeline: `npm install` → `postinstall` (prisma generate) → `npm run
+  build` (tsc) → `npm start` (node dist/src/server.js).
+
 ## When in doubt
 - Tenant data → RLS factory.
 - New route → check whether it needs auth middleware before writing it.

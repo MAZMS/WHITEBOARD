@@ -2,15 +2,15 @@
   "name": "greatlibrary-core",
   "version": "1.0.0",
   "description": "Multi-tenant SaaS marketplace for Claude Code agent blueprints",
-  "main": "dist/server.js",
+  "main": "dist/src/server.js",
   "bin": {
-    "greatlibrary": "dist/cli/index.js"
+    "greatlibrary": "dist/src/cli/index.js"
   },
   "scripts": {
     "postinstall": "prisma generate --schema=prisma-admin/schema.prisma && prisma generate --schema=prisma-tenant/schema.prisma",
     "build": "tsc",
     "dev": "ts-node src/server.ts",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "test": "jest --forceExit --detectOpenHandles",
     "lint": "eslint src/ tests/ --ext .ts",
     "typecheck": "tsc --noEmit",
