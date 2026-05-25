@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — GreatLibrary</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto; }
+  </style>
+</head>
+<body class="bg-white text-black">
+  <main x-data="dashboard()" class="max-w-6xl mx-auto px-6 py-12">
+    <header class="border-b border-black/10 pb-8 mb-12 flex justify-between items-end">
+      <div>
+        <h1 class="text-3xl font-extrabold tracking-tight">Admin Dashboard</h1>
+        <p class="text-black/60 mt-1">Platform overview and management.</p>
+      </div>
+      <a href="/" class="text-sm uppercase tracking-wider hover:underline">Back to Store</a>
+    </header>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-px bg-black/10 mb-12">
+      <div class="bg-white p-6">
+        <p class="text-xs uppercase tracking-wider text-black/50">Blueprints</p>
+        <p class="text-3xl font-bold mt-2" x-text="stats.blueprints"></p>
+      </div>
+      <div class="bg-white p-6">
+        <p class="text-xs uppercase tracking-wider text-black/50">Active Runs</p>
+        <p class="text-3xl font-bold mt-2" x-text="stats.activeRuns"></p>
+      </div>
+      <div class="bg-white p-6">
+        <p class="text-xs uppercase tracking-wider text-black/50">Creators</p>
+        <p class="text-3xl font-bold mt-2" x-text="stats.creators"></p>
+      </div>
+      <div class="bg-white p-6">
+        <p class="text-xs uppercase tracking-wider text-black/50">Pending Feedback</p>
+        <p class="text-3xl font-bold mt-2" x-text="stats.pendingFeedback"></p>
+      </div>
+    </div>
+
+    <!-- Blueprints Table -->
+    <section class="mb-12">
+      <h2 class="text-xl font-bold mb-4">Blueprints</h2>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-black/10 text-left text-xs uppercase tracking-wider text-black/50">
+            <th class="py-3">Name</th>
+            <th class="py-3">Creator</th>
+            <th class="py-3 text-right">Runs</th>
+            <th class="py-3 text-right">Stability</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="bp in blueprints" :key="bp.id">
+            <tr class="border-b border-black/5 hover:bg-black/[0.02]">
+              <td class="py-3 font-medium" x-text="bp.name"></td>
+              <td class="py-3 text-black/60" x-text="bp.creator?.username || 'Unknown'"></td>
+              <td class="py-3 text-right" x-text="bp.activeRuns"></td>
+              <td class="py-3 text-right" x-text="bp.stability + '%'"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Recent Feedback -->
+    <section>
+      <h2 class="text-xl font-bold mb-4">Recent Feedback</h2>
+      <div class="space-y-2">
+        <template x-for="fb in feedback" :key="fb.id">
+          <div class="border border-black/10 p-4">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-medium" x-text="fb.email"></span>
+              <span :class="{
+                'text-yellow-600': fb.status === 'PENDING',
+                'text-green-600': fb.status === 'REFACTORED',
+                'text-red-600': fb.status === 'REJECTED'
+              }" class="text-xs uppercase tracking-wider" x-text="fb.status"></span>
+            </div>
+            <p class="text-sm text-black/60" x-text="fb.text.slice(0, 200)"></p>
+          </div>
+        </template>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function dashboard() {
+      return {
+        stats: { blueprints: 0, activeRuns: 0, creators: 0, pendingFeedback: 0 },
+        blueprints: [],
+        feedback: [],
+        async init() {
+          try {
+            this.blueprints = await (await fetch('/api/blueprints')).json();
+            this.stats.blueprints = this.blueprints.length;
+            this.stats.activeRuns = this.blueprints.reduce((s, b) => s + b.activeRuns, 0);
+            const creators = new Set(this.blueprints.map(b => b.creatorId));
+            this.stats.creators = creators.size;
+          } catch { /* admin may not have access */ }
+        }
+      };
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+import express from 'express';
+import path from 'path';
+import { webhookRouter } from './control-plane/routes/webhooks';
+import { authRouter } from './control-plane/routes/auth';
+import { workspaceRouter } from './control-plane/routes/workspaces';
+import { blueprintRouter } from './control-plane/routes/blueprints';
+import { feedbackRouter } from './control-plane/routes/feedback';
+import { analyticsMiddleware } from './middleware/analytics';
+import { authMiddleware } from './control-plane/middleware';
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// 1. Webhook router FIRST — uses raw body parser, must come before express.json
+app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRouter);
+
+// 2. JSON parser for everything else
+app.use(express.json());
+
+// 3. Analytics middleware (non-blocking)
+app.use(analyticsMiddleware);
+
+// 4. Auth routes (public)
+app.use('/auth', authRouter);
+
+// 5. Blueprint routes — public listing, protected mutations
+app.use('/api', blueprintRouter);
+
+// 6. Protected routes
+app.use('/api', authMiddleware, workspaceRouter);
+app.use('/api', authMiddleware, feedbackRouter);
+
+// 7. Static files
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// 8. OpenGraph route for blueprints
+app.get('/b/:slug', async (req, res) => {
+  try {
+    const { admin } = await import('./db/adminClient');
+    const bp = await admin.blueprint.findUnique({
+      where: { slug: req.params.slug },
+    });
+    if (!bp) {
+      res.status(404).send('Not found');
+      return;
+    }
+    res.send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta property="og:title" content="${bp.name}" />
+  <meta property="og:description" content="${bp.description.slice(0, 200)}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${process.env.NEXTAUTH_URL || ''}/b/${bp.slug}" />
+  <title>${bp.name} — GreatLibrary</title>
+  <meta http-equiv="refresh" content="0;url=/?blueprint=${bp.slug}" />
+</head>
+<body></body>
+</html>`);
+  } catch {
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`GreatLibrary server running on port ${PORT}`);
+});
+
+export { app };

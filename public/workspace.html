@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Workspace — GreatLibrary</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto; }
+  </style>
+</head>
+<body class="bg-white text-black">
+  <main x-data="workspace()" class="max-w-6xl mx-auto px-6 py-12">
+    <header class="border-b border-black/10 pb-8 mb-12 flex justify-between items-end">
+      <div>
+        <h1 class="text-3xl font-extrabold tracking-tight">Workspace</h1>
+        <p class="text-black/60 mt-1">Manage your containers and deployments.</p>
+      </div>
+      <a href="/" class="text-sm uppercase tracking-wider hover:underline">Back to Store</a>
+    </header>
+
+    <div x-show="!authenticated" class="text-center py-20 text-black/40">
+      <p class="text-xl mb-4">Sign in to access your workspace</p>
+      <div class="flex gap-4 justify-center">
+        <a href="/auth/signin/google" class="bg-black text-white px-6 py-3 text-sm uppercase tracking-wider hover:bg-black/80">Google</a>
+        <a href="/auth/signin/microsoft" class="bg-black text-white px-6 py-3 text-sm uppercase tracking-wider hover:bg-black/80">Microsoft</a>
+        <a href="/auth/signin/github" class="bg-black text-white px-6 py-3 text-sm uppercase tracking-wider hover:bg-black/80">GitHub</a>
+      </div>
+    </div>
+
+    <div x-show="authenticated">
+      <div class="flex justify-between items-center mb-8">
+        <h2 class="text-xl font-bold">Your Workspaces</h2>
+        <button @click="showCreate = true" class="bg-black text-white px-4 py-2 text-sm uppercase tracking-wider hover:bg-black/80">New Workspace</button>
+      </div>
+
+      <div x-show="showCreate" class="mb-8 p-6 border border-black/10">
+        <input x-model="newName" placeholder="Workspace name" class="w-full border border-black/10 px-4 py-3 mb-4 focus:outline-none focus:border-black" />
+        <div class="flex gap-4">
+          <button @click="createWorkspace()" class="bg-black text-white px-6 py-2 text-sm">Create</button>
+          <button @click="showCreate = false" class="text-black/60 px-6 py-2 text-sm">Cancel</button>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <template x-for="ws in workspaces" :key="ws.id">
+          <div class="border border-black/10 p-6">
+            <div class="flex justify-between items-center">
+              <h3 class="font-bold text-lg" x-text="ws.name"></h3>
+              <button @click="deleteWorkspace(ws.id)" class="text-red-500 text-sm hover:underline">Delete</button>
+            </div>
+            <div class="mt-4">
+              <p class="text-sm text-black/50 uppercase tracking-wider mb-2">Containers</p>
+              <template x-for="c in ws.containers" :key="c.id">
+                <div class="flex justify-between items-center py-2 border-t border-black/5">
+                  <span x-text="c.name" class="text-sm"></span>
+                  <span :class="c.status === 'RUNNING' ? 'text-green-600' : 'text-black/40'" class="text-xs uppercase" x-text="c.status"></span>
+                </div>
+              </template>
+              <p x-show="ws.containers.length === 0" class="text-sm text-black/30">No containers</p>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Feedback Form -->
+    <div x-show="authenticated" class="mt-16 border-t border-black/10 pt-8">
+      <h2 class="text-xl font-bold mb-4">Feedback</h2>
+      <textarea x-model="feedbackText" placeholder="Tell us how we can improve..." class="w-full border border-black/10 px-4 py-3 h-32 focus:outline-none focus:border-black"></textarea>
+      <button @click="submitFeedback()" class="mt-4 bg-black text-white px-6 py-2 text-sm uppercase tracking-wider hover:bg-black/80">Submit</button>
+      <p x-show="feedbackSent" class="mt-2 text-green-600 text-sm">Thank you for your feedback!</p>
+    </div>
+  </main>
+
+  <script>
+    function workspace() {
+      return {
+        authenticated: false,
+        workspaces: [],
+        showCreate: false,
+        newName: '',
+        feedbackText: '',
+        feedbackSent: false,
+        token: '',
+        async init() {
+          this.token = localStorage.getItem('gl_token') || '';
+          if (this.token) {
+            this.authenticated = true;
+            await this.loadWorkspaces();
+          }
+        },
+        async loadWorkspaces() {
+          const res = await fetch('/api/workspaces', {
+            headers: { 'Authorization': 'Bearer ' + this.token }
+          });
+          if (res.ok) this.workspaces = await res.json();
+        },
+        async createWorkspace() {
+          if (!this.newName.trim()) return;
+          await fetch('/api/workspaces', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+            body: JSON.stringify({ name: this.newName })
+          });
+          this.newName = '';
+          this.showCreate = false;
+          await this.loadWorkspaces();
+        },
+        async deleteWorkspace(id) {
+          await fetch('/api/workspaces/' + id, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + this.token }
+          });
+          await this.loadWorkspaces();
+        },
+        async submitFeedback() {
+          if (!this.feedbackText.trim()) return;
+          await fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token },
+            body: JSON.stringify({ text: this.feedbackText })
+          });
+          this.feedbackText = '';
+          this.feedbackSent = true;
+          setTimeout(() => this.feedbackSent = false, 3000);
+        }
+      };
+    }
+  </script>
+</body>
+</html>

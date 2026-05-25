@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(npm run test)",
+      "Bash(npm run prisma:tenant:migrate)",
+      "Bash(npm run prisma:admin:migrate)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git add)",
+      "Bash(git commit)",
+      "Read",
+      "Edit",
+      "Write",
+      "Grep",
+      "Glob"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(git push --force*)",
+      "Bash(curl*)",
+      "Bash(wget*)",
+      "WebFetch"
+    ]
+  }
+}
