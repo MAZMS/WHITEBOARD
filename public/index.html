@@ -140,7 +140,9 @@
       animation: cardBounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
       transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
                   opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                  box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                  box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       box-shadow: 0 0 20px rgba(255,255,255,0.03);
     }
     [data-theme="light"] .agent-contact-card {
@@ -201,8 +203,8 @@
     }
     .agent-contact-card .card-close-btn {
       position: absolute;
-      top: 8px;
-      right: 10px;
+      top: 2px;
+      right: 2px;
       background: none;
       border: none;
       color: var(--border);
@@ -212,6 +214,12 @@
       opacity: 0;
       transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s;
       z-index: 1;
+      /* 44px touch target */
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .agent-contact-card:hover .card-close-btn { opacity: 1; }
     .agent-contact-card .card-close-btn:hover { color: var(--fg); }
@@ -418,8 +426,8 @@
       color: var(--bg);
       font-family: inherit;
       font-size: 14px;
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       cursor: pointer;
       font-weight: 600;
@@ -448,6 +456,12 @@
       font-size: 18px;
       cursor: pointer;
       line-height: 1;
+      /* 44px touch target */
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .agent-chat-panel .close-btn:hover { color: var(--fg); }
@@ -474,8 +488,8 @@
       background: none;
       border: 1px solid var(--border);
       color: var(--dim);
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       cursor: pointer;
       font-size: 16px;
@@ -527,13 +541,19 @@
     }
     .sticky-note .close-btn {
       position: absolute;
-      top: 6px;
-      right: 10px;
+      top: 0;
+      right: 0;
       background: none;
       border: none;
       color: var(--dim);
       font-size: 16px;
       cursor: pointer;
+      /* 44px touch target */
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .sticky-note .close-btn:hover { color: var(--fg); }
@@ -767,6 +787,31 @@
       color: var(--fg);
     }
 
+    /* ── Focus-visible states for keyboard navigation ── */
+    button:focus-visible,
+    input:focus-visible,
+    a:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
+    /* The chat input already has a custom :focus style; suppress the outline there */
+    .agent-chat-panel .agent-input-row input:focus-visible {
+      outline: none;
+    }
+
+    /* ── Smooth theme transition on surfaces ── */
+    .agent-chat-panel,
+    .sticky-note,
+    #help-panel,
+    .msg-agent,
+    .msg-user,
+    .agent-input-area {
+      transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
     /* ── Mobile responsive ── */
     @media (max-width: 640px) {
       /* Chat panel — full-screen on phone */
@@ -980,8 +1025,18 @@
       if (e.key === 'Enter') {
         const val = commandInput.value.trim();
         if (!val) return;
+        // Brief in-bar loading state before closing
+        commandInput.disabled = true;
+        commandInput.value = '';
+        commandInput.placeholder = 'Finding the right person...';
+        const hintEl = commandBar.querySelector('.hint');
+        if (hintEl) hintEl.style.display = 'none';
+        // Close after a beat so the user sees the state
+        await new Promise(r => setTimeout(r, 600));
+        commandInput.disabled = false;
+        commandInput.placeholder = 'What are you trying to achieve?';
+        if (hintEl) hintEl.style.display = '';
         closeCommand();
-        toast('Finding the right agent...');
         try {
           const res = await fetch('/api/agent/pick', {
             method: 'POST',
