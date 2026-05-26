@@ -90,3 +90,76 @@ blueprintRouter.get('/blueprints/:slug', async (req, res) => {
     res.status(500).json({ error: 'Service unavailable' });
   }
 });
+
+// ── Badge SVG endpoint ──
+blueprintRouter.get('/badge/:slug', async (req, res) => {
+  try {
+    const blueprint = await admin.blueprint.findUnique({
+      where: { slug: req.params.slug },
+      select: { name: true, stability: true },
+    });
+    if (!blueprint) {
+      res.status(404).type('text/plain').send('Not found');
+      return;
+    }
+
+    const { name, stability } = blueprint;
+    const stabilityText = stability + '%';
+
+    // Color based on stability thresholds
+    let color: string;
+    if (stability >= 97) {
+      color = '#3fb950'; // green
+    } else if (stability >= 93) {
+      color = '#d29922'; // amber
+    } else {
+      color = '#f85149'; // red
+    }
+
+    // Approximate text widths (7px per char at 11px font is close to shields.io)
+    const charWidth = 6.5;
+    const padding = 10;
+    const leftText = name;
+    const rightText = stabilityText + ' | on GreatLibrary';
+    const leftWidth = Math.round(leftText.length * charWidth + padding * 2);
+    const rightWidth = Math.round(rightText.length * charWidth + padding * 2);
+    const totalWidth = leftWidth + rightWidth;
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20" role="img" aria-label="${name}: ${stabilityText}">
+  <title>${name}: ${stabilityText}</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r">
+    <rect width="${totalWidth}" height="20" rx="3" fill="#fff"/>
+  </clipPath>
+  <g clip-path="url(#r)">
+    <rect width="${leftWidth}" height="20" fill="#555"/>
+    <rect x="${leftWidth}" width="${rightWidth}" height="20" fill="${color}"/>
+    <rect width="${totalWidth}" height="20" fill="url(#s)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="11">
+    <text x="${leftWidth / 2}" y="14" fill="#010101" fill-opacity=".3">${escapeXml(leftText)}</text>
+    <text x="${leftWidth / 2}" y="13">${escapeXml(leftText)}</text>
+    <text x="${leftWidth + rightWidth / 2}" y="14" fill="#010101" fill-opacity=".3">${escapeXml(rightText)}</text>
+    <text x="${leftWidth + rightWidth / 2}" y="13">${escapeXml(rightText)}</text>
+  </g>
+</svg>`;
+
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.send(svg);
+  } catch {
+    res.status(500).type('text/plain').send('Badge generation failed');
+  }
+});
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

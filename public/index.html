@@ -196,7 +196,7 @@
           @input="onAutocompleteInput()"
           @keydown.arrow-down.prevent="acMoveDown()"
           @keydown.arrow-up.prevent="acMoveUp()"
-          @keydown.enter="onSearchEnter()"
+          @keydown.enter="onSearchEnter($event)"
           @keydown.escape="closeAutocomplete()"
           @focus="if (acResults.length) acOpen = true"
           placeholder="Search blueprints...  ( / )"
@@ -880,7 +880,7 @@
         return;
       }
 
-      // Escape — clear search, deselect compare, close modal
+      // Escape — close autocomplete, clear search, deselect compare, close modal
       if (e.key === 'Escape') {
         const storeData = Alpine.$data(document.querySelector('[x-data*="store()"]'));
         if (!storeData) return;
