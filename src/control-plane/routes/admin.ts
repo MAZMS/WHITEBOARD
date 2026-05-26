@@ -94,6 +94,43 @@ adminRouter.get('/admin/traffic', async (req, res) => {
   }
 });
 
+adminRouter.get('/admin/traffic/daily', async (req, res) => {
+  const days = parseInt(req.query.days as string) || 14;
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  try {
+    const metrics = await admin.webTrafficMetric.findMany({
+      where: { timestamp: { gte: since } },
+      select: { visitorId: true, timestamp: true },
+    });
+
+    // Group unique visitors by date string (YYYY-MM-DD)
+    const byDay = new Map<string, Set<string>>();
+    for (const m of metrics) {
+      const day = m.timestamp.toISOString().slice(0, 10);
+      if (!byDay.has(day)) byDay.set(day, new Set());
+      byDay.get(day)!.add(m.visitorId);
+    }
+
+    // Build sorted array for every day in range (fill gaps with 0)
+    const result: { date: string; visitors: number }[] = [];
+    const cursor = new Date(since);
+    cursor.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    while (cursor <= today) {
+      const key = cursor.toISOString().slice(0, 10);
+      result.push({ date: key, visitors: byDay.get(key)?.size ?? 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    res.json(result);
+  } catch {
+    res.status(500).json({ error: 'Failed to load daily traffic' });
+  }
+});
+
 adminRouter.post('/admin/blueprints', async (req, res) => {
   const { name, slug, description, githubUrl, estimatedMonthlyCost, requiredPermissions } = req.body;
 

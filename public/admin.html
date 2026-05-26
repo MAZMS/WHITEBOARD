@@ -23,6 +23,13 @@
     .fade-up { animation: fadeUp 0.5s ease-out both; }
     .fade-up-d1 { animation-delay: 0.1s; }
     .fade-up-d2 { animation-delay: 0.2s; }
+    .traffic-bar {
+      transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+      background: linear-gradient(90deg, rgba(200,184,138,0.30), rgba(200,184,138,0.10));
+    }
+    .sparkline-bar {
+      transition: height 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
     @keyframes shimmer {
       0% { background-position: -200% 0; }
       100% { background-position: 200% 0; }
@@ -156,24 +163,52 @@
           <button @click="loadTraffic(30)" :class="trafficPeriod === 30 ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">30d</button>
         </div>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
-          <p class="text-xs text-white/30 uppercase tracking-wider mb-3">Unique Visitors</p>
-          <p class="text-4xl font-bold text-[#c8b88a]" x-text="traffic.uniqueVisitors?.toLocaleString() || '—'"></p>
-          <p class="text-xs text-white/20 mt-1" x-text="'Last ' + trafficPeriod + ' days'"></p>
-        </div>
-        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
-          <p class="text-xs text-white/30 uppercase tracking-wider mb-3">Top Pages</p>
-          <div class="space-y-2">
-            <template x-for="page in (traffic.topPages || []).slice(0, 5)" :key="page.path">
-              <div class="flex justify-between text-sm">
-                <span class="text-white/50 truncate mr-4" x-text="page.path"></span>
-                <span class="text-white font-medium shrink-0" x-text="page.views.toLocaleString()"></span>
+      <!-- Unique Visitors -->
+      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5 mb-4">
+        <p class="text-xs text-white/30 uppercase tracking-wider mb-3">Unique Visitors</p>
+        <p class="text-4xl font-bold text-[#c8b88a]" x-text="traffic.uniqueVisitors?.toLocaleString() || '—'"></p>
+        <p class="text-xs text-white/20 mt-1" x-text="'Last ' + trafficPeriod + ' days'"></p>
+      </div>
+
+      <!-- Top Pages Bar Chart -->
+      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5 mb-4">
+        <p class="text-xs text-white/30 uppercase tracking-wider mb-4">Top Pages</p>
+        <div class="space-y-3" x-ref="topPagesChart">
+          <template x-for="(page, idx) in (traffic.topPages || []).slice(0, 8)" :key="page.path">
+            <div class="flex items-center gap-3 text-sm">
+              <span class="text-white/40 truncate w-28 sm:w-40 shrink-0 text-xs" x-text="page.path"></span>
+              <div class="flex-1 relative h-6 rounded overflow-hidden bg-white/[0.02]">
+                <div
+                  class="traffic-bar absolute inset-y-0 left-0 rounded"
+                  :style="'width: ' + trafficBarWidth(page.views) + '%'"
+                ></div>
               </div>
+              <span class="text-white/70 font-medium text-xs shrink-0 w-10 text-right" x-text="page.views.toLocaleString()"></span>
+            </div>
+          </template>
+          <p x-show="!traffic.topPages || traffic.topPages.length === 0" class="text-sm text-white/20">No data yet</p>
+        </div>
+      </div>
+
+      <!-- Daily Trend Sparkline -->
+      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+        <p class="text-xs text-white/30 uppercase tracking-wider mb-4">Daily Trend</p>
+        <div x-show="dailyTraffic.length > 0">
+          <div class="flex items-end gap-[3px] h-24">
+            <template x-for="(day, idx) in dailyTraffic" :key="day.date">
+              <div
+                class="sparkline-bar flex-1 rounded-t bg-gradient-to-t from-[#c8b88a]/30 to-[#c8b88a]/10 min-w-[4px]"
+                :style="'height: ' + sparklineHeight(day.visitors) + '%'"
+                :title="day.date + ': ' + day.visitors + ' visitors'"
+              ></div>
             </template>
-            <p x-show="!traffic.topPages || traffic.topPages.length === 0" class="text-sm text-white/20">No data yet</p>
+          </div>
+          <div class="flex justify-between mt-2">
+            <span class="text-[10px] text-white/20" x-text="dailyTraffic.length ? dailyTraffic[0].date : ''"></span>
+            <span class="text-[10px] text-white/20" x-text="dailyTraffic.length ? dailyTraffic[dailyTraffic.length - 1].date : ''"></span>
           </div>
         </div>
+        <p x-show="dailyTraffic.length === 0" class="text-sm text-white/20">No data yet</p>
       </div>
     </section>
 
@@ -469,6 +504,7 @@
         feedback: [],
         traffic: {},
         trafficPeriod: 7,
+        dailyTraffic: [],
         fbFilter: '',
         token: '',
         showBpForm: false,
@@ -511,9 +547,29 @@
           this.trafficPeriod = days;
           const headers = this.token ? { 'Authorization': 'Bearer ' + this.token } : {};
           try {
-            const res = await fetch('/api/admin/traffic?days=' + days, { headers });
-            if (res.ok) this.traffic = await res.json();
-          } catch { this.traffic = {}; }
+            const [trafficRes, dailyRes] = await Promise.allSettled([
+              fetch('/api/admin/traffic?days=' + days, { headers }),
+              fetch('/api/admin/traffic/daily?days=' + days, { headers }),
+            ]);
+            if (trafficRes.status === 'fulfilled' && trafficRes.value.ok) {
+              this.traffic = await trafficRes.value.json();
+            }
+            if (dailyRes.status === 'fulfilled' && dailyRes.value.ok) {
+              this.dailyTraffic = await dailyRes.value.json();
+            }
+          } catch { this.traffic = {}; this.dailyTraffic = []; }
+        },
+        trafficBarWidth(views) {
+          const pages = this.traffic.topPages || [];
+          if (!pages.length) return 0;
+          const max = Math.max(...pages.map(p => p.views));
+          return max > 0 ? Math.round((views / max) * 100) : 0;
+        },
+        sparklineHeight(visitors) {
+          if (!this.dailyTraffic.length) return 0;
+          const max = Math.max(...this.dailyTraffic.map(d => d.visitors));
+          if (max === 0) return 4;
+          return Math.max(4, Math.round((visitors / max) * 100));
         },
         filteredFeedback() {
           if (!this.fbFilter) return this.feedback;
