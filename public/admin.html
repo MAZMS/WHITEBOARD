@@ -6,7 +6,8 @@
   <title>Admin — Token Tracker</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    :root { --bg: #000; --fg: #fff; --dim: #555; --border: #222; }
+    :root { --bg: #000; --fg: #fff; --dim: #555; --border: #222; --surface: #0a0a0a; --surface-dim: #111; }
+    [data-theme="light"] { --bg: #fff; --fg: #000; --dim: #777; --border: #ccc; --surface: #f5f5f5; --surface-dim: #eee; }
 
     body {
       background: var(--bg);
@@ -14,6 +15,7 @@
       font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
       min-height: 100vh;
       padding: 40px;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
     h1 {
@@ -39,7 +41,8 @@
     }
 
     .card {
-      background: #0a0a0a;
+      background: var(--surface);
+      transition: background 0.3s ease, border-color 0.3s ease;
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 24px;
@@ -68,7 +71,7 @@
     .bar-bg {
       width: 100%;
       height: 8px;
-      background: #111;
+      background: var(--surface-dim);
       border-radius: 4px;
       overflow: hidden;
     }
@@ -122,7 +125,7 @@
       gap: 8px;
     }
     .model-btn {
-      background: #0a0a0a;
+      background: var(--surface);
       border: 1px solid var(--border);
       color: var(--dim);
       font-family: inherit;
@@ -134,23 +137,23 @@
       text-align: left;
     }
     .model-btn:hover {
-      border-color: #444;
+      border-color: var(--dim);
       color: var(--fg);
     }
     .model-btn.active {
       border-color: var(--fg);
       color: var(--fg);
-      background: #111;
+      background: var(--surface-dim);
     }
     .model-btn .tier-tag {
       font-size: 9px;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: #444;
+      color: var(--dim);
       display: block;
       margin-top: 4px;
     }
-    .model-btn.active .tier-tag { color: #666; }
+    .model-btn.active .tier-tag { color: var(--dim); }
 
     /* ── History table ── */
     .history-section {
@@ -181,8 +184,8 @@
     td {
       font-size: 12px;
       padding: 10px 12px;
-      border-bottom: 1px solid #111;
-      color: #aaa;
+      border-bottom: 1px solid var(--surface-dim);
+      color: var(--dim);
     }
     tr:hover td { color: var(--fg); }
     .tag {
@@ -192,8 +195,8 @@
       font-size: 10px;
       letter-spacing: 0.5px;
     }
-    .tag-premium { background: #1a1a1a; color: #fff; }
-    .tag-mini { background: #111; color: #888; }
+    .tag-premium { background: var(--surface-dim); color: var(--fg); }
+    .tag-mini { background: var(--surface); color: var(--dim); }
 
     .empty-state {
       text-align: center;
@@ -218,7 +221,7 @@
       border-radius: 8px;
       transition: all 0.2s;
     }
-    .top-bar a:hover { color: var(--fg); border-color: #444; }
+    .top-bar a:hover { color: var(--fg); border-color: var(--dim); }
 
     .refresh-btn {
       background: none;
@@ -231,7 +234,7 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    .refresh-btn:hover { color: var(--fg); border-color: #444; }
+    .refresh-btn:hover { color: var(--fg); border-color: var(--dim); }
 
     /* ── Responsive ── */
     @media (max-width: 700px) {
@@ -249,6 +252,7 @@
       <div class="subtitle" id="date-label">Loading...</div>
     </div>
     <div style="display:flex;gap:8px;">
+      <button class="refresh-btn" id="theme-toggle" onclick="toggleTheme()">◐</button>
       <button class="refresh-btn" onclick="loadData()">Refresh</button>
       <a href="/">Whiteboard</a>
     </div>
@@ -266,7 +270,7 @@
         <div class="bar-bg"><div class="bar-fill" id="premium-bar" style="width:0%"></div></div>
         <div class="remaining" id="premium-remaining">250,000 tokens remaining</div>
       </div>
-      <div style="font-size:10px;color:#333;line-height:1.8;">
+      <div style="font-size:10px;color:var(--border);line-height:1.8;">
         gpt-5.4, gpt-5.2, gpt-5.1, gpt-5, gpt-4.1, gpt-4o, o1, o3
       </div>
     </div>
@@ -281,7 +285,7 @@
         <div class="bar-bg"><div class="bar-fill" id="mini-bar" style="width:0%"></div></div>
         <div class="remaining" id="mini-remaining">2,500,000 tokens remaining</div>
       </div>
-      <div style="font-size:10px;color:#333;line-height:1.8;">
+      <div style="font-size:10px;color:var(--border);line-height:1.8;">
         gpt-5.4-mini, gpt-5-mini, gpt-4.1-mini, gpt-4o-mini, o3-mini, o4-mini
       </div>
     </div>
@@ -327,6 +331,23 @@
   </div>
 
   <script>
+    // ── Theme ──
+    (function initTheme() {
+      const saved = localStorage.getItem('wb-theme');
+      if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    })();
+
+    function toggleTheme() {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('wb-theme', 'dark');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('wb-theme', 'light');
+      }
+    }
+
     let currentModel = '';
 
     async function loadData() {

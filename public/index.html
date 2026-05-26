@@ -12,6 +12,17 @@
       --fg: #fff;
       --dim: #555;
       --border: #333;
+      --surface: #111;
+      --grid-dot: #1a1a1a;
+    }
+
+    [data-theme="light"] {
+      --bg: #fff;
+      --fg: #000;
+      --dim: #777;
+      --border: #ccc;
+      --surface: #f0f0f0;
+      --grid-dot: #ddd;
     }
 
     body {
@@ -22,6 +33,7 @@
       height: 100vh;
       width: 100vw;
       cursor: crosshair;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
     /* ── Canvas ── */
@@ -37,7 +49,7 @@
       inset: 0;
       z-index: 0;
       background-image:
-        radial-gradient(circle, #1a1a1a 1px, transparent 1px);
+        radial-gradient(circle, var(--grid-dot) 1px, transparent 1px);
       background-size: 40px 40px;
       pointer-events: none;
       transition: opacity 0.3s;
@@ -53,7 +65,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      background: #000;
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 12px 20px;
@@ -61,7 +73,7 @@
       max-width: 700px;
       opacity: 0;
       transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 0 40px rgba(255,255,255,0.05);
+      box-shadow: 0 0 40px rgba(128,128,128,0.08);
     }
     #command-bar.visible {
       transform: translateX(-50%) translateY(0);
@@ -81,13 +93,13 @@
       color: var(--fg);
       font-family: inherit;
       font-size: 16px;
-      caret-color: #fff;
+      caret-color: var(--fg);
     }
     #command-input::placeholder {
-      color: #444;
+      color: var(--dim);
     }
     #command-bar .hint {
-      color: #333;
+      color: var(--border);
       font-size: 11px;
       white-space: nowrap;
     }
@@ -96,7 +108,7 @@
     .agent-card {
       position: absolute;
       z-index: 50;
-      background: #000;
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 20px;
@@ -105,7 +117,7 @@
       cursor: grab;
       user-select: none;
       animation: agentAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      box-shadow: 0 0 30px rgba(255,255,255,0.03);
+      box-shadow: 0 0 30px rgba(128,128,128,0.06);
     }
     .agent-card:active { cursor: grabbing; }
     .agent-card .agent-header {
@@ -135,7 +147,7 @@
     }
     .agent-card .agent-body {
       font-size: 13px;
-      color: #aaa;
+      color: var(--dim);
       line-height: 1.6;
       min-height: 40px;
       max-height: 300px;
@@ -152,7 +164,7 @@
     }
     .agent-card .agent-input-row input {
       flex: 1;
-      background: #111;
+      background: var(--surface);
       border: 1px solid var(--border);
       color: var(--fg);
       font-family: inherit;
@@ -161,7 +173,7 @@
       border-radius: 8px;
       outline: none;
     }
-    .agent-card .agent-input-row input::placeholder { color: #444; }
+    .agent-card .agent-input-row input::placeholder { color: var(--dim); }
     .agent-card .agent-input-row button {
       background: var(--fg);
       border: none;
@@ -181,7 +193,7 @@
     }
     .agent-card .agent-model {
       font-size: 10px;
-      color: #333;
+      color: var(--border);
       margin-top: 6px;
       text-align: right;
     }
@@ -212,10 +224,11 @@
       z-index: 100;
       display: flex;
       gap: 2px;
-      background: #000;
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 6px;
+      transition: background 0.3s ease, border-color 0.3s ease;
     }
     .tool-btn {
       background: none;
@@ -232,14 +245,14 @@
     .tool-btn.active {
       color: var(--fg);
       border-color: var(--border);
-      background: #111;
+      background: var(--surface);
     }
 
     /* ── Sticky notes ── */
     .sticky-note {
       position: absolute;
       z-index: 40;
-      background: #111;
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 16px;
@@ -282,7 +295,7 @@
       left: 50%;
       transform: translateX(-50%) translateY(-20px);
       z-index: 200;
-      background: #111;
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 10px 20px;
@@ -318,12 +331,12 @@
       position: fixed;
       inset: 0;
       z-index: 999;
-      background: #000;
+      background: var(--bg);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      transition: opacity 0.6s ease;
+      transition: opacity 0.6s ease, background 0.3s ease;
     }
     #splash.fade-out {
       opacity: 0;
@@ -355,7 +368,7 @@
       right: 20px;
       top: 80px;
       z-index: 100;
-      background: #000;
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 20px;
@@ -368,7 +381,7 @@
     #help-panel.visible { display: block; animation: agentAppear 0.3s ease forwards; }
     #help-panel h3 { color: var(--fg); font-size: 13px; margin-bottom: 8px; letter-spacing: 1px; }
     #help-panel kbd {
-      background: #111;
+      background: var(--surface);
       border: 1px solid var(--border);
       padding: 2px 6px;
       border-radius: 4px;
@@ -399,6 +412,7 @@
     <button class="tool-btn" data-tool="move">Move</button>
     <button class="tool-btn" data-tool="erase">Erase</button>
     <button class="tool-btn" onclick="toggleHelp()">?</button>
+    <button class="tool-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">◐</button>
   </div>
 
   <!-- Command bar -->
@@ -420,7 +434,7 @@
     <div><kbd>C</kbd> &mdash; clear board</div>
     <h3 style="margin-top:12px;">AGENTS</h3>
     <div>Type any name to summon</div>
-    <div id="agent-list-help" style="margin-top:4px;color:#444;font-size:11px;line-height:1.8;"></div>
+    <div id="agent-list-help" style="margin-top:4px;color:var(--dim);font-size:11px;line-height:1.8;"></div>
     <div style="margin-top:4px;">Or type anything for a custom agent</div>
   </div>
 
@@ -428,6 +442,23 @@
   <div id="toast"></div>
 
   <script>
+    // ── Theme ──
+    (function initTheme() {
+      const saved = localStorage.getItem('wb-theme');
+      if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    })();
+
+    function toggleTheme() {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('wb-theme', 'dark');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('wb-theme', 'light');
+      }
+    }
+
     // ── State ──
     let started = false;
     let currentTool = 'draw';
@@ -569,7 +600,7 @@
       if (!started || currentTool !== 'draw') return;
       isDrawing = true;
       currentPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      currentPath.setAttribute('stroke', '#fff');
+      currentPath.setAttribute('stroke', getComputedStyle(document.documentElement).getPropertyValue('--fg').trim());
       currentPath.setAttribute('stroke-width', '2');
       currentPath.setAttribute('fill', 'none');
       currentPath.setAttribute('stroke-linecap', 'round');
