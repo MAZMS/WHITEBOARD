@@ -4,7 +4,16 @@ const path = require('path');
 const { getSystemPrompt, getAllAgents } = require('./agents');
 
 const app = express();
-app.use(express.json());
+
+// ── Security headers ──
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+app.use(express.json({ limit: '50kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── OpenAI client ──
@@ -331,6 +340,12 @@ function safeErrorMessage(err) {
   if (err.message && err.message.length < 200) return err.message;
   return 'Something went wrong on our end. Try again in a moment.';
 }
+
+// ── Graceful shutdown ──
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down...');
+  process.exit(0);
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
