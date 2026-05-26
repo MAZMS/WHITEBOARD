@@ -1021,7 +1021,6 @@
 
     // ── State ──
     let started = false;
-    let currentTool = 'draw';
     let isDrawing = false;
     let currentPath = null;
     let commandOpen = false;
@@ -1081,12 +1080,10 @@
 
     // ── Toast ──
     let toastTimer;
-    let toastFadeTimer;
     function toast(msg) {
       const t = document.getElementById('toast');
       // Cancel any pending fade-out and immediately reset
       clearTimeout(toastTimer);
-      clearTimeout(toastFadeTimer);
       // Force a reflow to restart the transition if already showing
       t.classList.remove('show');
       void t.offsetWidth;
@@ -1095,11 +1092,6 @@
       toastTimer = setTimeout(() => {
         t.classList.remove('show');
       }, 2200);
-    }
-
-    // ── Help ──
-    function toggleHelp() {
-      helpPanel.classList.toggle('visible');
     }
 
     // ── Command bar ──
@@ -1174,6 +1166,8 @@
 
       switch (e.code) {
         case 'Space':
+          // Don't open command bar while a chat panel is open
+          if (openPanelId) break;
           e.preventDefault();
           openCommand();
           break;
@@ -1187,18 +1181,9 @@
       }
     });
 
-    // ── Tool switching ──
-    function setTool(tool) {
-      currentTool = tool;
-      document.body.style.cursor =
-        tool === 'move' ? 'grab' :
-        tool === 'erase' ? 'pointer' :
-        'default';
-    }
-
     // ── Drawing ──
     canvas.addEventListener('mousedown', (e) => {
-      if (!started || currentTool !== 'draw') return;
+      if (!started) return;
       isDrawing = true;
       currentPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       currentPath.setAttribute('stroke', getComputedStyle(document.documentElement).getPropertyValue('--fg').trim());
@@ -1226,32 +1211,6 @@
       isDrawing = false;
       currentPath = null;
     });
-
-    // ── Eraser ──
-    canvas.addEventListener('click', (e) => {
-      if (currentTool !== 'erase') return;
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      if (el && el.tagName === 'path' && el.parentNode === canvas) {
-        el.style.transition = 'opacity 0.2s';
-        el.style.opacity = '0';
-        setTimeout(() => el.remove(), 200);
-      }
-    });
-
-    // ── Sticky notes ──
-    function createNote(x, y) {
-      const note = document.createElement('div');
-      note.className = 'sticky-note';
-      note.style.left = x + 'px';
-      note.style.top = y + 'px';
-      note.innerHTML = `
-        <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
-        <textarea placeholder="Type here..."></textarea>
-      `;
-      document.body.appendChild(note);
-      makeDraggable(note);
-      note.querySelector('textarea').focus();
-    }
 
     // ── Conversation memory per agent ──
     const conversationMap = new Map(); // agentId -> [{ role, content }, ...]
