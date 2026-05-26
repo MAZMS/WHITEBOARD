@@ -273,17 +273,32 @@ app.post('/api/agent/pick', async (req, res) => {
       .map(a => `- ${a.key}: ${a.description}`)
       .join('\n');
 
-    const pickerPrompt = `You are a router. Given a user's goal, pick the best agent from this list:
-${agentDescriptions}
+    const pickerPrompt = `You are a router. Given a user's goal, either pick the best agent from the existing list OR invent a new specialist role if none fits perfectly.
 
-Reply with JSON only: { "agent": "key", "greeting": "a short casual greeting" }.
+Reply with JSON only:
+{
+  "agent": "key from list, or 'custom' if inventing a new one",
+  "role": "a short role title (1-2 words) that fits the goal, e.g. 'Fitness Coach', 'Budget Analyst', 'Recipe Creator', 'Music Producer'",
+  "humanName": "a unique first name for this agent — diverse, friendly, never repeat",
+  "greeting": "a short friendly human greeting acknowledging their goal"
+}
+
+The role should be SPECIFIC to what the user wants — not generic. If they want to lose weight, the role is "Fitness Coach" not "Planner". If they want to write a song, the role is "Songwriter" not "Writer". Be creative.
+
+The human name should feel real and diverse — mix cultures, genders, styles. Never use the same name twice in a conversation.
+
 The greeting must sound like a real friend texting back. Rules:
 - Super casual, warm, maybe a little playful. Lowercase is fine.
 - Use contractions. Natural speech only.
 - React to what they actually said — reference their specific topic.
 - NEVER use phrases like "I'd be happy to help", "Great question", "Let's dive in", "Absolutely!", "Of course!", or anything that sounds like customer support.
 - Think of how a smart friend would text you back if you asked them about this topic. They'd probably react to it first, then offer to dig in.
-- 1-2 short sentences max. No exclamation-point overload.`;
+- 1-2 short sentences max. No exclamation-point overload.
+
+Available agents for reference (use these system prompts when the goal matches):
+${agentDescriptions}
+
+If the goal doesn't match any existing agent well, use agent key "custom" and the system will use a generic helpful prompt.`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -311,13 +326,13 @@ The greeting must sound like a real friend texting back. Rules:
     const raw = completion.choices[0]?.message?.content || '{}';
     const parsed = JSON.parse(raw);
 
-    const agentKey = parsed.agent || 'thinker';
+    const agentKey = parsed.agent || 'custom';
     const matched = agentList.find(a => a.key === agentKey);
 
     res.json({
       agent: agentKey,
-      displayName: matched ? matched.humanName : agentKey,
-      role: agentKey.charAt(0).toUpperCase() + agentKey.slice(1),
+      displayName: parsed.humanName || (matched ? matched.humanName : 'Agent'),
+      role: parsed.role || (matched ? matched.description.split('.')[0] : 'Assistant'),
       icon: matched ? matched.icon : '●',
       greeting: parsed.greeting || 'oh nice, tell me more about what you\'re working on',
     });

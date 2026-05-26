@@ -1,6 +1,9 @@
 // ── Agent Definitions ──
 // Each agent has: name, icon, system prompt, description, and suggested model tier.
 // Add new agents here — they auto-register in the server and whiteboard.
+//
+// NOTE: humanName is a default fallback only. The AI picker generates a unique
+// name and role for every session — no two agents are ever the same.
 
 // ── Human-talk enforcement (appended to every agent prompt) ──
 const HUMAN_VOICE = `

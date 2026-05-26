@@ -1319,6 +1319,7 @@
             displayName: data.displayName,
             role: data.role,
             greeting: data.greeting,
+            goal: val,
           });
         } catch (err) {
           toast('Connection error: ' + err.message);
@@ -1510,6 +1511,7 @@
       const displayName = opts.displayName || (agent.humanName || name.charAt(0).toUpperCase() + name.slice(1));
       const role = opts.role || (name.charAt(0).toUpperCase() + name.slice(1));
       const greeting = opts.greeting || agent.desc;
+      const goal = opts.goal || '';
       const agentId = 'agent-' + Date.now();
 
       // Initialize conversation history with the greeting
@@ -1555,8 +1557,9 @@
       toast(`${displayName} is online`);
       saveConversations();
 
-      // Show suggestion bar
-      showSuggestionBar();
+      // Show suggestion bar with role-specific suggestions
+      lastGoalText = goal;
+      showSuggestionBar(role, goal);
     }
 
     // ── Input placeholder rotation ──
@@ -1949,30 +1952,46 @@
     let suggestionTimer = null;
     let suggestionCycle = 0;
     let currentSuggestion = '';
-    const suggestions = [
-      'Tell me more about my goal',
-      'What should I do first?',
-      'Give me a step-by-step plan',
-    ];
+    let activeSuggestions = [];
+    let lastGoalText = '';
 
-    function showSuggestionBar() {
+    // Generate contextual suggestions based on the agent's role and the user's goal
+    function getSuggestions(role, goal) {
+      if (!goal) {
+        return [
+          `Tell me more about what you need`,
+          `What should I focus on first?`,
+          `Give me a quick plan`,
+        ];
+      }
+      return [
+        `Tell me more about ${goal}`,
+        `What should I do first as someone wanting to ${goal}?`,
+        `Give me a quick plan for ${goal}`,
+      ];
+    }
+
+    function showSuggestionBar(role, goal) {
       // Clear any existing cycle
       clearTimeout(suggestionTimer);
       suggestionCycle = 0;
+
+      // Generate suggestions tailored to this role and goal
+      activeSuggestions = getSuggestions(role, goal);
 
       suggestionBarEl.classList.add('visible');
       cycleSuggestion();
     }
 
     function cycleSuggestion() {
-      if (suggestionCycle >= suggestions.length) {
+      if (suggestionCycle >= activeSuggestions.length) {
         // Done cycling — fade out the bar
         suggestionBarEl.classList.remove('visible');
         currentSuggestion = '';
         return;
       }
 
-      currentSuggestion = suggestions[suggestionCycle];
+      currentSuggestion = activeSuggestions[suggestionCycle];
       suggestionTextEl.classList.remove('show');
 
       // Small gap for fade-out, then show new text
