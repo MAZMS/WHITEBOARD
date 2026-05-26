@@ -686,11 +686,9 @@
         const res = await fetch('/api/admin/usage');
         const data = await res.json();
 
-        // Date — human-friendly format
-        const dateObj = new Date(data.date + 'T12:00:00');
-        const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        const friendlyDate = dayNames[dateObj.getDay()] + ', ' + monthNames[dateObj.getMonth()] + ' ' + dateObj.getDate();
+        // Date — use browser local date, not server UTC date
+        const now = new Date();
+        const friendlyDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
         document.getElementById('date-label').textContent = friendlyDate;
 
         // Premium
