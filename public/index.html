@@ -22,7 +22,7 @@
       --dim: #777;
       --border: #ccc;
       --surface: #f0f0f0;
-      --grid-dot: #ddd;
+      --grid-dot: #e8e8e8;
     }
 
     body {
@@ -67,6 +67,8 @@
       inset: 0;
       z-index: 99;
       background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
@@ -152,9 +154,15 @@
     .agent-contact-card.active {
       border-color: var(--fg);
       box-shadow: 0 0 15px rgba(255,255,255,0.08);
+      z-index: 55;
+      opacity: 1;
     }
     [data-theme="light"] .agent-contact-card.active {
       box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    /* Dim inactive cards when any chat is open */
+    .agent-contact-card.inactive {
+      opacity: 0.7;
     }
     .agent-contact-card .card-avatar {
       display: flex;
@@ -702,7 +710,7 @@
       font-weight: 200;
       letter-spacing: 8px;
       text-transform: uppercase;
-      margin-bottom: 16px;
+      margin-bottom: 24px;
       opacity: 0;
       animation: splashFadeUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
@@ -717,12 +725,12 @@
       font-size: 12px;
       color: var(--border);
       letter-spacing: 1px;
-      margin-top: 24px;
+      margin-top: 32px;
       opacity: 0;
       animation: splashFadeUp 1.2s 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     #splash .enter-btn {
-      margin-top: 48px;
+      margin-top: 56px;
       background: transparent;
       border: 1px solid var(--fg);
       color: var(--fg);
@@ -1278,8 +1286,8 @@
       const cols = 3;
       const baseX = 120;
       const baseY = 100;
-      const spacingX = 200;
-      const spacingY = 220;
+      const spacingX = 240;
+      const spacingY = 240;
       const col = cardCounter % cols;
       const row = Math.floor(cardCounter / cols);
       const randX = (Math.random() - 0.5) * 40;
@@ -1415,16 +1423,18 @@
       if (openPanelId) {
         const oldPanel = document.getElementById('chat-panel');
         if (oldPanel) oldPanel.remove();
-        // Remove active highlight from old card
-        const oldCard = document.getElementById(openPanelId);
-        if (oldCard) oldCard.classList.remove('active');
       }
 
       openPanelId = agentId;
       const info = agentCards.get(agentId);
       if (!info) return;
 
-      // Highlight the active card
+      // Dim all cards, then highlight the active one
+      document.querySelectorAll('.agent-contact-card').forEach(c => {
+        c.classList.remove('active');
+        c.classList.add('inactive');
+      });
+      info.element.classList.remove('inactive');
       info.element.classList.add('active');
 
       // Build the chat panel
