@@ -81,8 +81,9 @@
       <!-- Desktop links -->
       <div class="hidden md:flex items-center gap-6 text-sm text-white/50">
         <a href="/" class="hover:text-white transition-colors">Store</a>
-        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace</a>
+        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace <span class="text-[#c8b88a] text-[10px]">(soon)</span></a>
         <a href="/docs.html" class="hover:text-white transition-colors">Docs</a>
+        <a href="/api.html" class="hover:text-white transition-colors">API</a>
         <a href="/admin.html" class="text-white">Admin</a>
         <a href="/invest.html" class="hover:text-[#c8b88a] transition-colors">Investors</a>
       </div>
@@ -108,8 +109,9 @@
     >
       <div class="max-w-6xl mx-auto px-6 py-2 flex flex-col">
         <a href="/" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Store</a>
-        <a href="/workspace.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Workspace</a>
+        <a href="/workspace.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Workspace <span class="text-[#c8b88a] text-[10px]">(soon)</span></a>
         <a href="/docs.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Docs</a>
+        <a href="/api.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">API</a>
         <a href="/admin.html" @click="mobileOpen = false" class="text-white py-3 text-sm transition-colors">Admin</a>
         <a href="/invest.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Investors</a>
       </div>
@@ -491,6 +493,7 @@
           <span class="text-white/20 font-medium uppercase tracking-wider">Resources</span>
           <div class="mt-2 flex flex-col gap-1.5">
             <a href="/docs.html" class="text-white/40 hover:text-white/60 transition-colors">Docs</a>
+            <a href="/api.html" class="text-white/40 hover:text-white/60 transition-colors">API</a>
             <a href="/status.html" class="text-white/40 hover:text-white/60 transition-colors">Status</a>
             <a href="https://github.com/MAZMS/greatlibraryai" target="_blank" rel="noopener" class="text-white/40 hover:text-white/60 transition-colors">GitHub</a>
           </div>

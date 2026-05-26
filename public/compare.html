@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Compare Blueprints — GreatLibrary</title>
+  <title>Compare — GreatLibrary</title>
   <meta name="description" content="Compare agent blueprints side by side — stability, cost, permissions, and more." />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
@@ -36,8 +37,9 @@
       <!-- Desktop links -->
       <div class="hidden md:flex items-center gap-6 text-sm text-white/50">
         <a href="/" class="hover:text-white transition-colors">Store</a>
-        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace</a>
+        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace <span class="text-[#c8b88a] text-[10px]">(soon)</span></a>
         <a href="/docs.html" class="hover:text-white transition-colors">Docs</a>
+        <a href="/api.html" class="hover:text-white transition-colors">API</a>
         <a href="/admin.html" class="hover:text-white transition-colors">Admin</a>
         <a href="/invest.html" class="hover:text-[#c8b88a] transition-colors">Investors</a>
       </div>
@@ -63,8 +65,9 @@
     >
       <div class="max-w-6xl mx-auto px-6 py-2 flex flex-col">
         <a href="/" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Store</a>
-        <a href="/workspace.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Workspace</a>
+        <a href="/workspace.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Workspace <span class="text-[#c8b88a] text-[10px]">(soon)</span></a>
         <a href="/docs.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Docs</a>
+        <a href="/api.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">API</a>
         <a href="/admin.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Admin</a>
         <a href="/invest.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Investors</a>
       </div>
