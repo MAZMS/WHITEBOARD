@@ -517,9 +517,39 @@
     <div class="max-w-6xl mx-auto px-6 py-10">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 text-xs">
         <!-- Brand -->
-        <div>
+        <div x-data="{ nlEmail: '', nlDone: false, nlSending: false }">
           <span class="text-white/40 font-medium">GreatLibrary</span>
           <p class="text-white/20 mt-2 leading-relaxed">A marketplace for deployable<br>agent blueprints.</p>
+          <!-- Newsletter signup -->
+          <div class="mt-4" x-show="!nlDone">
+            <p class="text-white/30 text-[11px] uppercase tracking-wider font-medium mb-2">Stay updated</p>
+            <form @submit.prevent="
+              if (!nlEmail.trim() || !nlEmail.includes('@')) return;
+              nlSending = true;
+              fetch('/api/invest/interest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: 'Newsletter', email: nlEmail.trim(), range: 'N/A', message: 'Newsletter signup from footer' })
+              }).then(r => r.json()).then(d => { if (d.success) nlDone = true; }).catch(() => {}).finally(() => { nlSending = false; });
+            " class="flex gap-1.5">
+              <input
+                x-model="nlEmail"
+                type="email"
+                required
+                placeholder="you@email.com"
+                class="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-md px-3 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/40 transition-all"
+              />
+              <button
+                type="submit"
+                :disabled="nlSending"
+                class="bg-[#c8b88a] text-[#0a0a0a] px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-[#d4c494] transition-colors disabled:opacity-50 whitespace-nowrap"
+              >Subscribe</button>
+            </form>
+          </div>
+          <div x-show="nlDone" x-cloak class="mt-4 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <span class="text-xs text-emerald-400 font-medium">Subscribed!</span>
+          </div>
         </div>
         <!-- Platform -->
         <div>

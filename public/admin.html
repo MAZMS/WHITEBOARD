@@ -387,17 +387,21 @@
     <!-- Feedback Queue -->
     <section class="fade-up fade-up-d2">
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold text-white" style="font-family: 'Inter', sans-serif;">Feedback</h2>
+        <h2 class="text-xl font-bold text-white" style="font-family: 'Inter', sans-serif;">
+          Feedback
+          <span class="text-sm font-normal text-white/30 ml-2" x-text="`(${feedback.filter(f => f.status === 'PENDING').length} pending / ${feedback.length} total)`"></span>
+        </h2>
         <div class="flex gap-2">
           <button @click="fbFilter = ''" :class="fbFilter === '' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">All</button>
           <button @click="fbFilter = 'PENDING'" :class="fbFilter === 'PENDING' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">Pending</button>
           <button @click="fbFilter = 'REFACTORED'" :class="fbFilter === 'REFACTORED' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">Resolved</button>
+          <button @click="fbFilter = 'REJECTED'" :class="fbFilter === 'REJECTED' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">Rejected</button>
         </div>
       </div>
 
       <div class="space-y-3">
         <template x-for="fb in filteredFeedback()" :key="fb.id">
-          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5 transition-all duration-300" :class="fb._updating ? 'opacity-50 pointer-events-none' : ''">
             <div class="flex justify-between items-start mb-3">
               <div class="flex items-center gap-2">
                 <div class="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-xs text-white/40" x-text="fb.email.charAt(0).toUpperCase()"></div>
@@ -414,7 +418,47 @@
               ></span>
             </div>
             <p class="text-sm text-white/50 leading-relaxed" x-text="fb.text.length > 250 ? fb.text.slice(0, 250) + '...' : fb.text"></p>
-            <p class="text-xs text-white/15 mt-3" x-text="new Date(fb.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })"></p>
+            <!-- Analysis note (shown after resolve) -->
+            <p x-show="fb.analysis" class="text-xs text-[#c8b88a]/60 mt-2 italic" x-text="fb.analysis ? 'Note: ' + fb.analysis : ''"></p>
+            <div class="flex items-center justify-between mt-3">
+              <p class="text-xs text-white/15" x-text="new Date(fb.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })"></p>
+              <!-- Action buttons for PENDING items -->
+              <div x-show="fb.status === 'PENDING'" class="flex items-center gap-2">
+                <!-- Resolve flow -->
+                <template x-if="fb._resolving">
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="text"
+                      x-model="fb._analysisNote"
+                      @keydown.enter="patchFeedback(fb.id, 'REFACTORED', fb._analysisNote)"
+                      @keydown.escape="fb._resolving = false"
+                      placeholder="Resolution note..."
+                      class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-emerald-400/50 transition-colors w-48"
+                    />
+                    <button
+                      @click="patchFeedback(fb.id, 'REFACTORED', fb._analysisNote)"
+                      class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-all"
+                    >Save</button>
+                    <button
+                      @click="fb._resolving = false"
+                      class="px-2 py-1.5 rounded-lg text-xs font-medium text-white/30 hover:text-white/50 transition-all"
+                    >Cancel</button>
+                  </div>
+                </template>
+                <template x-if="!fb._resolving">
+                  <div class="flex items-center gap-2">
+                    <button
+                      @click="fb._resolving = true; fb._analysisNote = ''; $nextTick(() => { $el.closest('.rounded-xl').querySelector('input[type=text]')?.focus() })"
+                      class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all"
+                    >Resolve</button>
+                    <button
+                      @click="patchFeedback(fb.id, 'REJECTED')"
+                      class="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                    >Reject</button>
+                  </div>
+                </template>
+              </div>
+            </div>
           </div>
         </template>
         <p x-show="filteredFeedback().length === 0" class="text-center text-white/20 py-8 text-sm">No feedback items</p>
@@ -635,6 +679,41 @@
           } catch (e) {
             this.showBpToast(e.message, 'error');
           }
+        },
+        async patchFeedback(id, status, analysis) {
+          const fb = this.feedback.find(f => f.id === id);
+          if (fb) fb._updating = true;
+          try {
+            const body = { status };
+            if (analysis && analysis.trim()) body.analysis = analysis.trim();
+            const res = await fetch('/api/admin/feedback/' + id, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + this.token,
+              },
+              body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.error || err.message || 'Failed to update feedback');
+            }
+            this.showBpToast(status === 'REFACTORED' ? 'Feedback resolved' : 'Feedback rejected');
+            await this.refreshFeedback();
+          } catch (e) {
+            if (fb) fb._updating = false;
+            this.showBpToast(e.message, 'error');
+          }
+        },
+        async refreshFeedback() {
+          try {
+            const headers = this.token ? { 'Authorization': 'Bearer ' + this.token } : {};
+            const res = await fetch('/api/admin/feedback', { headers });
+            if (res.ok) {
+              this.feedback = await res.json();
+              this.stats.pendingFeedback = this.feedback.filter(f => f.status === 'PENDING').length;
+            }
+          } catch { /* silent */ }
         },
       };
     }
