@@ -76,7 +76,7 @@
       box-shadow: 0 0 20px rgba(255,255,255,0.02);
     }
     [data-theme="light"] .card {
-      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
     }
     .card:nth-child(1) { animation-delay: 0s; }
     .card:nth-child(2) { animation-delay: 0.08s; }
@@ -365,6 +365,9 @@
       color: var(--fg);
       background: var(--surface-dim);
     }
+    [data-theme="light"] tr:hover td {
+      background: #e0e0e0;
+    }
     .tag {
       display: inline-block;
       padding: 3px 10px;
@@ -375,6 +378,7 @@
     }
     .tag-premium { background: var(--surface-dim); color: var(--fg); border: 1px solid var(--border); }
     .tag-mini { background: var(--surface); color: var(--dim); border: 1px solid var(--surface-dim); }
+    [data-theme="light"] .tag-mini { color: #555; border-color: #ccc; }
 
     /* ── Agent name column (col 2) ── */
     td:nth-child(2) { font-weight: 500; color: var(--fg); }
@@ -430,6 +434,12 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s ease;
+    }
+    [data-theme="light"] .top-bar {
+      border-bottom-color: var(--border);
     }
     .top-bar-left {
       display: flex;
