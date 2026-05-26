@@ -106,6 +106,8 @@ app.post('/api/agent', async (req, res) => {
       total: usage.total_tokens,
     });
 
+    logRequest({ agent, model, tier, tokens: usage.total_tokens });
+
     res.json({
       reply,
       model,
@@ -117,7 +119,7 @@ app.post('/api/agent', async (req, res) => {
     });
   } catch (err) {
     console.error('Agent error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
   }
 });
 
@@ -132,7 +134,8 @@ app.post('/api/agent/stream', async (req, res) => {
 
     if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
       return res.status(429).json({
-        error: `Daily ${tier} limit reached.`,
+        error: `Hey, we've used up today's ${tier} tokens. Try again tomorrow or switch to a ${tier === 'premium' ? 'mini' : 'premium'} model.`,
+        usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
       });
     }
 
@@ -158,9 +161,18 @@ app.post('/api/agent/stream', async (req, res) => {
       stream_options: { include_usage: true },
     });
 
+    // Abort the upstream stream if the client disconnects
+    let clientDisconnected = false;
+    req.on('close', () => {
+      clientDisconnected = true;
+      stream.controller?.abort?.();
+    });
+
     let totalTokens = 0;
 
     for await (const chunk of stream) {
+      if (clientDisconnected) break;
+
       const delta = chunk.choices?.[0]?.delta?.content;
       if (delta) {
         res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
@@ -180,11 +192,18 @@ app.post('/api/agent/stream', async (req, res) => {
       }
     }
 
-    res.write(`data: ${JSON.stringify({ done: true, total_tokens: totalTokens })}\n\n`);
-    res.end();
+    logRequest({ agent, model, tier, tokens: totalTokens });
+
+    if (!clientDisconnected) {
+      res.write(`data: ${JSON.stringify({ done: true, total_tokens: totalTokens })}\n\n`);
+      res.end();
+    }
   } catch (err) {
+    if (err.name === 'AbortError') return; // client disconnected, nothing to send
     console.error('Stream error:', err.message);
-    res.status(500).json({ error: err.message });
+    if (!res.headersSent) {
+      res.status(err.status || 500).json({ error: safeErrorMessage(err) });
+    }
   }
 });
 
@@ -282,7 +301,7 @@ The greeting must sound like a real friend texting back. Rules:
     });
   } catch (err) {
     console.error('Pick error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
   }
 });
 
@@ -297,6 +316,21 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 // ── Serve pages ──
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+
+// ── Request logger (one line per agent call) ──
+function logRequest({ agent, model, tier, tokens }) {
+  const ts = new Date().toISOString();
+  console.log(`[${ts}] agent=${agent || 'custom'} model=${model} tier=${tier} tokens=${tokens}`);
+}
+
+// ── Safe error message (never leak stack traces) ──
+function safeErrorMessage(err) {
+  if (err.status === 401) return 'API key is invalid or missing.';
+  if (err.status === 429) return 'Rate limited by upstream provider. Try again in a minute.';
+  if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') return 'Could not reach the AI provider. Try again shortly.';
+  if (err.message && err.message.length < 200) return err.message;
+  return 'Something went wrong on our end. Try again in a moment.';
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
