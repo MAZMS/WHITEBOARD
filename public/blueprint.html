@@ -34,6 +34,106 @@
       animation: shimmer 1.5s infinite;
       border-radius: 0.5rem;
     }
+
+    /* ── Print styles ── */
+    @media print {
+      /* Hide non-content elements */
+      nav,
+      footer,
+      .no-print,
+      [data-no-print] {
+        display: none !important;
+      }
+
+      /* Reset backgrounds and colors for paper */
+      html, body {
+        background: white !important;
+        color: black !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      /* Main content fills page width */
+      main {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      /* Override dark theme text colors */
+      h1, h2, h3, p, span, li, a, code, pre, div {
+        color: black !important;
+        -webkit-text-fill-color: black !important;
+      }
+
+      /* Heading labels stay subtle */
+      .text-xs.uppercase.tracking-wider {
+        color: #666 !important;
+        -webkit-text-fill-color: #666 !important;
+      }
+
+      /* Stat cards */
+      .glow, [class*="bg-white/[0.03]"], [class*="bg-white/5"] {
+        background: #f5f5f5 !important;
+        border-color: #ddd !important;
+        box-shadow: none !important;
+      }
+
+      /* Permission pills */
+      .rounded-full {
+        background: #eee !important;
+        border-color: #ccc !important;
+        color: #333 !important;
+        -webkit-text-fill-color: #333 !important;
+      }
+
+      /* Stability dot keeps color */
+      .bg-emerald-400, .bg-amber-400, .bg-red-400 {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      /* Description: remove any truncation/clamping */
+      .whitespace-pre-line {
+        overflow: visible !important;
+        -webkit-line-clamp: unset !important;
+        display: block !important;
+        max-height: none !important;
+        text-overflow: unset !important;
+      }
+
+      /* Links show as text */
+      a {
+        text-decoration: none !important;
+      }
+
+      /* Hide animations and transitions */
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      /* Show the print URL footer */
+      .print-url-footer {
+        display: block !important;
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid #ccc;
+        font-size: 11px;
+        color: #666 !important;
+        -webkit-text-fill-color: #666 !important;
+      }
+
+      /* Ensure both tabs are visible in print */
+      [x-show="activeTab === 'details'"] {
+        display: block !important;
+      }
+
+      /* Tabs bar hidden in print */
+      .border-b.mb-10.fade-up {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 <body class="bg-[#0a0a0a] text-white/90 min-h-screen">
@@ -160,7 +260,7 @@
     <template x-if="!loading && bp">
       <div>
         <!-- Back link -->
-        <a href="/" class="inline-flex items-center gap-2 text-sm text-white/30 hover:text-white/60 transition-colors mb-10 fade-up">
+        <a href="/" class="inline-flex items-center gap-2 text-sm text-white/30 hover:text-white/60 transition-colors mb-10 fade-up" data-no-print>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
           Back to Store
         </a>
@@ -232,6 +332,15 @@
                   </button>
                 </div>
               </div>
+              <!-- Print button -->
+              <button
+                @click="window.print()"
+                class="no-print flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all text-white/20 hover:text-white/50 hover:bg-white/5"
+                title="Print blueprint"
+                aria-label="Print blueprint"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/></svg>
+              </button>
             </div>
             <p class="text-white/40 text-sm mt-2">
               by
@@ -305,14 +414,14 @@
           </div>
 
           <!-- Deploy Button -->
-          <div class="fade-up fade-up-d3">
+          <div class="fade-up fade-up-d3" data-no-print>
             <a :href="'/workspace.html?deploy=' + bp.slug" class="block w-full bg-[#c8b88a] text-[#0a0a0a] py-4 rounded-xl text-sm font-semibold hover:bg-[#d4c494] transition-colors text-center">
               Deploy to Workspace
             </a>
           </div>
 
           <!-- Embed Badge -->
-          <div class="mt-8 fade-up fade-up-d3" x-data="{ badgeCopied: false }">
+          <div class="mt-8 fade-up fade-up-d3" x-data="{ badgeCopied: false }" data-no-print>
             <h2 class="text-xs text-white/30 uppercase tracking-wider mb-3">Embed badge</h2>
             <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
               <!-- Badge preview -->
@@ -436,11 +545,16 @@
           </div>
 
           <!-- Deploy Button (also on Details tab) -->
-          <div>
+          <div data-no-print>
             <a :href="'/workspace.html?deploy=' + bp.slug" class="block w-full bg-[#c8b88a] text-[#0a0a0a] py-4 rounded-xl text-sm font-semibold hover:bg-[#d4c494] transition-colors text-center">
               Deploy to Workspace
             </a>
           </div>
+        </div>
+
+        <!-- Print URL footer (hidden on screen, shown in print) -->
+        <div class="print-url-footer" style="display: none;">
+          Printed from: <span x-text="window.location.href"></span>
         </div>
 
       </div>
