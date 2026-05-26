@@ -212,6 +212,66 @@ app.post('/api/admin/settings', (req, res) => {
   res.json({ settings: tokenUsage.settings });
 });
 
+// ── API: Pick best agent for a goal (uses gpt-4o-mini) ──
+app.post('/api/agent/pick', async (req, res) => {
+  try {
+    const { goal } = req.body;
+    if (!goal || !goal.trim()) {
+      return res.status(400).json({ error: 'Goal is required.' });
+    }
+
+    const agentList = getAllAgents();
+    const agentDescriptions = agentList
+      .map(a => `- ${a.key}: ${a.description}`)
+      .join('\n');
+
+    const pickerPrompt = `You are a router. Given a user's goal, pick the best agent from this list:
+${agentDescriptions}
+
+Reply with JSON only: { "agent": "key", "greeting": "a short friendly human greeting acknowledging their goal and asking a follow-up question" }.
+The greeting should sound like a real person — casual, warm, direct. Not robotic. Keep it under 2 sentences.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: pickerPrompt },
+        { role: 'user', content: goal.trim() },
+      ],
+      max_completion_tokens: 256,
+      response_format: { type: 'json_object' },
+    });
+
+    const usage = completion.usage || { total_tokens: 0 };
+    resetIfNewDay();
+    tokenUsage.mini += usage.total_tokens || 0;
+    tokenUsage.history.push({
+      timestamp: new Date().toISOString(),
+      model: 'gpt-4o-mini',
+      tier: 'mini',
+      agent: 'router',
+      prompt_tokens: usage.prompt_tokens || 0,
+      completion_tokens: usage.completion_tokens || 0,
+      total: usage.total_tokens || 0,
+    });
+
+    const raw = completion.choices[0]?.message?.content || '{}';
+    const parsed = JSON.parse(raw);
+
+    const agentKey = parsed.agent || 'thinker';
+    const matched = agentList.find(a => a.key === agentKey);
+
+    res.json({
+      agent: agentKey,
+      displayName: agentKey.charAt(0).toUpperCase() + agentKey.slice(1),
+      icon: matched ? matched.icon : '●',
+      greeting: parsed.greeting || 'Hey, let me help you with that. What details can you share?',
+    });
+  } catch (err) {
+    console.error('Pick error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── API: List available agents ──
 app.get('/api/agents', (req, res) => {
   res.json(getAllAgents());

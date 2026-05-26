@@ -120,18 +120,41 @@
       box-shadow: 0 0 30px rgba(128,128,128,0.06);
     }
     .agent-card:active { cursor: grabbing; }
-    .agent-card .agent-header {
+    .agent-card .close-btn-top {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+    }
+    .agent-avatar {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
       margin-bottom: 12px;
     }
+    .avatar-head {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--fg);
+      margin-bottom: 2px;
+    }
+    .avatar-body {
+      width: 40px;
+      height: 18px;
+      border-radius: 20px 20px 0 0;
+      border: 2px solid var(--fg);
+      border-bottom: none;
+    }
     .agent-card .agent-name {
-      font-size: 15px;
+      text-align: center;
+      font-size: 14px;
       font-weight: 600;
       letter-spacing: 0.5px;
+      margin-bottom: 4px;
     }
     .agent-card .agent-status {
+      text-align: center;
+      justify-content: center;
       font-size: 11px;
       color: var(--dim);
       display: flex;
@@ -434,8 +457,8 @@
   <!-- Command bar -->
   <div id="command-bar">
     <span class="prefix">&gt;</span>
-    <input id="command-input" type="text" placeholder="summon an agent..." autocomplete="off" spellcheck="false">
-    <span class="hint">enter to summon</span>
+    <input id="command-input" type="text" placeholder="What are you trying to achieve?" autocomplete="off" spellcheck="false">
+    <span class="hint">enter to begin</span>
   </div>
 
   <!-- Help panel -->
@@ -449,9 +472,8 @@
     <div><kbd>Esc</kbd> &mdash; close / cancel</div>
     <div><kbd>C</kbd> &mdash; clear board</div>
     <h3 style="margin-top:12px;">AGENTS</h3>
-    <div>Type any name to summon</div>
+    <div>Describe your goal — AI picks the best agent</div>
     <div id="agent-list-help" style="margin-top:4px;color:var(--dim);font-size:11px;line-height:1.8;"></div>
-    <div style="margin-top:4px;">Or type anything for a custom agent</div>
   </div>
 
   <!-- Toast -->
@@ -519,7 +541,7 @@
       splash.classList.add('fade-out');
       setTimeout(() => { splash.style.display = 'none'; }, 600);
       themeToggle.style.display = '';
-      toast('Ready — press Space to summon agents');
+      toast('Ready — press Space to begin');
     }
 
     document.addEventListener('keydown', (e) => {
@@ -557,12 +579,32 @@
       commandInput.blur();
     }
 
-    commandInput.addEventListener('keydown', (e) => {
+    commandInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Escape') { closeCommand(); }
       if (e.key === 'Enter') {
-        const val = commandInput.value.trim().toLowerCase();
-        if (val) summonAgent(val);
+        const val = commandInput.value.trim();
+        if (!val) return;
         closeCommand();
+        toast('Finding the right agent...');
+        try {
+          const res = await fetch('/api/agent/pick', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ goal: val }),
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            toast(err.error || 'Failed to pick agent');
+            return;
+          }
+          const data = await res.json();
+          summonAgent(data.agent, {
+            displayName: data.displayName,
+            greeting: data.greeting,
+          });
+        } catch (err) {
+          toast('Connection error: ' + err.message);
+        }
       }
     });
 
@@ -668,10 +710,11 @@
     }
 
     // ── Agent summoning ──
-    function summonAgent(name) {
+    function summonAgent(name, opts = {}) {
       agentCount++;
       const agent = agents[name] || { icon: '●', desc: `Custom agent "${name}" is ready. Ask me anything.` };
-      const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+      const displayName = opts.displayName || (name.charAt(0).toUpperCase() + name.slice(1));
+      const greeting = opts.greeting || agent.desc;
       const agentId = 'agent-' + Date.now();
 
       // Position in a staggered grid
@@ -689,17 +732,19 @@
       card.style.top = y + 'px';
 
       card.innerHTML = `
-        <div class="agent-header">
-          <span class="agent-name">${agent.icon} ${displayName}</span>
-          <button class="close-btn" onclick="dismissAgent(this)">&times;</button>
+        <button class="close-btn close-btn-top" onclick="dismissAgent(this)">&times;</button>
+        <div class="agent-avatar">
+          <div class="avatar-head"></div>
+          <div class="avatar-body"></div>
         </div>
+        <div class="agent-name">${displayName}</div>
         <div class="agent-status">
           <span class="dot"></span>
-          <span>Ready</span>
+          <span>Online</span>
         </div>
-        <div class="agent-body">${agent.desc}</div>
+        <div class="agent-body">${greeting}</div>
         <div class="agent-input-row">
-          <input type="text" placeholder="Ask ${displayName}..." onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
+          <input type="text" placeholder="Direct this agent..." onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
           <button onclick="sendToAgent('${agentId}')">Send</button>
         </div>
         <div class="agent-model"></div>
@@ -708,7 +753,7 @@
       document.body.appendChild(card);
       makeDraggable(card);
       card.querySelector('.agent-input-row input').focus();
-      toast(`${displayName} agent summoned — powered by AI`);
+      toast(`${displayName} is online`);
     }
 
     function dismissAgent(btn) {
@@ -802,7 +847,7 @@
     // ── Drag system ──
     function makeDraggable(el) {
       el.addEventListener('mousedown', (e) => {
-        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'TEXTAREA') return;
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
         dragTarget = el;
         dragOffset.x = e.clientX - el.offsetLeft;
         dragOffset.y = e.clientY - el.offsetTop;
