@@ -65,7 +65,7 @@ app.post('/api/agent', async (req, res) => {
   try {
     resetIfNewDay();
 
-    const { agent, message, model: requestedModel } = req.body;
+    const { agent, message, messages: msgHistory, model: requestedModel } = req.body;
     const model = requestedModel || tokenUsage.settings.defaultModel;
     const tier = getModelTier(model);
 
@@ -79,12 +79,17 @@ app.post('/api/agent', async (req, res) => {
 
     const systemPrompt = getSystemPrompt(agent);
 
+    // Build messages: system prompt + full conversation history (or single message for backward compat)
+    const chatMessages = [{ role: 'system', content: systemPrompt }];
+    if (msgHistory && Array.isArray(msgHistory)) {
+      chatMessages.push(...msgHistory);
+    } else {
+      chatMessages.push({ role: 'user', content: message });
+    }
+
     const completion = await openai.chat.completions.create({
       model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message },
-      ],
+      messages: chatMessages,
       max_completion_tokens: 2048,
     });
 
@@ -123,7 +128,7 @@ app.post('/api/agent/stream', async (req, res) => {
   try {
     resetIfNewDay();
 
-    const { agent, message, model: requestedModel } = req.body;
+    const { agent, message, messages: msgHistory, model: requestedModel } = req.body;
     const model = requestedModel || tokenUsage.settings.defaultModel;
     const tier = getModelTier(model);
 
@@ -135,16 +140,21 @@ app.post('/api/agent/stream', async (req, res) => {
 
     const systemPrompt = getSystemPrompt(agent);
 
+    // Build messages: system prompt + full conversation history (or single message for backward compat)
+    const chatMessages = [{ role: 'system', content: systemPrompt }];
+    if (msgHistory && Array.isArray(msgHistory)) {
+      chatMessages.push(...msgHistory);
+    } else {
+      chatMessages.push({ role: 'user', content: message });
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
     const stream = await openai.chat.completions.create({
       model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message },
-      ],
+      messages: chatMessages,
       max_completion_tokens: 2048,
       stream: true,
       stream_options: { include_usage: true },

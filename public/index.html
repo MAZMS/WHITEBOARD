@@ -118,8 +118,8 @@
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 20px;
-      min-width: 280px;
-      max-width: 360px;
+      min-width: 320px;
+      max-width: 400px;
       cursor: grab;
       user-select: none;
       animation: agentAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -185,21 +185,44 @@
       animation: pulseFast 0.5s infinite ease-in-out;
     }
     .agent-card .agent-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       font-size: 13px;
       color: var(--dim);
       line-height: 1.6;
       min-height: 40px;
-      max-height: 300px;
+      max-height: 350px;
       overflow-y: auto;
-      white-space: pre-wrap;
       word-break: break-word;
       scrollbar-width: none;
-      background: var(--surface);
       border-radius: 12px;
-      padding: 12px 16px;
+      padding: 12px 10px;
       margin-top: 10px;
     }
     .agent-card .agent-body::-webkit-scrollbar { display: none; }
+
+    /* ── Chat bubbles ── */
+    .msg {
+      padding: 10px 14px;
+      max-width: 85%;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+    .msg-agent {
+      background: var(--surface);
+      color: var(--dim);
+      border-radius: 12px 12px 12px 4px;
+      align-self: flex-start;
+    }
+    .msg-user {
+      background: var(--fg);
+      color: var(--bg);
+      border-radius: 12px 12px 4px 12px;
+      align-self: flex-end;
+    }
 
     /* ── Typing indicator ── */
     .typing-indicator {
@@ -753,6 +776,9 @@
       note.querySelector('textarea').focus();
     }
 
+    // ── Conversation memory per agent card ──
+    const conversationMap = new Map(); // agentId -> [{ role, content }, ...]
+
     // ── Agent summoning ──
     function summonAgent(name, opts = {}) {
       agentCount++;
@@ -765,8 +791,13 @@
       const cols = 3;
       const row = Math.floor((agentCount - 1) / cols);
       const col = (agentCount - 1) % cols;
-      const x = 100 + col * 380 + (Math.random() * 40 - 20);
-      const y = 120 + row * 280 + (Math.random() * 30 - 15);
+      const x = 100 + col * 420 + (Math.random() * 40 - 20);
+      const y = 120 + row * 320 + (Math.random() * 30 - 15);
+
+      // Initialize conversation history with the greeting
+      conversationMap.set(agentId, [
+        { role: 'assistant', content: greeting },
+      ]);
 
       const card = document.createElement('div');
       card.className = 'agent-card';
@@ -786,7 +817,9 @@
           <span class="dot"></span>
           <span>Online</span>
         </div>
-        <div class="agent-body">${greeting}</div>
+        <div class="agent-body">
+          <div class="msg msg-agent">${greeting}</div>
+        </div>
         <div class="agent-input-row">
           <input type="text" placeholder="Direct this agent..." onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
           <button onclick="sendToAgent('${agentId}')">Send</button>
@@ -802,6 +835,7 @@
 
     function dismissAgent(btn) {
       const card = btn.closest('.agent-card');
+      conversationMap.delete(card.id);
       card.style.transition = 'all 0.3s ease';
       card.style.opacity = '0';
       card.style.transform = 'scale(0.8)';
@@ -821,13 +855,33 @@
       const message = input.value.trim();
       if (!message) return;
 
+      const history = conversationMap.get(agentId) || [];
+
+      // 1. Immediately show user bubble
+      const userBubble = document.createElement('div');
+      userBubble.className = 'msg msg-user';
+      userBubble.textContent = message;
+      body.appendChild(userBubble);
+
+      // Add to conversation history
+      history.push({ role: 'user', content: message });
+
+      // 2. Append agent bubble with typing indicator
+      const agentBubble = document.createElement('div');
+      agentBubble.className = 'msg msg-agent';
+      agentBubble.innerHTML = '<span class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>';
+      body.appendChild(agentBubble);
+
+      // Auto-scroll
+      body.scrollTop = body.scrollHeight;
+
       // Set running state
       input.value = '';
       btn.disabled = true;
       statusEl.textContent = 'Thinking...';
       dotEl.classList.add('streaming');
-      body.textContent = '';
-      body.innerHTML = '<span class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>';
+
+      let replyText = '';
 
       try {
         const res = await fetch('/api/agent/stream', {
@@ -835,13 +889,13 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             agent: card.dataset.agentName,
-            message,
+            messages: history,
           }),
         });
 
         if (!res.ok) {
           const err = await res.json();
-          body.textContent = err.error || 'Something went wrong.';
+          agentBubble.textContent = err.error || 'Something went wrong.';
           statusEl.textContent = 'Error';
           dotEl.classList.remove('streaming');
           btn.disabled = false;
@@ -868,10 +922,11 @@
               const data = JSON.parse(line.slice(6));
               if (data.text) {
                 if (firstChunk) {
-                  body.textContent = '';
+                  agentBubble.textContent = '';
                   firstChunk = false;
                 }
-                body.textContent += data.text;
+                replyText += data.text;
+                agentBubble.textContent = replyText;
                 body.scrollTop = body.scrollHeight;
               }
               if (data.done) {
@@ -881,11 +936,14 @@
           }
         }
 
-        statusEl.textContent = 'Done';
+        // Save assistant reply to conversation history
+        history.push({ role: 'assistant', content: replyText });
+        conversationMap.set(agentId, history);
+
+        statusEl.textContent = 'Online';
         dotEl.classList.remove('streaming');
-        dotEl.style.opacity = '0.5';
       } catch (err) {
-        body.textContent = 'Connection error: ' + err.message;
+        agentBubble.textContent = 'Connection error: ' + err.message;
         statusEl.textContent = 'Error';
         dotEl.classList.remove('streaming');
       }
