@@ -503,7 +503,7 @@
       color: var(--dim);
       font-size: 16px;
       cursor: pointer;
-      transition: color 0.2s;
+      transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .sticky-note .close-btn:hover { color: var(--fg); }
 
@@ -735,6 +735,9 @@
   <!-- Theme toggle -->
   <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="display:none;">&#9684;</button>
 
+  <!-- Command bar backdrop -->
+  <div id="command-backdrop" onclick="closeCommand()"></div>
+
   <!-- Command bar -->
   <div id="command-bar">
     <span class="prefix">&gt;</span>
@@ -833,12 +836,20 @@
 
     // ── Toast ──
     let toastTimer;
+    let toastFadeTimer;
     function toast(msg) {
       const t = document.getElementById('toast');
+      // Cancel any pending fade-out and immediately reset
+      clearTimeout(toastTimer);
+      clearTimeout(toastFadeTimer);
+      // Force a reflow to restart the transition if already showing
+      t.classList.remove('show');
+      void t.offsetWidth;
       t.textContent = msg;
       t.classList.add('show');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+      toastTimer = setTimeout(() => {
+        t.classList.remove('show');
+      }, 2200);
     }
 
     // ── Help ──
@@ -847,15 +858,20 @@
     }
 
     // ── Command bar ──
+    const commandBackdrop = document.getElementById('command-backdrop');
+
     function openCommand() {
       commandOpen = true;
       commandBar.classList.add('visible');
+      commandBackdrop.classList.add('visible');
       commandInput.value = '';
-      commandInput.focus();
+      // Immediate auto-focus with a microtask to ensure DOM is ready
+      requestAnimationFrame(() => commandInput.focus());
     }
     function closeCommand() {
       commandOpen = false;
       commandBar.classList.remove('visible');
+      commandBackdrop.classList.remove('visible');
       commandInput.blur();
     }
 
