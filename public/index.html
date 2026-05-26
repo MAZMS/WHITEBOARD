@@ -714,6 +714,45 @@
       font-size: 11px;
       color: var(--fg);
     }
+
+    /* ── Mobile responsive ── */
+    @media (max-width: 640px) {
+      /* Chat panel — full-screen on phone */
+      .agent-chat-panel {
+        width: 100vw;
+      }
+
+      /* Contact cards — tighter on small screens */
+      .agent-contact-card {
+        min-width: 130px;
+        padding: 16px;
+      }
+
+      /* Command bar — fit within viewport */
+      #command-bar {
+        min-width: unset;
+        width: calc(100vw - 40px);
+        bottom: 20px;
+      }
+
+      /* Splash — smaller type for phones */
+      #splash h1 {
+        font-size: 22px;
+        letter-spacing: 4px;
+      }
+      #splash .subtitle {
+        font-size: 12px;
+        letter-spacing: 2px;
+      }
+      #splash .enter-btn {
+        padding: 12px 32px;
+      }
+
+      /* Agent chat input — 16px prevents iOS auto-zoom on focus */
+      .agent-chat-panel .agent-input-row input {
+        font-size: 16px;
+      }
+    }
   </style>
 </head>
 <body>
