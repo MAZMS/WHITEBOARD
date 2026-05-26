@@ -1118,13 +1118,15 @@
 
       document.body.appendChild(panel);
 
-      // Render existing conversation history into the panel
+      // Render existing conversation history into the panel with staggered fade-in
       const body = panel.querySelector('.agent-body');
       const history = conversationMap.get(agentId) || [];
-      history.forEach(msg => {
+      history.forEach((msg, idx) => {
         const bubble = document.createElement('div');
         bubble.className = msg.role === 'user' ? 'msg msg-user' : 'msg msg-agent';
         bubble.textContent = msg.content;
+        bubble.style.animationDelay = (idx * 0.06) + 's';
+        bubble.style.opacity = '0';
         body.appendChild(bubble);
       });
 
