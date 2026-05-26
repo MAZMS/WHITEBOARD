@@ -521,6 +521,21 @@
     }
     .clear-chat-btn:hover { color: var(--fg); }
 
+    /* ── Retry button inside error bubbles ── */
+    .retry-btn {
+      display: inline-block;
+      margin-top: 6px;
+      font-family: inherit;
+      font-size: 11px;
+      color: var(--dim);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 6px;
+      transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .retry-btn:hover { color: var(--fg); }
+
     /* ── Drawing lines ── */
     .draw-line {
       position: absolute;
@@ -1654,12 +1669,24 @@
         });
 
         if (!res.ok) {
-          const err = await res.json();
-          agentBubble.textContent = err.error || 'Something went wrong.';
+          const err = await res.json().catch(() => ({}));
+          const errMsg = err.error || 'Something went wrong.';
+          agentBubble.textContent = errMsg + '\n';
+          const retryBtn = document.createElement('button');
+          retryBtn.className = 'retry-btn';
+          retryBtn.textContent = 'Retry';
+          retryBtn.onclick = () => { input.value = message; sendToAgent(agentId); };
+          agentBubble.appendChild(retryBtn);
+          agentWrap.querySelector('.msg-time').style.visibility = '';
           statusEl.textContent = 'Error';
           dotEl.classList.remove('streaming');
           if (cardDot) cardDot.classList.remove('streaming');
           btn.disabled = false;
+          if (res.status === 429) {
+            toast('Daily token limit reached. Check admin panel.');
+          } else {
+            toast("Couldn't reach the agent. Try again.");
+          }
           return;
         }
 
@@ -1711,11 +1738,17 @@
         dotEl.classList.remove('streaming');
         if (cardDot) cardDot.classList.remove('streaming');
       } catch (err) {
-        agentBubble.textContent = 'Connection error: ' + err.message;
+        agentBubble.textContent = 'Connection error: ' + err.message + '\n';
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'retry-btn';
+        retryBtn.textContent = 'Retry';
+        retryBtn.onclick = () => { input.value = message; sendToAgent(agentId); };
+        agentBubble.appendChild(retryBtn);
         agentWrap.querySelector('.msg-time').style.visibility = '';
         statusEl.textContent = 'Error';
         dotEl.classList.remove('streaming');
         if (cardDot) cardDot.classList.remove('streaming');
+        toast('Connection lost. Check your internet.');
       }
 
       btn.disabled = false;
