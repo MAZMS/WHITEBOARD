@@ -1339,8 +1339,9 @@
     let openPanelId = null;            // which agent's chat panel is open (or null)
     let cardCounter = 0;               // for staggered placement
 
-    // ── Persist conversations in localStorage ──
-    function saveConversations() {
+    // ── Persist conversations in localStorage (debounced) ──
+    let saveTimeout;
+    function flushConversations() {
       const data = {};
       conversationMap.forEach((msgs, id) => {
         const card = agentCards.get(id);
@@ -1354,6 +1355,14 @@
       });
       localStorage.setItem('wb-conversations', JSON.stringify(data));
     }
+    function saveConversations() {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(flushConversations, 500);
+    }
+    window.addEventListener('beforeunload', () => {
+      clearTimeout(saveTimeout);
+      flushConversations();
+    });
 
     function loadConversations() {
       try {
