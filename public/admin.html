@@ -7,7 +7,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root { --bg: #000; --fg: #fff; --dim: #555; --border: #333; --surface: #111; --surface-dim: #1a1a1a; }
-    [data-theme="light"] { --bg: #fff; --fg: #000; --dim: #777; --border: #ccc; --surface: #f0f0f0; --surface-dim: #e5e5e5; }
+    [data-theme="light"] { --bg: #fff; --fg: #111; --dim: #555; --border: #d4d4d4; --surface: #f0f0f0; --surface-dim: #e5e5e5; }
 
     /* ── Hide scrollbars globally (match main app) ── */
     * { scrollbar-width: none; }
@@ -436,7 +436,7 @@
       margin-bottom: 40px;
       padding-bottom: 20px;
       border-bottom: 1px solid transparent;
-      transition: border-color 0.3s ease;
+      transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     [data-theme="light"] .top-bar {
       border-bottom-color: var(--border);
@@ -576,7 +576,7 @@
     .bar-bg,
     .tag,
     .nav-indicator {
-      transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+      transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     /* ── Responsive ── */
