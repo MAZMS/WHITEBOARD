@@ -18,9 +18,9 @@
 
     [data-theme="light"] {
       --bg: #fff;
-      --fg: #000;
-      --dim: #777;
-      --border: #ccc;
+      --fg: #111;
+      --dim: #555;
+      --border: #d4d4d4;
       --surface: #f0f0f0;
       --grid-dot: #e8e8e8;
     }
@@ -77,6 +77,9 @@
       opacity: 1;
       pointer-events: auto;
     }
+    [data-theme="light"] #command-backdrop {
+      background: rgba(0,0,0,0.25);
+    }
 
     /* ── Command bar ── */
     #command-bar {
@@ -101,6 +104,9 @@
     #command-bar.visible {
       transform: translateX(-50%) translateY(0) scale(1);
       opacity: 1;
+    }
+    [data-theme="light"] #command-bar {
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
     #command-bar .prefix {
       color: var(--dim);
@@ -158,7 +164,7 @@
       opacity: 1;
     }
     [data-theme="light"] .agent-contact-card.active {
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      box-shadow: 0 0 15px rgba(0,0,0,0.08);
     }
     /* Dim inactive cards when any chat is open */
     .agent-contact-card.inactive {
@@ -273,6 +279,10 @@
       animation: panelSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       box-shadow: -4px 0 30px rgba(0,0,0,0.15);
     }
+    [data-theme="light"] .agent-chat-panel {
+      border-left: 1px solid #c0c0c0;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+    }
     .agent-chat-panel.dismissing {
       animation: panelSlideOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
@@ -375,6 +385,10 @@
       color: var(--dim);
       border-radius: 18px 18px 18px 4px;
     }
+    [data-theme="light"] .msg-agent {
+      background: #e8e8e8;
+      color: #222;
+    }
     .msg-user {
       background: var(--fg);
       color: var(--bg);
@@ -404,6 +418,9 @@
       border-radius: 50%;
       background: var(--dim);
       animation: typingBounce 0.6s infinite ease-in-out;
+    }
+    [data-theme="light"] .typing-indicator .typing-dot {
+      background: #333;
     }
     .typing-indicator .typing-dot:nth-child(2) {
       animation-delay: 0.15s;
@@ -558,6 +575,9 @@
       user-select: none;
       animation: agentAppear 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+    [data-theme="light"] .sticky-note {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
     .sticky-note:active { cursor: grabbing; }
     .sticky-note textarea {
       width: 100%;
@@ -610,6 +630,9 @@
     #toast.show {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
+    }
+    [data-theme="light"] #toast {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
     }
 
     /* ── Animations ── */
@@ -808,6 +831,9 @@
       display: none;
     }
     #help-panel.visible { display: block; animation: agentAppear 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    [data-theme="light"] #help-panel {
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
     #help-panel h3 { color: var(--fg); font-size: 13px; margin-bottom: 8px; letter-spacing: 1px; }
     #help-panel kbd {
       background: var(--surface);
@@ -951,7 +977,7 @@
     <div><kbd>M</kbd> &mdash; move mode</div>
     <div><kbd>E</kbd> &mdash; eraser</div>
     <div><kbd>Esc</kbd> &mdash; close / cancel</div>
-    <div><kbd>C</kbd> &mdash; clear board</div>
+    <div><kbd>Ctrl+Shift+C</kbd> &mdash; clear board</div>
     <h3 style="margin-top:12px;">AGENTS</h3>
     <div>Describe your goal — AI picks the best agent</div>
     <div id="agent-list-help" style="margin-top:4px;color:var(--dim);font-size:11px;line-height:1.8;"></div>
@@ -1123,6 +1149,13 @@
       if (!started) return;
       if (commandOpen) return;
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+
+      // Ctrl+Shift+C — clear board
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyC') {
+        e.preventDefault();
+        clearBoard();
+        return;
+      }
 
       switch (e.code) {
         case 'Space':
