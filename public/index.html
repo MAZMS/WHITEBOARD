@@ -31,6 +31,8 @@
     .theme-card { background: var(--bg-card) !important; }
     .glow { box-shadow: 0 0 0 1px rgba(200,184,138,0.1); }
     .glow:hover { box-shadow: 0 0 20px rgba(200,184,138,0.08), 0 0 0 1px rgba(200,184,138,0.2); }
+    @keyframes acFadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .ac-fade { animation: acFadeIn 0.15s ease-out both; }
     @keyframes shimmer {
       0% { background-position: -200% 0; }
       100% { background-position: 200% 0; }
@@ -191,9 +193,49 @@
           type="search"
           x-ref="searchInput"
           x-model="q"
+          @input="onAutocompleteInput()"
+          @keydown.arrow-down.prevent="acMoveDown()"
+          @keydown.arrow-up.prevent="acMoveUp()"
+          @keydown.enter="onSearchEnter()"
+          @keydown.escape="closeAutocomplete()"
+          @focus="if (acResults.length) acOpen = true"
           placeholder="Search blueprints...  ( / )"
           class="w-full bg-white/5 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#c8b88a]/40 focus:ring-1 focus:ring-[#c8b88a]/20 transition-all"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls="ac-listbox"
+          :aria-expanded="acOpen"
         />
+        <!-- Autocomplete dropdown -->
+        <div
+          x-show="acOpen && acResults.length > 0"
+          x-cloak
+          @click.outside="closeAutocomplete()"
+          class="absolute left-0 right-0 top-full mt-1 bg-[#111] border border-white/10 rounded-lg overflow-hidden z-50 ac-fade"
+          id="ac-listbox"
+          role="listbox"
+        >
+          <template x-for="(item, idx) in acResults" :key="item.slug">
+            <a
+              :href="'/blueprint.html?slug=' + item.slug"
+              @mouseenter="acIndex = idx"
+              @click="closeAutocomplete()"
+              class="flex items-center justify-between py-2 px-4 text-sm text-white cursor-pointer transition-colors"
+              :class="acIndex === idx ? 'bg-white/5' : 'hover:bg-white/5'"
+              role="option"
+              :aria-selected="acIndex === idx"
+            >
+              <div class="flex flex-col min-w-0">
+                <span class="truncate font-medium" x-text="item.name"></span>
+                <span class="text-xs text-white/30 truncate" x-text="item.creator?.username ? '@' + item.creator.username : ''"></span>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0 ml-3">
+                <div class="w-1.5 h-1.5 rounded-full" :class="item.stability >= 97 ? 'bg-emerald-400' : item.stability >= 93 ? 'bg-amber-400' : 'bg-red-400'"></div>
+                <span class="text-xs text-white/40" x-text="item.stability + '%'"></span>
+              </div>
+            </a>
+          </template>
+        </div>
       </div>
       <select
         x-model="sort"
@@ -214,16 +256,24 @@
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"/></svg>
         Compare
       </button>
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap">
         <button
-          @click="tag = ''"
-          :class="tag === '' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/50 hover:text-white'"
+          @click="tag = ''; showFavoritesOnly = false"
+          :class="tag === '' && !showFavoritesOnly ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/50 hover:text-white'"
           class="px-4 py-2 rounded-lg text-xs font-medium transition-all"
         >All</button>
+        <button
+          @click="showFavoritesOnly = !showFavoritesOnly; if (showFavoritesOnly) tag = ''"
+          :class="showFavoritesOnly ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/50 hover:text-white'"
+          class="px-4 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5"
+        >
+          <svg class="w-3.5 h-3.5" :class="showFavoritesOnly ? 'text-[#0a0a0a]' : ''" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <span x-text="'Favorites (' + favCount + ')'"></span>
+        </button>
         <template x-for="t in tags" :key="t">
           <button
-            @click="tag = t"
-            :class="tag === t ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/50 hover:text-white'"
+            @click="tag = t; showFavoritesOnly = false"
+            :class="tag === t && !showFavoritesOnly ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/50 hover:text-white'"
             class="px-4 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap"
             x-text="t"
           ></button>
@@ -282,12 +332,27 @@
               <svg x-show="compareSlugs.includes(bp.slug)" class="w-3.5 h-3.5 text-[#0a0a0a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
             </div>
           </div>
+          <!-- Bookmark Button -->
+          <button
+            x-show="!compareMode"
+            x-transition
+            class="absolute top-3 right-3 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            :class="isFavorite(bp.slug) ? 'text-[#c8b88a] hover:text-[#d4c494]' : 'text-white/20 hover:text-white/50 hover:bg-white/5'"
+            @click.stop="toggleFavorite(bp.slug); favCount = getFavorites().length"
+            :title="isFavorite(bp.slug) ? 'Remove from favorites' : 'Add to favorites'"
+            aria-label="Toggle favorite"
+          >
+            <!-- Filled heart (favorited) -->
+            <svg x-show="isFavorite(bp.slug)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            <!-- Outline heart (not favorited) -->
+            <svg x-show="!isFavorite(bp.slug)" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
           <!-- Header -->
           <div class="flex items-start justify-between mb-4">
             <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center">
               <span class="text-[#c8b88a] text-lg" x-text="bp.name.charAt(0)"></span>
             </div>
-            <div class="flex items-center gap-1.5" :class="compareMode ? 'mr-8' : ''">
+            <div class="flex items-center gap-1.5" :class="compareMode ? 'mr-8' : 'mr-6'">
               <div class="w-1.5 h-1.5 rounded-full" :class="bp.stability >= 97 ? 'bg-emerald-400' : bp.stability >= 93 ? 'bg-amber-400' : 'bg-red-400'"></div>
               <span class="text-xs text-white/40" x-text="bp.stability + '%'"></span>
             </div>
@@ -566,6 +631,7 @@
           <span class="text-white/20 font-medium uppercase tracking-wider">Resources</span>
           <div class="mt-2 flex flex-col gap-1.5">
             <a href="/docs.html" class="text-white/40 hover:text-white/60 transition-colors">Docs</a>
+            <a href="/api.html" class="text-white/40 hover:text-white/60 transition-colors">API</a>
             <a href="/status.html" class="text-white/40 hover:text-white/60 transition-colors">Status</a>
             <a href="https://github.com/MAZMS/greatlibraryai" target="_blank" rel="noopener" class="text-white/40 hover:text-white/60 transition-colors">GitHub</a>
           </div>
@@ -578,6 +644,23 @@
   </footer>
 
   <script>
+    // ── Favorites helpers (localStorage) ──
+    function getFavorites() {
+      try { return JSON.parse(localStorage.getItem('gl_favorites')) || []; }
+      catch { return []; }
+    }
+    function isFavorite(slug) {
+      return getFavorites().includes(slug);
+    }
+    function toggleFavorite(slug) {
+      const favs = getFavorites();
+      const idx = favs.indexOf(slug);
+      if (idx > -1) { favs.splice(idx, 1); } else { favs.push(slug); }
+      localStorage.setItem('gl_favorites', JSON.stringify(favs));
+      window.dispatchEvent(new CustomEvent('favorites-changed'));
+      return idx === -1; // returns true if now favorited
+    }
+
     function themeToggle() {
       return {
         theme: localStorage.getItem('gl_theme') || 'dark',
@@ -608,12 +691,23 @@
         compareMode: false,
         compareSlugs: [],
         tags: [],
+        showFavoritesOnly: false,
+        favCount: getFavorites().length,
+        // Autocomplete state
+        acOpen: false,
+        acResults: [],
+        acIndex: -1,
+        acTimer: null,
         async init() {
           try {
             this.bps = await (await fetch('/api/blueprints')).json();
           } catch { this.bps = []; }
           this.buildTags();
           this.loading = false;
+          this.favCount = getFavorites().length;
+          window.addEventListener('favorites-changed', () => {
+            this.favCount = getFavorites().length;
+          });
           this.$watch('q', () => {
             clearTimeout(this.searchTimer);
             this.searchTimer = setTimeout(() => this.search(), 300);
@@ -650,6 +744,10 @@
         },
         filtered() {
           let items = this.bps;
+          if (this.showFavoritesOnly) {
+            const favs = getFavorites();
+            items = items.filter(b => favs.includes(b.slug));
+          }
           if (this.tag) {
             items = items.filter(b => (b.tags || []).includes(this.tag));
           }
@@ -679,6 +777,52 @@
         deploy(bp) {
           this.selected = null;
           window.location.href = '/workspace.html?deploy=' + bp.slug;
+        },
+        // -- Autocomplete methods --
+        onAutocompleteInput() {
+          clearTimeout(this.acTimer);
+          const val = this.q.trim();
+          if (val.length < 2) {
+            this.acOpen = false;
+            this.acResults = [];
+            this.acIndex = -1;
+            return;
+          }
+          this.acTimer = setTimeout(async () => {
+            try {
+              const res = await fetch('/api/blueprints/search?q=' + encodeURIComponent(val));
+              const data = await res.json();
+              this.acResults = (Array.isArray(data) ? data : []).slice(0, 5);
+              this.acIndex = -1;
+              this.acOpen = this.acResults.length > 0;
+            } catch {
+              this.acResults = [];
+              this.acOpen = false;
+            }
+          }, 200);
+        },
+        closeAutocomplete() {
+          this.acOpen = false;
+          this.acIndex = -1;
+        },
+        acMoveDown() {
+          if (!this.acOpen || !this.acResults.length) return;
+          this.acIndex = (this.acIndex + 1) % this.acResults.length;
+        },
+        acMoveUp() {
+          if (!this.acOpen || !this.acResults.length) return;
+          this.acIndex = this.acIndex <= 0 ? this.acResults.length - 1 : this.acIndex - 1;
+        },
+        onSearchEnter(e) {
+          if (this.acOpen && this.acIndex >= 0 && this.acIndex < this.acResults.length) {
+            e.preventDefault();
+            const item = this.acResults[this.acIndex];
+            this.closeAutocomplete();
+            window.location.href = '/blueprint.html?slug=' + item.slug;
+          } else {
+            // Default: full grid search (handled by existing $watch on q)
+            this.closeAutocomplete();
+          }
         },
         toggleCompare(slug) {
           const idx = this.compareSlugs.indexOf(slug);
@@ -740,6 +884,7 @@
       if (e.key === 'Escape') {
         const storeData = Alpine.$data(document.querySelector('[x-data*="store()"]'));
         if (!storeData) return;
+        if (storeData.acOpen) { storeData.closeAutocomplete(); return; }
         if (storeData.selected) { storeData.selected = null; return; }
         if (storeData.q) { storeData.q = ''; }
         storeData.compareMode = false;

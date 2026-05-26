@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Blueprint — GreatLibrary</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
@@ -46,8 +48,9 @@
       <!-- Desktop links -->
       <div class="hidden md:flex items-center gap-6 text-sm text-white/50">
         <a href="/" class="hover:text-white transition-colors">Store</a>
-        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace</a>
+        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace <span class="text-[#c8b88a] text-[10px]">(soon)</span></a>
         <a href="/docs.html" class="hover:text-white transition-colors">Docs</a>
+        <a href="/api.html" class="hover:text-white transition-colors">API</a>
         <a href="/admin.html" class="hover:text-white transition-colors">Admin</a>
         <a href="/invest.html" class="hover:text-[#c8b88a] transition-colors">Investors</a>
       </div>
@@ -73,8 +76,9 @@
     >
       <div class="max-w-6xl mx-auto px-6 py-2 flex flex-col">
         <a href="/" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Store</a>
-        <a href="/workspace.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Workspace</a>
+        <a href="/workspace.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Workspace <span class="text-[#c8b88a] text-[10px]">(soon)</span></a>
         <a href="/docs.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Docs</a>
+        <a href="/api.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">API</a>
         <a href="/admin.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Admin</a>
         <a href="/invest.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Investors</a>
       </div>
@@ -167,7 +171,21 @@
             <span class="text-[#c8b88a] text-2xl" x-text="bp.name.charAt(0)"></span>
           </div>
           <div class="flex-1 min-w-0">
-            <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-white leading-tight" style="font-family: Georgia, 'Times New Roman', serif;" x-text="bp.name"></h1>
+            <div class="flex items-center gap-3">
+              <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-white leading-tight" style="font-family: Georgia, 'Times New Roman', serif;" x-text="bp.name"></h1>
+              <button
+                @click="toggleFavorite(bp.slug); bookmarked = isFavorite(bp.slug)"
+                class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all"
+                :class="bookmarked ? 'text-[#c8b88a] hover:text-[#d4c494] bg-[#c8b88a]/10' : 'text-white/20 hover:text-white/50 hover:bg-white/5'"
+                :title="bookmarked ? 'Remove from favorites' : 'Add to favorites'"
+                aria-label="Toggle favorite"
+              >
+                <!-- Filled heart (favorited) -->
+                <svg x-show="bookmarked" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <!-- Outline heart (not favorited) -->
+                <svg x-show="!bookmarked" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+              </button>
+            </div>
             <p class="text-white/40 text-sm mt-2">
               by
               <a x-show="bp.creator?.username" :href="'/creator.html?username=' + bp.creator?.username" class="text-[#c8b88a] hover:text-[#d4c494] transition-colors" x-text="bp.creator?.username"></a>
@@ -383,6 +401,7 @@
           <span class="text-white/20 font-medium uppercase tracking-wider">Resources</span>
           <div class="mt-2 flex flex-col gap-1.5">
             <a href="/docs.html" class="text-white/40 hover:text-white/60 transition-colors">Docs</a>
+            <a href="/api.html" class="text-white/40 hover:text-white/60 transition-colors">API</a>
             <a href="/status.html" class="text-white/40 hover:text-white/60 transition-colors">Status</a>
             <a href="https://github.com/MAZMS/greatlibraryai" target="_blank" rel="noopener" class="text-white/40 hover:text-white/60 transition-colors">GitHub</a>
           </div>
@@ -395,11 +414,28 @@
   </footer>
 
   <script>
+    // ── Favorites helpers (localStorage) ──
+    function getFavorites() {
+      try { return JSON.parse(localStorage.getItem('gl_favorites')) || []; }
+      catch { return []; }
+    }
+    function isFavorite(slug) {
+      return getFavorites().includes(slug);
+    }
+    function toggleFavorite(slug) {
+      const favs = getFavorites();
+      const idx = favs.indexOf(slug);
+      if (idx > -1) { favs.splice(idx, 1); } else { favs.push(slug); }
+      localStorage.setItem('gl_favorites', JSON.stringify(favs));
+      return idx === -1;
+    }
+
     function blueprintDetail() {
       return {
         bp: null,
         loading: true,
         notFound: false,
+        bookmarked: false,
         activeTab: 'overview',
         allBlueprints: [],
         similarBlueprints: [],
@@ -443,6 +479,7 @@
             }
             this.bp = await res.json();
             document.title = this.bp.name + ' \u2014 GreatLibrary';
+            this.bookmarked = isFavorite(this.bp.slug);
             this.howItWorks = this.generateHowItWorks();
             this.fetchSimilar(slug);
           } catch {
