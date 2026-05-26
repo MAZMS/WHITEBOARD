@@ -1,57 +1,14 @@
 {
-  "name": "greatlibrary-core",
+  "name": "greatlibraryai",
   "version": "1.0.0",
-  "description": "Multi-tenant SaaS marketplace for Claude Code agent blueprints",
-  "main": "dist/server.js",
-  "bin": {
-    "greatlibrary": "dist/cli/index.js"
-  },
+  "description": "Whiteboard agent system powered by OpenAI",
+  "main": "server.js",
   "scripts": {
-    "postinstall": "prisma generate --schema=prisma-admin/schema.prisma && prisma generate --schema=prisma-tenant/schema.prisma",
-    "build": "tsc",
-    "dev": "ts-node src/server.ts",
-    "start": "prisma db push --schema=prisma-admin/schema.prisma --skip-generate --accept-data-loss && node dist/server.js",
-    "test": "jest --forceExit --detectOpenHandles",
-    "lint": "eslint src/ tests/ --ext .ts",
-    "typecheck": "tsc --noEmit",
-    "prisma:tenant:generate": "prisma generate --schema=prisma-tenant/schema.prisma",
-    "prisma:admin:generate": "prisma generate --schema=prisma-admin/schema.prisma",
-    "prisma:tenant:migrate": "prisma migrate dev --schema=prisma-tenant/schema.prisma",
-    "prisma:admin:migrate": "prisma migrate dev --schema=prisma-admin/schema.prisma",
-    "reconcile-feedback": "ts-node scripts/reconcile-feedback.ts",
-    "seed": "ts-node scripts/seed.ts"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "dependencies": {
-    "@auth/express": "^0.7.0",
-    "@auth/prisma-adapter": "^2.7.0",
-    "@lemonsqueezy/lemonsqueezy.js": "^4.0.0",
-    "@octokit/rest": "^21.1.0",
-    "@prisma/client": "^5.20.0",
-    "axios": "^1.7.0",
-    "commander": "^12.1.0",
-    "dockerode": "^4.0.0",
-    "express": "^4.19.0",
-    "jsonwebtoken": "^9.0.0",
-    "next-auth": "^4.24.0",
-    "openai": "^4.70.0",
-    "simple-git": "^3.27.0"
-  },
-  "devDependencies": {
-    "@types/dockerode": "^3.3.0",
-    "@types/express": "^4.17.0",
-    "@types/jest": "^29.5.0",
-    "@types/jsonwebtoken": "^9.0.0",
-    "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "eslint": "^8.57.0",
-    "jest": "^29.7.0",
-    "prisma": "^5.20.0",
-    "ts-jest": "^29.2.0",
-    "ts-node": "^10.9.0",
-    "typescript": "^5.6.0"
-  },
-  "engines": {
-    "node": ">=20.0.0"
+    "express": "^4.21.0",
+    "openai": "^4.73.0"
   }
 }

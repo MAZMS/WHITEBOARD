@@ -1,1151 +1,782 @@
-<!doctype html>
-<html lang="en" class="bg-[#0a0a0a]" style="--bg-primary:#0a0a0a;--bg-card:rgba(255,255,255,0.03);">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>GreatLibrary — Deployable Agent Blueprints</title>
-  <meta name="description" content="A curated library of production-ready Claude Code agent blueprints. Browse, deploy, and run autonomous agents in seconds." />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <meta property="og:site_name" content="GreatLibrary" />
-  <meta property="og:title" content="GreatLibrary — Deployable Agent Blueprints" />
-  <meta property="og:description" content="A curated library of production-ready Claude Code agent blueprints. Browse, deploy, and run autonomous agents in seconds." />
-  <meta property="og:image" content="https://greatlibrary.ai/favicon.svg" />
-  <meta name="theme-color" content="#0a0a0a" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Whiteboard — Agent System</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-    h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; }
-    [x-cloak] { display: none !important; }
-    html { scrollbar-width: none; }
-    html::-webkit-scrollbar { display: none; }
-    .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
-    .hide-scrollbar::-webkit-scrollbar { display: none; }
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    .fade-up { animation: fadeUp 0.5s ease-out both; }
-    .fade-up-d1 { animation-delay: 0.05s; }
-    .fade-up-d2 { animation-delay: 0.1s; }
-    .fade-up-d3 { animation-delay: 0.15s; }
-    @keyframes pulse-gold { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
-    .theme-card { background: var(--bg-card) !important; }
-    .glow { box-shadow: 0 0 0 1px rgba(200,184,138,0.1); }
-    .glow:hover { box-shadow: 0 0 20px rgba(200,184,138,0.08), 0 0 0 1px rgba(200,184,138,0.2); }
-    @keyframes acFadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-    .ac-fade { animation: acFadeIn 0.15s ease-out both; }
-    @keyframes shimmer {
-      0% { background-position: -200% 0; }
-      100% { background-position: 200% 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #000;
+      --fg: #fff;
+      --dim: #555;
+      --border: #333;
     }
-    .skeleton {
-      background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      border-radius: 0.5rem;
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      cursor: crosshair;
     }
-    /* Onboarding tour */
-    @keyframes tourFadeIn {
-      from { opacity: 0; transform: translateY(8px); }
+
+    /* ── Canvas ── */
+    #canvas {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    /* ── Grid overlay ── */
+    #grid {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        radial-gradient(circle, #1a1a1a 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    /* ── Command bar ── */
+    #command-bar {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px 20px;
+      min-width: 500px;
+      max-width: 700px;
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 40px rgba(255,255,255,0.05);
+    }
+    #command-bar.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    #command-bar .prefix {
+      color: var(--dim);
+      font-size: 14px;
+      user-select: none;
+      white-space: nowrap;
+    }
+    #command-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--fg);
+      font-family: inherit;
+      font-size: 16px;
+      caret-color: #fff;
+    }
+    #command-input::placeholder {
+      color: #444;
+    }
+    #command-bar .hint {
+      color: #333;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    /* ── Agent cards ── */
+    .agent-card {
+      position: absolute;
+      z-index: 50;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      min-width: 280px;
+      max-width: 360px;
+      cursor: grab;
+      user-select: none;
+      animation: agentAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      box-shadow: 0 0 30px rgba(255,255,255,0.03);
+    }
+    .agent-card:active { cursor: grabbing; }
+    .agent-card .agent-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .agent-card .agent-name {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .agent-card .agent-status {
+      font-size: 11px;
+      color: var(--dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .agent-card .agent-status .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--fg);
+      animation: pulse 1.5s infinite;
+    }
+    .agent-card .agent-body {
+      font-size: 13px;
+      color: #aaa;
+      line-height: 1.6;
+      min-height: 40px;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      scrollbar-width: none;
+    }
+    .agent-card .agent-body::-webkit-scrollbar { display: none; }
+    .agent-card .agent-input-row {
+      margin-top: 12px;
+      display: flex;
+      gap: 6px;
+    }
+    .agent-card .agent-input-row input {
+      flex: 1;
+      background: #111;
+      border: 1px solid var(--border);
+      color: var(--fg);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      outline: none;
+    }
+    .agent-card .agent-input-row input::placeholder { color: #444; }
+    .agent-card .agent-input-row button {
+      background: var(--fg);
+      border: none;
+      color: var(--bg);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    .agent-card .agent-input-row button:hover { opacity: 0.8; }
+    .agent-card .agent-input-row button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .agent-card .agent-model {
+      font-size: 10px;
+      color: #333;
+      margin-top: 6px;
+      text-align: right;
+    }
+    .agent-card .close-btn {
+      background: none;
+      border: none;
+      color: var(--dim);
+      font-size: 18px;
+      cursor: pointer;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+    .agent-card .close-btn:hover { color: var(--fg); }
+
+    /* ── Drawing lines ── */
+    .draw-line {
+      position: absolute;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      gap: 2px;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px;
+    }
+    .tool-btn {
+      background: none;
+      border: 1px solid transparent;
+      color: var(--dim);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tool-btn:hover { color: var(--fg); }
+    .tool-btn.active {
+      color: var(--fg);
+      border-color: var(--border);
+      background: #111;
+    }
+
+    /* ── Sticky notes ── */
+    .sticky-note {
+      position: absolute;
+      z-index: 40;
+      background: #111;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      min-width: 180px;
+      min-height: 100px;
+      cursor: grab;
+      user-select: none;
+      animation: agentAppear 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .sticky-note:active { cursor: grabbing; }
+    .sticky-note textarea {
+      width: 100%;
+      min-height: 60px;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--fg);
+      font-family: inherit;
+      font-size: 13px;
+      resize: none;
+      line-height: 1.5;
+    }
+    .sticky-note .close-btn {
+      position: absolute;
+      top: 6px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: var(--dim);
+      font-size: 16px;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .sticky-note .close-btn:hover { color: var(--fg); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      z-index: 200;
+      background: #111;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 13px;
+      color: var(--dim);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Animations ── */
+    @keyframes agentAppear {
+      from {
+        opacity: 0;
+        transform: scale(0.8) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── Splashscreen ── */
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.6s ease;
+    }
+    #splash.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #splash h1 {
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      animation: fadeUp 0.8s ease forwards;
+    }
+    #splash p {
+      font-size: 13px;
+      color: var(--dim);
+      letter-spacing: 2px;
+      animation: fadeUp 0.8s 0.2s ease forwards;
+      opacity: 0;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .tour-tooltip { animation: tourFadeIn 0.25s ease-out both; }
-    @keyframes tourPulseRing {
-      0% { box-shadow: 0 0 0 0 rgba(200,184,138,0.4); }
-      70% { box-shadow: 0 0 0 10px rgba(200,184,138,0); }
-      100% { box-shadow: 0 0 0 0 rgba(200,184,138,0); }
+
+    /* ── Help panel ── */
+    #help-panel {
+      position: fixed;
+      right: 20px;
+      top: 80px;
+      z-index: 100;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      width: 260px;
+      font-size: 12px;
+      color: var(--dim);
+      line-height: 2;
+      display: none;
     }
-    .tour-ring { animation: tourPulseRing 1.5s ease-out infinite; }
+    #help-panel.visible { display: block; animation: agentAppear 0.3s ease forwards; }
+    #help-panel h3 { color: var(--fg); font-size: 13px; margin-bottom: 8px; letter-spacing: 1px; }
+    #help-panel kbd {
+      background: #111;
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px;
+      color: var(--fg);
+    }
   </style>
-  <script>
-    // Apply saved theme before first paint to prevent flash
-    (function() {
-      var t = localStorage.getItem('gl_theme') || 'dark';
-      var h = document.documentElement;
-      if (t === 'dim') {
-        h.style.setProperty('--bg-primary', '#1a1a2e');
-        h.style.setProperty('--bg-card', 'rgba(255,255,255,0.05)');
-      }
-    })();
-  </script>
 </head>
-<body class="text-white/90 min-h-screen overflow-x-hidden" style="background:var(--bg-primary)">
+<body>
 
-  <!-- Nav -->
-  <nav class="border-b border-white/5 backdrop-blur-sm sticky top-0 z-40" style="background:color-mix(in srgb, var(--bg-primary) 80%, transparent)" x-data="{ mobileOpen: false }">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center text-[#0a0a0a] font-bold text-sm">GL</div>
-        <span class="text-lg font-semibold tracking-tight text-white">GreatLibrary</span>
-      </a>
-      <!-- Desktop links -->
-      <div class="hidden md:flex items-center gap-6 text-sm text-white/50">
-        <a href="/" class="text-white">Store</a>
-        <a href="/explore.html" class="hover:text-white transition-colors">Explore</a>
-        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace <span class="text-[#c8b88a] text-[10px]">(soon)</span></a>
-        <a href="/docs.html" class="hover:text-white transition-colors">Docs</a>
-        <a href="/api.html" class="hover:text-white transition-colors">API</a>
-        <a href="/admin.html" class="hover:text-white transition-colors">Admin</a>
-        <a href="/invest.html" class="hover:text-[#c8b88a] transition-colors">Investors</a>
-      </div>
-      <!-- Theme toggle + Hamburger -->
-      <div class="flex items-center gap-2">
-        <button
-          x-data="themeToggle()"
-          @click="toggle()"
-          class="w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/5 transition-all"
-          :title="theme === 'dark' ? 'Switch to dim theme' : 'Switch to dark theme'"
-          aria-label="Toggle theme"
-        >
-          <!-- Moon icon (shown in dark mode — click to go dim) -->
-          <svg x-show="theme === 'dark'" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>
-          <!-- Sun icon (shown in dim mode — click to go dark) -->
-          <svg x-show="theme === 'dim'" x-cloak class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path stroke-linecap="round" d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.73 12.73l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-        </button>
-      <!-- Hamburger button -->
-      <button @click="mobileOpen = !mobileOpen" class="md:hidden flex flex-col justify-center items-center w-8 h-8 gap-1.5 group" aria-label="Toggle menu">
-        <span class="block w-5 h-0.5 bg-white/50 group-hover:bg-white transition-colors"></span>
-        <span class="block w-5 h-0.5 bg-white/50 group-hover:bg-white transition-colors"></span>
-        <span class="block w-5 h-0.5 bg-white/50 group-hover:bg-white transition-colors"></span>
-      </button>
-      </div>
-    </div>
-    <!-- Mobile menu panel -->
-    <div
-      x-show="mobileOpen"
-      x-transition:enter="transition ease-out duration-200"
-      x-transition:enter-start="opacity-0 -translate-y-2"
-      x-transition:enter-end="opacity-100 translate-y-0"
-      x-transition:leave="transition ease-in duration-150"
-      x-transition:leave-start="opacity-100 translate-y-0"
-      x-transition:leave-end="opacity-0 -translate-y-2"
-      @click.outside="mobileOpen = false"
-      x-cloak
-      class="md:hidden border-b border-white/5" style="background:var(--bg-primary)"
-    >
-      <div class="max-w-6xl mx-auto px-6 py-2 flex flex-col">
-        <a href="/" @click="mobileOpen = false" class="text-white py-3 text-sm transition-colors">Store</a>
-        <a href="/explore.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Explore</a>
-        <a href="/workspace.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Workspace <span class="text-[#c8b88a] text-[10px]">(soon)</span></a>
-        <a href="/docs.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Docs</a>
-        <a href="/api.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">API</a>
-        <a href="/admin.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Admin</a>
-        <a href="/invest.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Investors</a>
-      </div>
-    </div>
-  </nav>
-
-  <main x-data="store()" class="max-w-6xl mx-auto px-6">
-
-    <!-- Hero -->
-    <section class="pt-20 pb-16 fade-up">
-      <p class="text-[#c8b88a] text-sm font-medium tracking-widest uppercase mb-4">Agent Marketplace</p>
-      <h1 class="text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] text-white max-w-3xl">
-        A library of<br/>deployable agents.
-      </h1>
-      <p class="text-white/40 text-lg mt-6 max-w-xl leading-relaxed">
-        Production-ready Claude Code blueprints. Browse, deploy, and run
-        autonomous agents on your codebase in seconds.
-      </p>
-    </section>
-
-    <!-- Trending Blueprints -->
-    <section x-show="trending().length > 0" class="mb-12 fade-up fade-up-d1">
-      <p class="text-xs text-white/30 uppercase tracking-widest font-medium mb-4">Trending Now</p>
-      <div class="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
-        <template x-for="bp in trending()" :key="bp.id">
-          <a
-            :href="'/blueprint.html?slug=' + bp.slug"
-            class="flex items-center gap-3 bg-white/[0.03] theme-card border border-white/5 rounded-full px-4 py-2.5 hover:bg-white/[0.06] hover:border-[#c8b88a]/20 transition-all group shrink-0 cursor-pointer"
-          >
-            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center shrink-0">
-              <span class="text-[#c8b88a] text-xs font-semibold" x-text="bp.name.charAt(0)"></span>
-            </div>
-            <span class="text-sm text-white/80 font-medium whitespace-nowrap group-hover:text-white transition-colors" x-text="bp.name"></span>
-            <span class="text-[11px] text-[#c8b88a]/70 bg-[#c8b88a]/10 px-2 py-0.5 rounded-full whitespace-nowrap font-medium" x-text="bp.activeRuns.toLocaleString() + ' runs'"></span>
-            <svg class="w-3.5 h-3.5 text-white/20 group-hover:text-[#c8b88a] transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </a>
-        </template>
-      </div>
-    </section>
-
-    <!-- Platform Stats -->
-    <section class="mb-12 fade-up fade-up-d2">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <!-- Total Blueprints -->
-        <div class="bg-white/[0.03] theme-card border border-white/5 rounded-xl p-5">
-          <p class="text-xs text-white/30 uppercase tracking-wider font-medium mb-2">Blueprints</p>
-          <p class="text-2xl font-bold text-white" x-text="bps.length"></p>
-        </div>
-        <!-- Active Runs -->
-        <div class="bg-white/[0.03] theme-card border border-white/5 rounded-xl p-5">
-          <p class="text-xs text-white/30 uppercase tracking-wider font-medium mb-2">Active Runs</p>
-          <p class="text-2xl font-bold text-white" x-text="bps.reduce((s,b) => s + b.activeRuns, 0).toLocaleString()"></p>
-        </div>
-        <!-- Creators -->
-        <div class="bg-white/[0.03] theme-card border border-white/5 rounded-xl p-5">
-          <p class="text-xs text-white/30 uppercase tracking-wider font-medium mb-2">Creators</p>
-          <p class="text-2xl font-bold text-white" x-text="new Set(bps.map(b => b.creatorId)).size"></p>
-        </div>
-        <!-- Avg. Stability -->
-        <div class="bg-white/[0.03] theme-card border border-white/5 rounded-xl p-5">
-          <p class="text-xs text-white/30 uppercase tracking-wider font-medium mb-2">Avg. Stability</p>
-          <div class="flex items-center gap-2">
-            <p class="text-2xl font-bold" :class="avgStability() >= 95 ? 'text-emerald-400' : 'text-amber-400'" x-text="avgStability() + '%'"></p>
-            <div class="w-2 h-2 rounded-full" :class="avgStability() >= 95 ? 'bg-emerald-400' : 'bg-amber-400'"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Search + Filter -->
-    <div class="flex flex-col sm:flex-row gap-3 mb-10 fade-up fade-up-d1">
-      <div id="tour-search" class="relative flex-1">
-        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
-        <input
-          type="search"
-          x-ref="searchInput"
-          x-model="q"
-          @input="onAutocompleteInput()"
-          @keydown.arrow-down.prevent="acMoveDown()"
-          @keydown.arrow-up.prevent="acMoveUp()"
-          @keydown.enter="onSearchEnter($event)"
-          @keydown.escape="closeAutocomplete()"
-          @focus="if (acResults.length) acOpen = true"
-          placeholder="Search blueprints...  ( / )"
-          class="w-full bg-white/5 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#c8b88a]/40 focus:ring-1 focus:ring-[#c8b88a]/20 transition-all"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-controls="ac-listbox"
-          :aria-expanded="acOpen"
-        />
-        <!-- Autocomplete dropdown -->
-        <div
-          x-show="acOpen && acResults.length > 0"
-          x-cloak
-          @click.outside="closeAutocomplete()"
-          class="absolute left-0 right-0 top-full mt-1 bg-[#111] border border-white/10 rounded-lg overflow-hidden z-50 ac-fade"
-          id="ac-listbox"
-          role="listbox"
-        >
-          <template x-for="(item, idx) in acResults" :key="item.slug">
-            <a
-              :href="'/blueprint.html?slug=' + item.slug"
-              @mouseenter="acIndex = idx"
-              @click="closeAutocomplete()"
-              class="flex items-center justify-between py-2 px-4 text-sm text-white cursor-pointer transition-colors"
-              :class="acIndex === idx ? 'bg-white/5' : 'hover:bg-white/5'"
-              role="option"
-              :aria-selected="acIndex === idx"
-            >
-              <div class="flex flex-col min-w-0">
-                <span class="truncate font-medium" x-text="item.name"></span>
-                <span class="text-xs text-white/30 truncate" x-text="item.creator?.username ? '@' + item.creator.username : ''"></span>
-              </div>
-              <div class="flex items-center gap-1.5 shrink-0 ml-3">
-                <div class="w-1.5 h-1.5 rounded-full" :class="item.stability >= 97 ? 'bg-emerald-400' : item.stability >= 93 ? 'bg-amber-400' : 'bg-red-400'"></div>
-                <span class="text-xs text-white/40" x-text="item.stability + '%'"></span>
-              </div>
-            </a>
-          </template>
-        </div>
-      </div>
-      <select
-        x-model="sort"
-        class="bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border-[#c8b88a]/40 focus:ring-1 focus:ring-[#c8b88a]/20 transition-all cursor-pointer"
-        style="appearance: auto;"
-      >
-        <option value="popular" class="bg-[#111]">Most Popular</option>
-        <option value="stability" class="bg-[#111]">Highest Stability</option>
-        <option value="cost" class="bg-[#111]">Lowest Cost</option>
-        <option value="newest" class="bg-[#111]">Newest</option>
-        <option value="az" class="bg-[#111]">A-Z</option>
-      </select>
-      <button
-        @click="compareMode = !compareMode; if (!compareMode) compareSlugs = []"
-        :class="compareMode ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/50 hover:text-white'"
-        class="px-4 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"/></svg>
-        Compare
-      </button>
-      <div id="tour-filters" class="flex gap-2 flex-wrap">
-        <button
-          @click="tag = ''; showFavoritesOnly = false"
-          :class="tag === '' && !showFavoritesOnly ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/50 hover:text-white'"
-          class="px-4 py-2 rounded-lg text-xs font-medium transition-all"
-        >All</button>
-        <button
-          @click="showFavoritesOnly = !showFavoritesOnly; if (showFavoritesOnly) tag = ''"
-          :class="showFavoritesOnly ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/50 hover:text-white'"
-          class="px-4 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5"
-        >
-          <svg class="w-3.5 h-3.5" :class="showFavoritesOnly ? 'text-[#0a0a0a]' : ''" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-          <span x-text="'Favorites (' + favCount + ')'"></span>
-        </button>
-        <template x-for="t in tags" :key="t">
-          <button
-            @click="tag = t; showFavoritesOnly = false"
-            :class="tag === t && !showFavoritesOnly ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/50 hover:text-white'"
-            class="px-4 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap"
-            x-text="t"
-          ></button>
-        </template>
-      </div>
-    </div>
-
-
-    <!-- Skeleton Loading State -->
-    <div x-show="loading" x-cloak class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12">
-      <template x-for="i in 6" :key="'skel-'+i">
-        <div class="bg-white/[0.03] theme-card border border-white/5 rounded-xl p-6 flex flex-col">
-          <!-- Icon placeholder -->
-          <div class="flex items-start justify-between mb-4">
-            <div class="skeleton w-10 h-10 rounded-lg"></div>
-            <div class="skeleton w-10 h-4 rounded"></div>
-          </div>
-          <!-- Title -->
-          <div class="skeleton w-3/4 h-5 mb-3"></div>
-          <!-- Description lines -->
-          <div class="skeleton w-full h-3 mb-2"></div>
-          <div class="skeleton w-5/6 h-3 mb-4"></div>
-          <!-- Permission pills -->
-          <div class="flex gap-1.5 mt-auto">
-            <div class="skeleton w-14 h-5 rounded-full"></div>
-            <div class="skeleton w-16 h-5 rounded-full"></div>
-            <div class="skeleton w-12 h-5 rounded-full"></div>
-          </div>
-          <!-- Footer -->
-          <div class="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-              <div class="skeleton w-16 h-3 rounded"></div>
-              <div class="skeleton w-14 h-3 rounded"></div>
-            </div>
-            <div class="skeleton w-12 h-3 rounded"></div>
-          </div>
-        </div>
-      </template>
-    </div>
-
-    <!-- Blueprint Grid -->
-    <div x-show="!loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12 fade-up fade-up-d3">
-      <template x-for="(bp, i) in filtered()" :key="bp.id">
-        <div :id="i === 0 ? 'tour-card' : null" class="glow bg-white/[0.03] theme-card rounded-xl p-6 flex flex-col transition-all duration-300 hover:bg-white/[0.05] group cursor-pointer relative" :class="compareSlugs.includes(bp.slug) ? 'ring-1 ring-[#c8b88a]/40' : ''" @click="compareMode ? toggleCompare(bp.slug) : (window.location.href = '/blueprint.html?slug=' + bp.slug)">
-          <!-- Compare Checkbox -->
-          <div
-            x-show="compareMode"
-            x-transition
-            class="absolute top-3 right-3 z-10"
-            @click.stop="toggleCompare(bp.slug)"
-          >
-            <div
-              class="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer"
-              :class="compareSlugs.includes(bp.slug) ? 'bg-[#c8b88a] border-[#c8b88a]' : 'border-white/20 hover:border-white/40 bg-black/40'"
-            >
-              <svg x-show="compareSlugs.includes(bp.slug)" class="w-3.5 h-3.5 text-[#0a0a0a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-            </div>
-          </div>
-          <!-- Bookmark Button -->
-          <button
-            x-show="!compareMode"
-            x-transition
-            class="absolute top-3 right-3 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all"
-            :class="isFavorite(bp.slug) ? 'text-[#c8b88a] hover:text-[#d4c494]' : 'text-white/20 hover:text-white/50 hover:bg-white/5'"
-            @click.stop="toggleFavorite(bp.slug); favCount = getFavorites().length"
-            :title="isFavorite(bp.slug) ? 'Remove from favorites' : 'Add to favorites'"
-            aria-label="Toggle favorite"
-          >
-            <!-- Filled heart (favorited) -->
-            <svg x-show="isFavorite(bp.slug)" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            <!-- Outline heart (not favorited) -->
-            <svg x-show="!isFavorite(bp.slug)" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-          </button>
-          <!-- Header -->
-          <div class="flex items-start justify-between mb-4">
-            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center">
-              <span class="text-[#c8b88a] text-lg" x-text="bp.name.charAt(0)"></span>
-            </div>
-            <div class="flex items-center gap-1.5" :class="compareMode ? 'mr-8' : 'mr-6'">
-              <div class="w-1.5 h-1.5 rounded-full" :class="bp.stability >= 97 ? 'bg-emerald-400' : bp.stability >= 93 ? 'bg-amber-400' : 'bg-red-400'"></div>
-              <span class="text-xs text-white/40" x-text="bp.stability + '%'"></span>
-            </div>
-          </div>
-
-          <!-- Name + Description -->
-          <h3 class="text-base font-semibold text-white mb-2 group-hover:text-[#c8b88a] transition-colors" style="font-family: 'Inter', sans-serif;" x-text="bp.name"></h3>
-          <p class="text-sm text-white/40 leading-relaxed flex-1 line-clamp-3" x-text="bp.description"></p>
-
-          <!-- Permissions -->
-          <div class="mt-4 flex flex-wrap gap-1.5">
-            <template x-for="perm in bp.requiredPermissions.slice(0, 3)" :key="perm">
-              <span class="text-[10px] bg-white/5 text-white/40 px-2 py-0.5 rounded-full" x-text="perm"></span>
-            </template>
-            <span x-show="bp.requiredPermissions.length > 3" class="text-[10px] text-white/30 px-1 py-0.5" x-text="'+' + (bp.requiredPermissions.length - 3)"></span>
-          </div>
-
-          <!-- Footer -->
-          <div class="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
-            <div class="flex items-center gap-4 text-xs text-white/30">
-              <span x-text="bp.activeRuns.toLocaleString() + ' runs'"></span>
-              <span x-text="'~$' + bp.estimatedMonthlyCost + '/mo'"></span>
-            </div>
-            <a x-show="bp.creator?.username" :href="'/creator.html?username=' + bp.creator?.username" class="text-xs text-white/30 hover:text-[#c8b88a] transition-colors" x-text="bp.creator?.username" @click.stop></a>
-          </div>
-        </div>
-      </template>
-    </div>
-
-    <!-- Recent Activity -->
-    <section x-show="!loading && activities.length > 0" x-cloak class="pb-12 fade-up">
-      <p class="text-xs text-white/30 uppercase tracking-widest font-medium mb-6">Recent Activity</p>
-      <div class="relative pl-6 border-l border-white/10 space-y-6">
-        <template x-for="act in activities" :key="act.blueprint.id">
-          <div class="relative">
-            <div class="absolute -left-[9px] w-3 h-3 rounded-full bg-white/10 border-2 border-white/20"></div>
-            <div class="flex items-baseline gap-2 flex-wrap">
-              <span class="text-xs text-white/20" x-text="timeAgo(act.createdAt)"></span>
-              <span class="text-sm text-white/40">New blueprint published</span>
-            </div>
-            <a :href="'/blueprint.html?slug=' + act.blueprint.slug" class="text-sm text-[#c8b88a] hover:text-[#d4c494] transition-colors mt-1 inline-block" x-text="act.blueprint.name"></a>
-            <span x-show="act.blueprint.creator?.username" class="text-xs text-white/20 ml-2" x-text="'by @' + act.blueprint.creator?.username"></span>
-          </div>
-        </template>
-      </div>
-    </section>
-
-    <!-- Empty State -->
-    <div x-show="bps.length === 0 && !loading" class="text-center py-24">
-      <div class="w-16 h-16 rounded-2xl bg-white/5 mx-auto flex items-center justify-center mb-6">
-        <svg class="w-8 h-8 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-        </svg>
-      </div>
-      <p class="text-white/40 text-lg">No blueprints yet</p>
-      <p class="text-white/20 text-sm mt-2">Publish your first with <code class="bg-white/5 px-2 py-1 rounded text-[#c8b88a]">greatlibrary publish</code></p>
-    </div>
-
-    <!-- Blueprint Detail Modal -->
-    <div x-show="selected" x-cloak @click.self="selected = null" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-      <div x-show="selected" class="bg-[#111] border border-white/10 rounded-2xl max-w-lg w-full p-8 relative" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" @click.stop>
-        <button @click="selected = null" class="absolute top-4 right-4 text-white/30 hover:text-white transition-colors">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-
-        <template x-if="selected">
-          <div>
-            <div class="flex items-center gap-3 mb-6">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center">
-                <span class="text-[#c8b88a] text-xl" x-text="selected.name.charAt(0)"></span>
-              </div>
-              <div>
-                <h2 class="text-xl font-bold text-white" style="font-family: 'Inter', sans-serif;" x-text="selected.name"></h2>
-                <p class="text-sm text-white/40" x-text="'by ' + (selected.creator?.username || 'Unknown')"></p>
-              </div>
-            </div>
-
-            <p class="text-white/60 text-sm leading-relaxed mb-6" x-text="selected.description"></p>
-
-            <div class="grid grid-cols-3 gap-4 mb-6">
-              <div class="bg-white/5 rounded-lg p-3 text-center">
-                <p class="text-lg font-bold text-white" x-text="selected.activeRuns.toLocaleString()"></p>
-                <p class="text-[10px] text-white/30 uppercase tracking-wider mt-1">Active Runs</p>
-              </div>
-              <div class="bg-white/5 rounded-lg p-3 text-center">
-                <p class="text-lg font-bold text-white" x-text="selected.stability + '%'"></p>
-                <p class="text-[10px] text-white/30 uppercase tracking-wider mt-1">Stability</p>
-              </div>
-              <div class="bg-white/5 rounded-lg p-3 text-center">
-                <p class="text-lg font-bold text-white" x-text="'$' + selected.estimatedMonthlyCost"></p>
-                <p class="text-[10px] text-white/30 uppercase tracking-wider mt-1">Est. Monthly</p>
-              </div>
-            </div>
-
-            <div class="mb-6">
-              <p class="text-xs text-white/30 uppercase tracking-wider mb-2">Required Permissions</p>
-              <div class="flex flex-wrap gap-2">
-                <template x-for="perm in selected.requiredPermissions" :key="perm">
-                  <span class="text-xs bg-white/5 text-white/50 px-3 py-1 rounded-full" x-text="perm"></span>
-                </template>
-              </div>
-            </div>
-
-            <button @click="deploy(selected)" class="w-full bg-[#c8b88a] text-[#0a0a0a] py-3 rounded-lg text-sm font-semibold hover:bg-[#d4c494] transition-colors">
-              Deploy to Workspace
-            </button>
-          </div>
-        </template>
-      </div>
-    </div>
-
-    <!-- Floating Compare Button -->
-    <div
-      x-show="compareSlugs.length >= 2"
-      x-cloak
-      x-transition:enter="transition ease-out duration-200"
-      x-transition:enter-start="opacity-0 translate-y-4"
-      x-transition:enter-end="opacity-100 translate-y-0"
-      x-transition:leave="transition ease-in duration-150"
-      x-transition:leave-start="opacity-100 translate-y-0"
-      x-transition:leave-end="opacity-0 translate-y-4"
-      class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50"
-    >
-      <button
-        @click="window.location.href = '/compare.html?slugs=' + compareSlugs.join(',')"
-        class="bg-[#c8b88a] text-[#0a0a0a] px-8 py-3.5 rounded-full text-sm font-semibold shadow-lg shadow-[#c8b88a]/20 hover:bg-[#d4c494] transition-all flex items-center gap-2"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"/></svg>
-        <span x-text="'Compare (' + compareSlugs.length + ')'"></span>
-      </button>
-    </div>
-
-    <!-- Scroll to Top Button (above support chat) -->
-    <div
-      x-data="{ showTop: false }"
-      x-init="window.addEventListener('scroll', () => { showTop = window.scrollY > 300 })"
-      class="fixed bottom-24 right-6 z-50"
-    >
-      <button
-        x-show="showTop"
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="opacity-0 scale-90"
-        x-transition:enter-end="opacity-100 scale-100"
-        x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-start="opacity-100 scale-100"
-        x-transition:leave-end="opacity-0 scale-90"
-        @click="window.scrollTo({ top: 0, behavior: 'smooth' })"
-        class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white/50 hover:text-white/80 flex items-center justify-center transition-all shadow-lg backdrop-blur-sm"
-        aria-label="Back to top"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
-      </button>
-    </div>
-
-    <!-- Support Chat -->
-    <div x-data="supportChat()" class="fixed bottom-6 right-6 z-50">
-      <button id="tour-support" @click="open = !open" class="w-12 h-12 rounded-full bg-[#c8b88a] text-[#0a0a0a] flex items-center justify-center shadow-lg shadow-[#c8b88a]/20 hover:bg-[#d4c494] transition-colors">
-        <svg x-show="!open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-        <svg x-show="open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-
-      <div x-show="open" x-cloak x-transition class="absolute bottom-16 right-0 w-80 bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-        <div class="p-4 border-b border-white/5">
-          <p class="text-sm font-semibold text-white">Support</p>
-          <p class="text-xs text-white/30 mt-0.5">Ask anything about GreatLibrary</p>
-        </div>
-        <div class="p-4 h-64 overflow-y-auto space-y-3" x-ref="msgs" style="scrollbar-width: none;">
-          <template x-for="msg in messages" :key="msg.id">
-            <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
-              <span :class="msg.role === 'user' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/70'" class="inline-block px-3 py-2 text-sm rounded-xl max-w-[85%]" x-text="msg.text"></span>
-            </div>
-          </template>
-          <div x-show="escalated" class="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm">
-            <p class="font-medium text-red-400">Escalated to human support.</p>
-            <p class="text-red-400/60 text-xs mt-1">support@greatlibrary.ai</p>
-          </div>
-        </div>
-        <div class="p-3 border-t border-white/5 flex gap-2">
-          <input x-model="input" @keyup.enter="send()" placeholder="Type a message..." class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#c8b88a]/40" />
-          <button @click="send()" class="bg-[#c8b88a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm font-medium hover:bg-[#d4c494] transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Keyboard Shortcuts Help -->
-    <div x-data="{ showShortcuts: false }" class="fixed bottom-6 left-6 z-50">
-      <button
-        @click="showShortcuts = !showShortcuts"
-        class="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white/40 flex items-center justify-center hover:bg-white/10 hover:text-white/70 transition-all text-sm font-semibold"
-        aria-label="Keyboard shortcuts"
-      >?</button>
-
-      <div
-        x-show="showShortcuts"
-        x-cloak
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="opacity-0 translate-y-2 scale-95"
-        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-        x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-        x-transition:leave-end="opacity-0 translate-y-2 scale-95"
-        @click.outside="showShortcuts = false"
-        class="absolute bottom-14 left-0 w-72 bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
-      >
-        <div class="p-4 border-b border-white/5">
-          <p class="text-sm font-semibold text-white">Keyboard Shortcuts</p>
-          <p class="text-xs text-white/30 mt-0.5">Navigate faster with your keyboard</p>
-        </div>
-        <div class="p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-white/60">Focus search</span>
-            <div class="flex items-center gap-1.5">
-              <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">/</kbd>
-              <span class="text-white/20 text-xs">or</span>
-              <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">Cmd+K</kbd>
-            </div>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-white/60">Clear / Close</span>
-            <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">Esc</kbd>
-          </div>
-          <div class="border-t border-white/5 pt-3 mt-3">
-            <p class="text-[10px] text-white/20 uppercase tracking-wider font-medium mb-2">Tag Filters</p>
-            <div class="space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-white/60">All</span>
-                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">1</kbd>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-white/60">Tag 2-9</span>
-                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">2-9</kbd>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- Footer -->
-  <footer class="border-t border-white/10 mt-20">
-    <div class="max-w-6xl mx-auto px-6 py-10">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 text-xs">
-        <!-- Brand -->
-        <div x-data="{ nlEmail: '', nlDone: false, nlSending: false }">
-          <span class="text-white/40 font-medium">GreatLibrary</span>
-          <p class="text-white/20 mt-2 leading-relaxed">A marketplace for deployable<br>agent blueprints.</p>
-          <!-- Newsletter signup -->
-          <div class="mt-4" x-show="!nlDone">
-            <p class="text-white/30 text-[11px] uppercase tracking-wider font-medium mb-2">Stay updated</p>
-            <form @submit.prevent="
-              if (!nlEmail.trim() || !nlEmail.includes('@')) return;
-              nlSending = true;
-              fetch('/api/invest/interest', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: 'Newsletter', email: nlEmail.trim(), range: 'N/A', message: 'Newsletter signup from footer' })
-              }).then(r => r.json()).then(d => { if (d.success) nlDone = true; }).catch(() => {}).finally(() => { nlSending = false; });
-            " class="flex gap-1.5">
-              <input
-                x-model="nlEmail"
-                type="email"
-                required
-                placeholder="you@email.com"
-                class="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-md px-3 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/40 transition-all"
-              />
-              <button
-                type="submit"
-                :disabled="nlSending"
-                class="bg-[#c8b88a] text-[#0a0a0a] px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-[#d4c494] transition-colors disabled:opacity-50 whitespace-nowrap"
-              >Subscribe</button>
-            </form>
-          </div>
-          <div x-show="nlDone" x-cloak class="mt-4 flex items-center gap-1.5">
-            <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            <span class="text-xs text-emerald-400 font-medium">Subscribed!</span>
-          </div>
-        </div>
-        <!-- Platform -->
-        <div>
-          <span class="text-white/20 font-medium uppercase tracking-wider">Platform</span>
-          <div class="mt-2 flex flex-col gap-1.5">
-            <a href="/" class="text-white/40 hover:text-white/60 transition-colors">Store</a>
-            <a href="/workspace.html" class="text-white/40 hover:text-white/60 transition-colors">Workspace</a>
-            <a href="/admin.html" class="text-white/40 hover:text-white/60 transition-colors">Admin</a>
-            <a href="/invest.html" class="text-white/40 hover:text-white/60 transition-colors">Investors</a>
-          </div>
-        </div>
-        <!-- Resources -->
-        <div>
-          <span class="text-white/20 font-medium uppercase tracking-wider">Resources</span>
-          <div class="mt-2 flex flex-col gap-1.5">
-            <a href="/docs.html" class="text-white/40 hover:text-white/60 transition-colors">Docs</a>
-            <a href="/api.html" class="text-white/40 hover:text-white/60 transition-colors">API</a>
-            <a href="/status.html" class="text-white/40 hover:text-white/60 transition-colors">Status</a>
-            <a href="/leaderboard.html" class="text-white/40 hover:text-white/60 transition-colors">Leaderboard</a>
-            <a href="https://github.com/MAZMS/greatlibraryai" target="_blank" rel="noopener" class="text-white/40 hover:text-white/60 transition-colors">GitHub</a>
-          </div>
-        </div>
-      </div>
-      <div class="border-t border-white/5 mt-8 pt-6 text-center text-xs text-white/20">
-        &copy; 2026 GreatLibrary &middot; greatlibrary.ai
-      </div>
-    </div>
-  </footer>
-
-  <!-- Onboarding Tour -->
-  <div x-data="onboardingTour()" x-cloak>
-    <!-- Semi-transparent overlay -->
-    <div
-      x-show="active"
-      class="fixed inset-0 z-[60] bg-black/50 transition-opacity duration-300"
-      @click="skip()"
-    ></div>
-
-    <!-- Welcome step (centered card, no target) -->
-    <div
-      x-show="active && step === 0"
-      class="fixed inset-0 z-[70] flex items-center justify-center p-6"
-    >
-      <div class="tour-tooltip bg-[#161616] border border-[#c8b88a]/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl" @click.stop>
-        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center mx-auto mb-5">
-          <span class="text-[#0a0a0a] font-bold text-xl">GL</span>
-        </div>
-        <h2 class="text-2xl font-bold text-white mb-3" style="font-family: Georgia, serif;">Welcome to GreatLibrary</h2>
-        <p class="text-white/50 text-sm leading-relaxed mb-8">Your marketplace for production-ready agent blueprints. Let us show you around in 30 seconds.</p>
-        <div class="flex items-center justify-center gap-3">
-          <button @click="skip()" class="px-5 py-2.5 rounded-lg text-sm text-white/40 hover:text-white/70 hover:bg-white/5 transition-all">Skip</button>
-          <button @click="next()" class="px-6 py-2.5 rounded-lg text-sm font-semibold bg-[#c8b88a] text-[#0a0a0a] hover:bg-[#d4c494] transition-colors">Start Tour</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Floating tooltip for steps 1-4 -->
-    <template x-if="active && step >= 1 && step <= 4">
-      <div
-        class="fixed z-[70] tour-tooltip"
-        :style="tooltipStyle"
-        @click.stop
-        x-effect="positionTooltip()"
-      >
-        <div class="bg-[#161616] border border-[#c8b88a]/30 rounded-xl p-5 shadow-2xl w-72">
-          <!-- Step counter -->
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-[10px] text-[#c8b88a] uppercase tracking-widest font-medium" x-text="'Step ' + (step + 1) + ' of 6'"></span>
-            <div class="flex gap-1">
-              <template x-for="s in 6" :key="'dot-'+s">
-                <div class="w-1.5 h-1.5 rounded-full transition-colors" :class="s - 1 <= step ? 'bg-[#c8b88a]' : 'bg-white/10'"></div>
-              </template>
-            </div>
-          </div>
-          <!-- Content -->
-          <p class="text-sm text-white/80 leading-relaxed mb-4" x-text="steps[step].text"></p>
-          <!-- Actions -->
-          <div class="flex items-center justify-between">
-            <button @click="skip()" class="text-xs text-white/30 hover:text-white/60 transition-colors">Skip tour</button>
-            <button @click="next()" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#c8b88a] text-[#0a0a0a] hover:bg-[#d4c494] transition-colors">Next</button>
-          </div>
-        </div>
-        <!-- Arrow pointer -->
-        <div class="absolute w-3 h-3 bg-[#161616] border-[#c8b88a]/30 rotate-45" :style="arrowStyle"></div>
-      </div>
-    </template>
-
-    <!-- Highlight ring around target element -->
-    <div
-      x-show="active && step >= 1 && step <= 4"
-      class="fixed z-[65] rounded-lg border-2 border-[#c8b88a]/60 tour-ring pointer-events-none transition-all duration-300"
-      :style="highlightStyle"
-    ></div>
-
-    <!-- Done step (centered card) -->
-    <div
-      x-show="active && step === 5"
-      class="fixed inset-0 z-[70] flex items-center justify-center p-6"
-    >
-      <div class="tour-tooltip bg-[#161616] border border-[#c8b88a]/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl" @click.stop>
-        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center mx-auto mb-5">
-          <svg class="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-        </div>
-        <h2 class="text-2xl font-bold text-white mb-3" style="font-family: Georgia, serif;">You're all set!</h2>
-        <p class="text-white/50 text-sm leading-relaxed mb-8">Explore the marketplace, deploy blueprints, and build something great.</p>
-        <button @click="finish()" class="px-8 py-2.5 rounded-lg text-sm font-semibold bg-[#c8b88a] text-[#0a0a0a] hover:bg-[#d4c494] transition-colors">Got it</button>
-      </div>
-    </div>
+  <!-- Splash -->
+  <div id="splash">
+    <h1>Whiteboard</h1>
+    <p>press space to begin</p>
   </div>
 
+  <!-- Grid background -->
+  <div id="grid"></div>
+
+  <!-- Drawing canvas -->
+  <svg id="canvas"></svg>
+
+  <!-- Toolbar -->
+  <div id="toolbar" style="display:none;">
+    <button class="tool-btn active" data-tool="draw">Draw</button>
+    <button class="tool-btn" data-tool="note">Note</button>
+    <button class="tool-btn" data-tool="move">Move</button>
+    <button class="tool-btn" data-tool="erase">Erase</button>
+    <button class="tool-btn" onclick="toggleHelp()">?</button>
+  </div>
+
+  <!-- Command bar -->
+  <div id="command-bar">
+    <span class="prefix">&gt;</span>
+    <input id="command-input" type="text" placeholder="summon an agent..." autocomplete="off" spellcheck="false">
+    <span class="hint">enter to summon</span>
+  </div>
+
+  <!-- Help panel -->
+  <div id="help-panel">
+    <h3>SHORTCUTS</h3>
+    <div><kbd>Space</kbd> &mdash; command bar</div>
+    <div><kbd>D</kbd> &mdash; draw mode</div>
+    <div><kbd>N</kbd> &mdash; new note</div>
+    <div><kbd>M</kbd> &mdash; move mode</div>
+    <div><kbd>E</kbd> &mdash; eraser</div>
+    <div><kbd>Esc</kbd> &mdash; close / cancel</div>
+    <div><kbd>C</kbd> &mdash; clear board</div>
+    <h3 style="margin-top:12px;">AGENTS</h3>
+    <div>Type any name to summon</div>
+    <div>e.g. "coder", "writer", "designer"</div>
+    <div>Drag cards to reposition</div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
   <script>
-    // ── Onboarding Tour ──
-    function onboardingTour() {
-      return {
-        active: false,
-        step: 0,
-        tooltipStyle: '',
-        arrowStyle: '',
-        highlightStyle: '',
-        steps: [
-          { target: null, text: '' }, // step 0 = welcome (centered)
-          { target: '#tour-search', text: "Search for blueprints by name or description. Try '/' for quick access." },
-          { target: '#tour-filters', text: 'Filter by category or click Favorites to see your saved blueprints.' },
-          { target: '#tour-card', text: 'Click any blueprint to see details, or use Compare mode to compare multiple.' },
-          { target: '#tour-support', text: 'Need help? Chat with our AI support agent anytime.' },
-          { target: null, text: '' }, // step 5 = done (centered)
-        ],
-        init() {
-          if (!localStorage.getItem('gl_toured')) {
-            // Wait for blueprints to load so #tour-card exists
-            const check = () => {
-              const cardEl = document.getElementById('tour-card');
-              if (cardEl || this._waited > 4000) {
-                this.active = true;
-              } else {
-                this._waited = (this._waited || 0) + 200;
-                setTimeout(check, 200);
-              }
-            };
-            setTimeout(check, 500);
-          }
-        },
-        next() {
-          if (this.step < this.steps.length - 1) {
-            this.step++;
-            this.$nextTick(() => this.positionTooltip());
-          } else {
-            this.finish();
-          }
-        },
-        skip() {
-          this.finish();
-        },
-        finish() {
-          this.active = false;
-          localStorage.setItem('gl_toured', 'true');
-        },
-        positionTooltip() {
-          const s = this.steps[this.step];
-          if (!s || !s.target) return;
-          const el = document.querySelector(s.target);
-          if (!el) return;
+    // ── State ──
+    let started = false;
+    let currentTool = 'draw';
+    let isDrawing = false;
+    let currentPath = null;
+    let commandOpen = false;
+    let dragTarget = null;
+    let dragOffset = { x: 0, y: 0 };
+    let agentCount = 0;
 
-          const rect = el.getBoundingClientRect();
-          const pad = 8;
+    const canvas = document.getElementById('canvas');
+    const commandBar = document.getElementById('command-bar');
+    const commandInput = document.getElementById('command-input');
+    const toolbar = document.getElementById('toolbar');
+    const splash = document.getElementById('splash');
+    const helpPanel = document.getElementById('help-panel');
 
-          // Highlight ring
-          this.highlightStyle = `top:${rect.top - pad}px;left:${rect.left - pad}px;width:${rect.width + pad * 2}px;height:${rect.height + pad * 2}px;`;
+    // ── Agent definitions ──
+    const agents = {
+      coder:    { icon: '{}',  desc: 'Writes and refactors code. Handles implementation tasks.' },
+      writer:   { icon: 'Aa',  desc: 'Drafts text, copy, and documentation.' },
+      designer: { icon: '◐',   desc: 'Creates layouts, mockups, and visual ideas.' },
+      thinker:  { icon: '◇',   desc: 'Breaks down problems and plans solutions.' },
+      reviewer: { icon: '✓',   desc: 'Reviews work, finds issues, suggests fixes.' },
+      researcher:{ icon: '⊕',  desc: 'Finds information and gathers context.' },
+      debugger: { icon: '⚡',   desc: 'Hunts down bugs and traces errors.' },
+      planner:  { icon: '▤',   desc: 'Creates roadmaps, tasks, and timelines.' },
+    };
 
-          const tooltipW = 288; // w-72
-          const tooltipH = 160; // approximate
-          const gap = 16;
-
-          // Decide placement: prefer below, fallback above, then right
-          let top, left, arrowTop, arrowLeft, arrowBorder;
-
-          const spaceBelow = window.innerHeight - rect.bottom;
-          const spaceAbove = rect.top;
-
-          if (s.target === '#tour-support') {
-            // Position above and to the left of the FAB
-            top = rect.top - tooltipH - gap;
-            left = rect.right - tooltipW;
-            arrowTop = '';
-            arrowLeft = '';
-            this.arrowStyle = `bottom:-6px;right:20px;border-bottom:1px solid;border-right:1px solid;border-color:rgba(200,184,138,0.3);`;
-          } else if (spaceBelow > tooltipH + gap) {
-            // Below
-            top = rect.bottom + gap;
-            left = rect.left + rect.width / 2 - tooltipW / 2;
-            // Clamp left
-            left = Math.max(12, Math.min(left, window.innerWidth - tooltipW - 12));
-            const arrowX = rect.left + rect.width / 2 - left;
-            this.arrowStyle = `top:-6px;left:${Math.max(16, Math.min(arrowX, tooltipW - 16))}px;border-top:1px solid;border-left:1px solid;border-color:rgba(200,184,138,0.3);`;
-          } else {
-            // Above
-            top = rect.top - tooltipH - gap;
-            left = rect.left + rect.width / 2 - tooltipW / 2;
-            left = Math.max(12, Math.min(left, window.innerWidth - tooltipW - 12));
-            const arrowX = rect.left + rect.width / 2 - left;
-            this.arrowStyle = `bottom:-6px;left:${Math.max(16, Math.min(arrowX, tooltipW - 16))}px;border-bottom:1px solid;border-right:1px solid;border-color:rgba(200,184,138,0.3);`;
-          }
-
-          this.tooltipStyle = `top:${top}px;left:${left}px;`;
-        },
-      };
-    }
-
-    // ── Favorites helpers (localStorage) ──
-    function getFavorites() {
-      try { return JSON.parse(localStorage.getItem('gl_favorites')) || []; }
-      catch { return []; }
-    }
-    function isFavorite(slug) {
-      return getFavorites().includes(slug);
-    }
-    function toggleFavorite(slug) {
-      const favs = getFavorites();
-      const idx = favs.indexOf(slug);
-      if (idx > -1) { favs.splice(idx, 1); } else { favs.push(slug); }
-      localStorage.setItem('gl_favorites', JSON.stringify(favs));
-      window.dispatchEvent(new CustomEvent('favorites-changed'));
-      return idx === -1; // returns true if now favorited
-    }
-
-    function themeToggle() {
-      return {
-        theme: localStorage.getItem('gl_theme') || 'dark',
-        toggle() {
-          this.theme = this.theme === 'dark' ? 'dim' : 'dark';
-          localStorage.setItem('gl_theme', this.theme);
-          const h = document.documentElement;
-          if (this.theme === 'dim') {
-            h.style.setProperty('--bg-primary', '#1a1a2e');
-            h.style.setProperty('--bg-card', 'rgba(255,255,255,0.05)');
-          } else {
-            h.style.setProperty('--bg-primary', '#0a0a0a');
-            h.style.setProperty('--bg-card', 'rgba(255,255,255,0.03)');
-          }
-        },
-      };
-    }
-
-    function store() {
-      return {
-        q: '',
-        tag: '',
-        sort: 'popular',
-        bps: [],
-        loading: true,
-        selected: null,
-        searchTimer: null,
-        compareMode: false,
-        compareSlugs: [],
-        tags: [],
-        showFavoritesOnly: false,
-        favCount: getFavorites().length,
-        activities: [],
-        // Autocomplete state
-        acOpen: false,
-        acResults: [],
-        acIndex: -1,
-        acTimer: null,
-        async init() {
-          try {
-            this.bps = await (await fetch('/api/blueprints')).json();
-          } catch { this.bps = []; }
-          this.buildTags();
-          try {
-            this.activities = await (await fetch('/api/activity')).json();
-          } catch { this.activities = []; }
-          this.loading = false;
-          this.favCount = getFavorites().length;
-          window.addEventListener('favorites-changed', () => {
-            this.favCount = getFavorites().length;
-          });
-          this.$watch('q', () => {
-            clearTimeout(this.searchTimer);
-            this.searchTimer = setTimeout(() => this.search(), 300);
-          });
-        },
-        async search() {
-          if (!this.q.trim()) {
-            try { this.bps = await (await fetch('/api/blueprints')).json(); } catch {}
-          } else {
-            try {
-              this.bps = await (await fetch('/api/blueprints/search?q=' + encodeURIComponent(this.q))).json();
-            } catch {}
-          }
-          this.buildTags();
-        },
-        buildTags() {
-          const counts = {};
-          for (const bp of this.bps) {
-            for (const t of (bp.tags || [])) {
-              counts[t] = (counts[t] || 0) + 1;
-            }
-          }
-          this.tags = Object.entries(counts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 8)
-            .map(e => e[0]);
-        },
-        trending() {
-          return [...this.bps].sort((a, b) => b.activeRuns - a.activeRuns).slice(0, 3);
-        },
-        avgStability() {
-          if (!this.bps.length) return 0;
-          return Math.round(this.bps.reduce((s, b) => s + b.stability, 0) / this.bps.length);
-        },
-        filtered() {
-          let items = this.bps;
-          if (this.showFavoritesOnly) {
-            const favs = getFavorites();
-            items = items.filter(b => favs.includes(b.slug));
-          }
-          if (this.tag) {
-            items = items.filter(b => (b.tags || []).includes(this.tag));
-          }
-          items = [...items];
-          switch (this.sort) {
-            case 'popular':
-              items.sort((a, b) => b.activeRuns - a.activeRuns);
-              break;
-            case 'stability':
-              items.sort((a, b) => b.stability - a.stability);
-              break;
-            case 'cost':
-              items.sort((a, b) => a.estimatedMonthlyCost - b.estimatedMonthlyCost);
-              break;
-            case 'newest':
-              items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-              break;
-            case 'az':
-              items.sort((a, b) => a.name.localeCompare(b.name));
-              break;
-          }
-          return items;
-        },
-        openBlueprint(bp) {
-          window.location.href = '/blueprint.html?slug=' + bp.slug;
-        },
-        deploy(bp) {
-          this.selected = null;
-          window.location.href = '/workspace.html?deploy=' + bp.slug;
-        },
-        // -- Autocomplete methods --
-        onAutocompleteInput() {
-          clearTimeout(this.acTimer);
-          const val = this.q.trim();
-          if (val.length < 2) {
-            this.acOpen = false;
-            this.acResults = [];
-            this.acIndex = -1;
-            return;
-          }
-          this.acTimer = setTimeout(async () => {
-            try {
-              const res = await fetch('/api/blueprints/search?q=' + encodeURIComponent(val));
-              const data = await res.json();
-              this.acResults = (Array.isArray(data) ? data : []).slice(0, 5);
-              this.acIndex = -1;
-              this.acOpen = this.acResults.length > 0;
-            } catch {
-              this.acResults = [];
-              this.acOpen = false;
-            }
-          }, 200);
-        },
-        closeAutocomplete() {
-          this.acOpen = false;
-          this.acIndex = -1;
-        },
-        acMoveDown() {
-          if (!this.acOpen || !this.acResults.length) return;
-          this.acIndex = (this.acIndex + 1) % this.acResults.length;
-        },
-        acMoveUp() {
-          if (!this.acOpen || !this.acResults.length) return;
-          this.acIndex = this.acIndex <= 0 ? this.acResults.length - 1 : this.acIndex - 1;
-        },
-        onSearchEnter(e) {
-          if (this.acOpen && this.acIndex >= 0 && this.acIndex < this.acResults.length) {
-            e.preventDefault();
-            const item = this.acResults[this.acIndex];
-            this.closeAutocomplete();
-            window.location.href = '/blueprint.html?slug=' + item.slug;
-          } else {
-            // Default: full grid search (handled by existing $watch on q)
-            this.closeAutocomplete();
-          }
-        },
-        toggleCompare(slug) {
-          const idx = this.compareSlugs.indexOf(slug);
-          if (idx > -1) {
-            this.compareSlugs.splice(idx, 1);
-          } else if (this.compareSlugs.length < 3) {
-            this.compareSlugs.push(slug);
-          }
-        },
-        timeAgo(dateStr) {
-          const now = Date.now();
-          const then = new Date(dateStr).getTime();
-          const secs = Math.floor((now - then) / 1000);
-          if (secs < 60) return 'just now';
-          const mins = Math.floor(secs / 60);
-          if (mins < 60) return mins + (mins === 1 ? ' minute ago' : ' minutes ago');
-          const hrs = Math.floor(mins / 60);
-          if (hrs < 24) return hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
-          const days = Math.floor(hrs / 24);
-          if (days < 30) return days + (days === 1 ? ' day ago' : ' days ago');
-          const months = Math.floor(days / 30);
-          return months + (months === 1 ? ' month ago' : ' months ago');
-        },
-      };
-    }
-
-    function supportChat() {
-      return {
-        open: false,
-        input: '',
-        messages: [],
-        escalated: false,
-        msgId: 0,
-        async send() {
-          if (!this.input.trim()) return;
-          const text = this.input;
-          this.input = '';
-          this.messages.push({ id: ++this.msgId, role: 'user', text });
-          this.$nextTick(() => { if (this.$refs.msgs) this.$refs.msgs.scrollTop = this.$refs.msgs.scrollHeight; });
-          try {
-            const res = await fetch('/api/support', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message: text }),
-            });
-            const data = await res.json();
-            if (data.escalated) {
-              this.escalated = true;
-            } else {
-              this.messages.push({ id: ++this.msgId, role: 'assistant', text: data.reply });
-            }
-          } catch {
-            this.messages.push({ id: ++this.msgId, role: 'assistant', text: 'Support is currently unavailable.' });
-          }
-          this.$nextTick(() => { if (this.$refs.msgs) this.$refs.msgs.scrollTop = this.$refs.msgs.scrollHeight; });
-        },
-      };
-    }
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-      const tag = e.target.tagName;
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable;
-
-      // Cmd/Ctrl+K — focus search (always, even from inputs)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    // ── Splash ──
+    document.addEventListener('keydown', (e) => {
+      if (!started && e.code === 'Space') {
         e.preventDefault();
-        const searchEl = document.querySelector('[x-ref="searchInput"]');
-        if (searchEl) searchEl.focus();
-        return;
-      }
-
-      // Escape — close autocomplete, clear search, deselect compare, close modal
-      if (e.key === 'Escape') {
-        const storeData = Alpine.$data(document.querySelector('[x-data*="store()"]'));
-        if (!storeData) return;
-        if (storeData.acOpen) { storeData.closeAutocomplete(); return; }
-        if (storeData.selected) { storeData.selected = null; return; }
-        if (storeData.q) { storeData.q = ''; }
-        storeData.compareMode = false;
-        storeData.compareSlugs = [];
-        const searchEl = document.querySelector('[x-ref="searchInput"]');
-        if (searchEl && document.activeElement === searchEl) searchEl.blur();
-        return;
-      }
-
-      // Skip remaining shortcuts when typing in an input
-      if (isInput) return;
-
-      // / — focus search
-      if (e.key === '/') {
-        e.preventDefault();
-        const searchEl = document.querySelector('[x-ref="searchInput"]');
-        if (searchEl) searchEl.focus();
-        return;
-      }
-
-      // 1-9 — switch tag filters (1 = All, 2+ = tag by position)
-      const num = parseInt(e.key, 10);
-      if (num >= 1 && num <= 9) {
-        const storeData = Alpine.$data(document.querySelector('[x-data*="store()"]'));
-        if (!storeData) return;
-        if (num === 1) {
-          storeData.tag = '';
-        } else if (num - 2 < storeData.tags.length) {
-          storeData.tag = storeData.tags[num - 2];
-        }
+        started = true;
+        splash.classList.add('fade-out');
+        setTimeout(() => { splash.style.display = 'none'; }, 600);
+        toolbar.style.display = 'flex';
+        toast('Ready — press Space to summon agents');
       }
     });
+
+    // ── Toast ──
+    let toastTimer;
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    // ── Help ──
+    function toggleHelp() {
+      helpPanel.classList.toggle('visible');
+    }
+
+    // ── Command bar ──
+    function openCommand() {
+      commandOpen = true;
+      commandBar.classList.add('visible');
+      commandInput.value = '';
+      commandInput.focus();
+    }
+    function closeCommand() {
+      commandOpen = false;
+      commandBar.classList.remove('visible');
+      commandInput.blur();
+    }
+
+    commandInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { closeCommand(); }
+      if (e.key === 'Enter') {
+        const val = commandInput.value.trim().toLowerCase();
+        if (val) summonAgent(val);
+        closeCommand();
+      }
+    });
+
+    // ── Keyboard shortcuts ──
+    document.addEventListener('keydown', (e) => {
+      if (!started) return;
+      if (commandOpen) return;
+      if (e.target.tagName === 'TEXTAREA') return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          openCommand();
+          break;
+        case 'KeyD':
+          setTool('draw');
+          break;
+        case 'KeyN':
+          createNote(window.innerWidth / 2 - 90, window.innerHeight / 2 - 50);
+          break;
+        case 'KeyM':
+          setTool('move');
+          break;
+        case 'KeyE':
+          setTool('erase');
+          break;
+        case 'KeyC':
+          if (!e.metaKey && !e.ctrlKey) clearBoard();
+          break;
+        case 'Escape':
+          helpPanel.classList.remove('visible');
+          break;
+      }
+    });
+
+    // ── Tool switching ──
+    function setTool(tool) {
+      currentTool = tool;
+      document.querySelectorAll('.tool-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tool === tool);
+      });
+      document.body.style.cursor =
+        tool === 'draw' ? 'crosshair' :
+        tool === 'move' ? 'grab' :
+        tool === 'erase' ? 'pointer' :
+        'default';
+      toast(tool.charAt(0).toUpperCase() + tool.slice(1) + ' mode');
+    }
+
+    document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+      btn.addEventListener('click', () => setTool(btn.dataset.tool));
+    });
+
+    // ── Drawing ──
+    canvas.addEventListener('mousedown', (e) => {
+      if (!started || currentTool !== 'draw') return;
+      isDrawing = true;
+      currentPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      currentPath.setAttribute('stroke', '#fff');
+      currentPath.setAttribute('stroke-width', '2');
+      currentPath.setAttribute('fill', 'none');
+      currentPath.setAttribute('stroke-linecap', 'round');
+      currentPath.setAttribute('stroke-linejoin', 'round');
+      currentPath.setAttribute('d', `M ${e.clientX} ${e.clientY}`);
+      currentPath.classList.add('draw-line');
+      canvas.appendChild(currentPath);
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDrawing || !currentPath) return;
+      const d = currentPath.getAttribute('d');
+      currentPath.setAttribute('d', d + ` L ${e.clientX} ${e.clientY}`);
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      isDrawing = false;
+      currentPath = null;
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      isDrawing = false;
+      currentPath = null;
+    });
+
+    // ── Eraser ──
+    canvas.addEventListener('click', (e) => {
+      if (currentTool !== 'erase') return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      if (el && el.tagName === 'path' && el.parentNode === canvas) {
+        el.style.transition = 'opacity 0.2s';
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 200);
+      }
+    });
+
+    // ── Sticky notes ──
+    function createNote(x, y) {
+      const note = document.createElement('div');
+      note.className = 'sticky-note';
+      note.style.left = x + 'px';
+      note.style.top = y + 'px';
+      note.innerHTML = `
+        <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+        <textarea placeholder="Type here..."></textarea>
+      `;
+      document.body.appendChild(note);
+      makeDraggable(note);
+      note.querySelector('textarea').focus();
+      toast('Note created');
+    }
+
+    // ── Agent summoning ──
+    function summonAgent(name) {
+      agentCount++;
+      const agent = agents[name] || { icon: '●', desc: `Custom agent "${name}" is ready. Ask me anything.` };
+      const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+      const agentId = 'agent-' + Date.now();
+
+      // Position in a staggered grid
+      const cols = 3;
+      const row = Math.floor((agentCount - 1) / cols);
+      const col = (agentCount - 1) % cols;
+      const x = 100 + col * 380 + (Math.random() * 40 - 20);
+      const y = 120 + row * 280 + (Math.random() * 30 - 15);
+
+      const card = document.createElement('div');
+      card.className = 'agent-card';
+      card.id = agentId;
+      card.dataset.agentName = name;
+      card.style.left = x + 'px';
+      card.style.top = y + 'px';
+
+      card.innerHTML = `
+        <div class="agent-header">
+          <span class="agent-name">${agent.icon} ${displayName}</span>
+          <button class="close-btn" onclick="dismissAgent(this)">&times;</button>
+        </div>
+        <div class="agent-status">
+          <span class="dot"></span>
+          <span>Ready</span>
+        </div>
+        <div class="agent-body">${agent.desc}</div>
+        <div class="agent-input-row">
+          <input type="text" placeholder="Ask ${displayName}..." onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
+          <button onclick="sendToAgent('${agentId}')">Send</button>
+        </div>
+        <div class="agent-model"></div>
+      `;
+
+      document.body.appendChild(card);
+      makeDraggable(card);
+      card.querySelector('.agent-input-row input').focus();
+      toast(`${displayName} agent summoned — powered by AI`);
+    }
+
+    function dismissAgent(btn) {
+      const card = btn.closest('.agent-card');
+      card.style.transition = 'all 0.3s ease';
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.8)';
+      setTimeout(() => card.remove(), 300);
+    }
+
+    async function sendToAgent(agentId) {
+      const card = document.getElementById(agentId);
+      if (!card) return;
+
+      const input = card.querySelector('.agent-input-row input');
+      const btn = card.querySelector('.agent-input-row button');
+      const body = card.querySelector('.agent-body');
+      const statusEl = card.querySelector('.agent-status span:last-child');
+      const dotEl = card.querySelector('.dot');
+      const modelEl = card.querySelector('.agent-model');
+      const message = input.value.trim();
+      if (!message) return;
+
+      // Set running state
+      input.value = '';
+      btn.disabled = true;
+      statusEl.textContent = 'Thinking...';
+      dotEl.style.animation = 'pulse 0.4s infinite';
+      body.textContent = '';
+
+      try {
+        const res = await fetch('/api/agent/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agent: card.dataset.agentName,
+            message,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          body.textContent = err.error || 'Something went wrong.';
+          statusEl.textContent = 'Error';
+          dotEl.style.animation = 'none';
+          btn.disabled = false;
+          return;
+        }
+
+        statusEl.textContent = 'Streaming...';
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.text) {
+                body.textContent += data.text;
+                body.scrollTop = body.scrollHeight;
+              }
+              if (data.done) {
+                modelEl.textContent = data.total_tokens ? `${data.total_tokens} tokens` : '';
+              }
+            } catch {}
+          }
+        }
+
+        statusEl.textContent = 'Done';
+        dotEl.style.animation = 'none';
+        dotEl.style.opacity = '0.5';
+      } catch (err) {
+        body.textContent = 'Connection error: ' + err.message;
+        statusEl.textContent = 'Error';
+        dotEl.style.animation = 'none';
+      }
+
+      btn.disabled = false;
+      input.focus();
+    }
+
+    // ── Drag system ──
+    function makeDraggable(el) {
+      el.addEventListener('mousedown', (e) => {
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'TEXTAREA') return;
+        dragTarget = el;
+        dragOffset.x = e.clientX - el.offsetLeft;
+        dragOffset.y = e.clientY - el.offsetTop;
+        el.style.zIndex = 60;
+      });
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragTarget) return;
+      dragTarget.style.left = (e.clientX - dragOffset.x) + 'px';
+      dragTarget.style.top = (e.clientY - dragOffset.y) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (dragTarget) {
+        dragTarget.style.zIndex = '';
+        dragTarget = null;
+      }
+    });
+
+    // ── Clear board ──
+    function clearBoard() {
+      canvas.innerHTML = '';
+      document.querySelectorAll('.agent-card, .sticky-note').forEach(el => el.remove());
+      agentCount = 0;
+      toast('Board cleared');
+    }
   </script>
 </body>
 </html>

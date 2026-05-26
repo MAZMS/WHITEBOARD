@@ -1,0 +1,233 @@
+const express = require('express');
+const OpenAI = require('openai');
+const path = require('path');
+
+const app = express();
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ── OpenAI client ──
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// ── Model tiers ──
+const PREMIUM_MODELS = [
+  'gpt-5.4', 'gpt-5.2', 'gpt-5.1', 'gpt-5.1-codex', 'gpt-5',
+  'gpt-5-codex', 'gpt-5-chat-latest', 'gpt-4.1', 'gpt-4o', 'o1', 'o3',
+];
+
+const MINI_MODELS = [
+  'gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.1-codex-mini', 'gpt-5-mini',
+  'gpt-5-nano', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o-mini',
+  'o1-mini', 'o3-mini', 'o4-mini', 'codex-mini-latest',
+];
+
+const DAILY_LIMITS = {
+  premium: 250_000,
+  mini: 2_500_000,
+};
+
+// ── In-memory token tracking (resets daily) ──
+let tokenUsage = {
+  date: todayStr(),
+  premium: 0,
+  mini: 0,
+  history: [],     // { timestamp, model, prompt_tokens, completion_tokens, total, agent }
+  settings: {
+    defaultModel: 'gpt-5.4',
+  },
+};
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function resetIfNewDay() {
+  const today = todayStr();
+  if (tokenUsage.date !== today) {
+    tokenUsage.date = today;
+    tokenUsage.premium = 0;
+    tokenUsage.mini = 0;
+    tokenUsage.history = [];
+  }
+}
+
+function getModelTier(model) {
+  if (PREMIUM_MODELS.includes(model)) return 'premium';
+  if (MINI_MODELS.includes(model)) return 'mini';
+  return 'premium'; // default to premium for unknown models
+}
+
+// ── Agent system prompts ──
+const AGENT_PROMPTS = {
+  coder: 'You are a senior software engineer. Write clean, efficient code. Be concise.',
+  writer: 'You are a skilled writer. Draft clear, compelling text. Be concise.',
+  designer: 'You are a UI/UX designer. Describe layouts and visual ideas clearly. Be concise.',
+  thinker: 'You are a strategic thinker. Break down problems step by step. Be concise.',
+  reviewer: 'You are a code reviewer. Find issues and suggest improvements. Be concise.',
+  researcher: 'You are a researcher. Find and summarize information. Be concise.',
+  debugger: 'You are a debugging expert. Trace errors and find root causes. Be concise.',
+  planner: 'You are a project planner. Create clear plans and timelines. Be concise.',
+};
+
+// ── API: Chat with agent ──
+app.post('/api/agent', async (req, res) => {
+  try {
+    resetIfNewDay();
+
+    const { agent, message, model: requestedModel } = req.body;
+    const model = requestedModel || tokenUsage.settings.defaultModel;
+    const tier = getModelTier(model);
+
+    // Check limits
+    if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
+      return res.status(429).json({
+        error: `Daily ${tier} token limit reached (${DAILY_LIMITS[tier].toLocaleString()} tokens). Try a ${tier === 'premium' ? 'mini' : 'premium'} model or wait until tomorrow.`,
+        usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
+      });
+    }
+
+    const systemPrompt = AGENT_PROMPTS[agent] || `You are a helpful AI agent called "${agent}". Be concise and direct.`;
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ],
+      max_tokens: 2048,
+    });
+
+    const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    const reply = completion.choices[0]?.message?.content || '';
+
+    // Track usage
+    tokenUsage[tier] += usage.total_tokens;
+    tokenUsage.history.push({
+      timestamp: new Date().toISOString(),
+      model,
+      tier,
+      agent: agent || 'custom',
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      total: usage.total_tokens,
+    });
+
+    res.json({
+      reply,
+      model,
+      usage: {
+        prompt_tokens: usage.prompt_tokens,
+        completion_tokens: usage.completion_tokens,
+        total: usage.total_tokens,
+      },
+    });
+  } catch (err) {
+    console.error('Agent error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API: Stream chat with agent ──
+app.post('/api/agent/stream', async (req, res) => {
+  try {
+    resetIfNewDay();
+
+    const { agent, message, model: requestedModel } = req.body;
+    const model = requestedModel || tokenUsage.settings.defaultModel;
+    const tier = getModelTier(model);
+
+    if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
+      return res.status(429).json({
+        error: `Daily ${tier} limit reached.`,
+      });
+    }
+
+    const systemPrompt = AGENT_PROMPTS[agent] || `You are a helpful AI agent called "${agent}". Be concise and direct.`;
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const stream = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ],
+      max_tokens: 2048,
+      stream: true,
+      stream_options: { include_usage: true },
+    });
+
+    let totalTokens = 0;
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta?.content;
+      if (delta) {
+        res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
+      }
+      if (chunk.usage) {
+        totalTokens = chunk.usage.total_tokens || 0;
+        tokenUsage[tier] += totalTokens;
+        tokenUsage.history.push({
+          timestamp: new Date().toISOString(),
+          model,
+          tier,
+          agent: agent || 'custom',
+          prompt_tokens: chunk.usage.prompt_tokens || 0,
+          completion_tokens: chunk.usage.completion_tokens || 0,
+          total: totalTokens,
+        });
+      }
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true, total_tokens: totalTokens })}\n\n`);
+    res.end();
+  } catch (err) {
+    console.error('Stream error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin API: Get usage stats ──
+app.get('/api/admin/usage', (req, res) => {
+  resetIfNewDay();
+  res.json({
+    date: tokenUsage.date,
+    premium: {
+      used: tokenUsage.premium,
+      limit: DAILY_LIMITS.premium,
+      remaining: Math.max(0, DAILY_LIMITS.premium - tokenUsage.premium),
+      percent: Math.round((tokenUsage.premium / DAILY_LIMITS.premium) * 100),
+    },
+    mini: {
+      used: tokenUsage.mini,
+      limit: DAILY_LIMITS.mini,
+      remaining: Math.max(0, DAILY_LIMITS.mini - tokenUsage.mini),
+      percent: Math.round((tokenUsage.mini / DAILY_LIMITS.mini) * 100),
+    },
+    history: tokenUsage.history.slice(-100),
+    settings: tokenUsage.settings,
+    models: { premium: PREMIUM_MODELS, mini: MINI_MODELS },
+  });
+});
+
+// ── Admin API: Update settings ──
+app.post('/api/admin/settings', (req, res) => {
+  const { defaultModel } = req.body;
+  if (defaultModel) {
+    tokenUsage.settings.defaultModel = defaultModel;
+  }
+  res.json({ settings: tokenUsage.settings });
+});
+
+// ── Serve pages ──
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Whiteboard: http://localhost:${PORT}`);
+  console.log(`Admin:      http://localhost:${PORT}/admin`);
+});

@@ -1,725 +1,421 @@
-<!doctype html>
-<html lang="en" class="bg-[#0a0a0a]">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin — GreatLibrary</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <meta property="og:site_name" content="GreatLibrary" />
-  <meta property="og:title" content="Admin — GreatLibrary" />
-  <meta property="og:description" content="GreatLibrary admin dashboard. Monitor platform health, manage tenants, and review usage metrics." />
-  <meta property="og:image" content="https://greatlibrary.ai/favicon.svg" />
-  <meta name="theme-color" content="#0a0a0a" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Token Tracker</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-    h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; }
-    [x-cloak] { display: none !important; }
-    html { scrollbar-width: none; }
-    html::-webkit-scrollbar { display: none; }
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    .fade-up { animation: fadeUp 0.5s ease-out both; }
-    .fade-up-d1 { animation-delay: 0.1s; }
-    .fade-up-d2 { animation-delay: 0.2s; }
-    .traffic-bar {
-      transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-      background: linear-gradient(90deg, rgba(200,184,138,0.30), rgba(200,184,138,0.10));
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --bg: #000; --fg: #fff; --dim: #555; --border: #222; }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      min-height: 100vh;
+      padding: 40px;
     }
-    .sparkline-bar {
-      transition: height 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+
+    h1 {
+      font-size: 20px;
+      font-weight: 300;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
     }
-    @keyframes shimmer {
-      0% { background-position: -200% 0; }
-      100% { background-position: 200% 0; }
+    .subtitle {
+      font-size: 12px;
+      color: var(--dim);
+      margin-bottom: 40px;
     }
-    .skeleton {
-      background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      border-radius: 0.5rem;
+
+    /* ── Dashboard grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 1000px;
+      margin-bottom: 40px;
     }
-    .gl-toast {
-      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
-      z-index: 100; min-width: 280px; max-width: 420px;
-      background: #1a1a1a; color: #fff; border-radius: 0.75rem;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-      padding: 0.875rem 1.25rem;
-      font-size: 0.8125rem; font-weight: 500; font-family: 'Inter', sans-serif;
-      display: flex; align-items: center; gap: 0.5rem;
+
+    .card {
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
     }
-    .gl-toast.success { border-left: 3px solid #22c55e; }
-    .gl-toast.error   { border-left: 3px solid #ef4444; }
+    .card h2 {
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 16px;
+    }
+
+    /* ── Usage bars ── */
+    .usage-row {
+      margin-bottom: 20px;
+    }
+    .usage-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .usage-label .value { color: var(--fg); font-weight: 600; }
+    .usage-label .limit { color: var(--dim); }
+    .bar-bg {
+      width: 100%;
+      height: 8px;
+      background: #111;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: var(--fg);
+      border-radius: 4px;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .bar-fill.warning { background: #888; }
+    .bar-fill.danger { background: #fff; animation: barPulse 1s infinite; }
+    @keyframes barPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .remaining {
+      font-size: 11px;
+      color: var(--dim);
+      margin-top: 6px;
+    }
+
+    /* ── Big number ── */
+    .big-number {
+      font-size: 36px;
+      font-weight: 200;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+    .big-label {
+      font-size: 11px;
+      color: var(--dim);
+    }
+
+    /* ── Model selector ── */
+    .model-section {
+      max-width: 1000px;
+      margin-bottom: 40px;
+    }
+    .model-section h2 {
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 16px;
+    }
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+    }
+    .model-btn {
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+    .model-btn:hover {
+      border-color: #444;
+      color: var(--fg);
+    }
+    .model-btn.active {
+      border-color: var(--fg);
+      color: var(--fg);
+      background: #111;
+    }
+    .model-btn .tier-tag {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #444;
+      display: block;
+      margin-top: 4px;
+    }
+    .model-btn.active .tier-tag { color: #666; }
+
+    /* ── History table ── */
+    .history-section {
+      max-width: 1000px;
+    }
+    .history-section h2 {
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th {
+      text-align: left;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--dim);
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      font-size: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #111;
+      color: #aaa;
+    }
+    tr:hover td { color: var(--fg); }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+    }
+    .tag-premium { background: #1a1a1a; color: #fff; }
+    .tag-mini { background: #111; color: #888; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--dim);
+      font-size: 13px;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+    }
+    .top-bar a {
+      color: var(--dim);
+      text-decoration: none;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .top-bar a:hover { color: var(--fg); border-color: #444; }
+
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover { color: var(--fg); border-color: #444; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      body { padding: 20px; }
+      .grid { grid-template-columns: 1fr; }
+      .model-grid { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
-<body class="bg-[#0a0a0a] text-white/90 min-h-screen">
+<body>
 
-  <!-- Toast -->
-  <div x-data="glToast()" @gl-toast.window="show($event.detail)" x-cloak>
-    <div
-      x-show="visible"
-      x-transition:enter="transition ease-out duration-300"
-      x-transition:enter-start="opacity-0 translate-y-4"
-      x-transition:enter-end="opacity-100 translate-y-0"
-      x-transition:leave="transition ease-in duration-200"
-      x-transition:leave-start="opacity-100 translate-y-0"
-      x-transition:leave-end="opacity-0 translate-y-4"
-      class="gl-toast"
-      :class="type"
-      x-text="message"
-    ></div>
+  <div class="top-bar">
+    <div>
+      <h1>Token Tracker</h1>
+      <div class="subtitle" id="date-label">Loading...</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="refresh-btn" onclick="loadData()">Refresh</button>
+      <a href="/">Whiteboard</a>
+    </div>
   </div>
 
-  <!-- Nav -->
-  <nav class="border-b border-white/5 backdrop-blur-sm sticky top-0 z-40 bg-[#0a0a0a]/80" x-data="{ mobileOpen: false }">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center text-[#0a0a0a] font-bold text-sm">GL</div>
-        <span class="text-lg font-semibold tracking-tight text-white">GreatLibrary</span>
-      </a>
-      <!-- Desktop links -->
-      <div class="hidden md:flex items-center gap-6 text-sm text-white/50">
-        <a href="/" class="hover:text-white transition-colors">Store</a>
-        <a href="/workspace.html" class="hover:text-white transition-colors">Workspace <span class="text-[#c8b88a] text-[10px]">(soon)</span></a>
-        <a href="/docs.html" class="hover:text-white transition-colors">Docs</a>
-        <a href="/api.html" class="hover:text-white transition-colors">API</a>
-        <a href="/admin.html" class="text-white">Admin</a>
-        <a href="/invest.html" class="hover:text-[#c8b88a] transition-colors">Investors</a>
-      </div>
-      <!-- Hamburger button -->
-      <button @click="mobileOpen = !mobileOpen" class="md:hidden flex flex-col justify-center items-center w-8 h-8 gap-1.5 group" aria-label="Toggle menu">
-        <span class="block w-5 h-0.5 bg-white/50 group-hover:bg-white transition-colors"></span>
-        <span class="block w-5 h-0.5 bg-white/50 group-hover:bg-white transition-colors"></span>
-        <span class="block w-5 h-0.5 bg-white/50 group-hover:bg-white transition-colors"></span>
-      </button>
-    </div>
-    <!-- Mobile menu panel -->
-    <div
-      x-show="mobileOpen"
-      x-transition:enter="transition ease-out duration-200"
-      x-transition:enter-start="opacity-0 -translate-y-2"
-      x-transition:enter-end="opacity-100 translate-y-0"
-      x-transition:leave="transition ease-in duration-150"
-      x-transition:leave-start="opacity-100 translate-y-0"
-      x-transition:leave-end="opacity-0 -translate-y-2"
-      @click.outside="mobileOpen = false"
-      x-cloak
-      class="md:hidden bg-[#0a0a0a] border-b border-white/5"
-    >
-      <div class="max-w-6xl mx-auto px-6 py-2 flex flex-col">
-        <a href="/" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Store</a>
-        <a href="/workspace.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Workspace <span class="text-[#c8b88a] text-[10px]">(soon)</span></a>
-        <a href="/docs.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Docs</a>
-        <a href="/api.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">API</a>
-        <a href="/admin.html" @click="mobileOpen = false" class="text-white py-3 text-sm transition-colors">Admin</a>
-        <a href="/invest.html" @click="mobileOpen = false" class="text-white/70 hover:text-white py-3 text-sm transition-colors">Investors</a>
-      </div>
-    </div>
-  </nav>
-
-  <main x-data="dashboard()" class="max-w-6xl mx-auto px-6 py-12">
-
-    <!-- Header -->
-    <div class="mb-10 fade-up">
-      <p class="text-[#c8b88a] text-sm font-medium tracking-widest uppercase mb-2">Admin</p>
-      <h1 class="text-3xl font-bold text-white">Platform Dashboard</h1>
-    </div>
-
-    <!-- Skeleton Stats -->
-    <div x-show="loading" x-cloak class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 fade-up">
-      <template x-for="i in 4" :key="'skel-stat-'+i">
-        <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
-          <div class="skeleton w-20 h-3 mb-3 rounded"></div>
-          <div class="skeleton w-16 h-8 rounded"></div>
+  <!-- Usage cards -->
+  <div class="grid">
+    <div class="card">
+      <h2>Premium Models</h2>
+      <div class="usage-row" id="premium-usage">
+        <div class="usage-label">
+          <span class="value" id="premium-used">0</span>
+          <span class="limit">/ <span id="premium-limit">250,000</span></span>
         </div>
-      </template>
-    </div>
-
-    <!-- Stats -->
-    <div x-show="!loading" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 fade-up">
-      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
-        <p class="text-xs text-white/30 uppercase tracking-wider mb-2">Blueprints</p>
-        <p class="text-3xl font-bold text-white" x-text="stats.blueprints"></p>
+        <div class="bar-bg"><div class="bar-fill" id="premium-bar" style="width:0%"></div></div>
+        <div class="remaining" id="premium-remaining">250,000 tokens remaining</div>
       </div>
-      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
-        <p class="text-xs text-white/30 uppercase tracking-wider mb-2">Active Runs</p>
-        <p class="text-3xl font-bold text-white" x-text="stats.activeRuns.toLocaleString()"></p>
-      </div>
-      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
-        <p class="text-xs text-white/30 uppercase tracking-wider mb-2">Creators</p>
-        <p class="text-3xl font-bold text-white" x-text="stats.creators"></p>
-      </div>
-      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
-        <p class="text-xs text-white/30 uppercase tracking-wider mb-2">Pending Feedback</p>
-        <p class="text-3xl font-bold" :class="stats.pendingFeedback > 0 ? 'text-amber-400' : 'text-white'" x-text="stats.pendingFeedback"></p>
+      <div style="font-size:10px;color:#333;line-height:1.8;">
+        gpt-5.4, gpt-5.2, gpt-5.1, gpt-5, gpt-4.1, gpt-4o, o1, o3
       </div>
     </div>
 
-    <!-- Traffic Overview -->
-    <section class="mb-12 fade-up fade-up-d1">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold text-white" style="font-family: 'Inter', sans-serif;">Traffic</h2>
-        <div class="flex gap-2">
-          <button @click="loadTraffic(7)" :class="trafficPeriod === 7 ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">7d</button>
-          <button @click="loadTraffic(30)" :class="trafficPeriod === 30 ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">30d</button>
+    <div class="card">
+      <h2>Mini Models</h2>
+      <div class="usage-row" id="mini-usage">
+        <div class="usage-label">
+          <span class="value" id="mini-used">0</span>
+          <span class="limit">/ <span id="mini-limit">2,500,000</span></span>
         </div>
+        <div class="bar-bg"><div class="bar-fill" id="mini-bar" style="width:0%"></div></div>
+        <div class="remaining" id="mini-remaining">2,500,000 tokens remaining</div>
       </div>
-      <!-- Unique Visitors -->
-      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5 mb-4">
-        <p class="text-xs text-white/30 uppercase tracking-wider mb-3">Unique Visitors</p>
-        <p class="text-4xl font-bold text-[#c8b88a]" x-text="traffic.uniqueVisitors?.toLocaleString() || '—'"></p>
-        <p class="text-xs text-white/20 mt-1" x-text="'Last ' + trafficPeriod + ' days'"></p>
-      </div>
-
-      <!-- Top Pages Bar Chart -->
-      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5 mb-4">
-        <p class="text-xs text-white/30 uppercase tracking-wider mb-4">Top Pages</p>
-        <div class="space-y-3" x-ref="topPagesChart">
-          <template x-for="(page, idx) in (traffic.topPages || []).slice(0, 8)" :key="page.path">
-            <div class="flex items-center gap-3 text-sm">
-              <span class="text-white/40 truncate w-28 sm:w-40 shrink-0 text-xs" x-text="page.path"></span>
-              <div class="flex-1 relative h-6 rounded overflow-hidden bg-white/[0.02]">
-                <div
-                  class="traffic-bar absolute inset-y-0 left-0 rounded"
-                  :style="'width: ' + trafficBarWidth(page.views) + '%'"
-                ></div>
-              </div>
-              <span class="text-white/70 font-medium text-xs shrink-0 w-10 text-right" x-text="page.views.toLocaleString()"></span>
-            </div>
-          </template>
-          <p x-show="!traffic.topPages || traffic.topPages.length === 0" class="text-sm text-white/20">No data yet</p>
-        </div>
-      </div>
-
-      <!-- Daily Trend Sparkline -->
-      <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5">
-        <p class="text-xs text-white/30 uppercase tracking-wider mb-4">Daily Trend</p>
-        <div x-show="dailyTraffic.length > 0">
-          <div class="flex items-end gap-[3px] h-24">
-            <template x-for="(day, idx) in dailyTraffic" :key="day.date">
-              <div
-                class="sparkline-bar flex-1 rounded-t bg-gradient-to-t from-[#c8b88a]/30 to-[#c8b88a]/10 min-w-[4px]"
-                :style="'height: ' + sparklineHeight(day.visitors) + '%'"
-                :title="day.date + ': ' + day.visitors + ' visitors'"
-              ></div>
-            </template>
-          </div>
-          <div class="flex justify-between mt-2">
-            <span class="text-[10px] text-white/20" x-text="dailyTraffic.length ? dailyTraffic[0].date : ''"></span>
-            <span class="text-[10px] text-white/20" x-text="dailyTraffic.length ? dailyTraffic[dailyTraffic.length - 1].date : ''"></span>
-          </div>
-        </div>
-        <p x-show="dailyTraffic.length === 0" class="text-sm text-white/20">No data yet</p>
-      </div>
-    </section>
-
-    <!-- Blueprints Table -->
-    <section class="mb-12 fade-up fade-up-d1">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold text-white" style="font-family: 'Inter', sans-serif;">Blueprints</h2>
-        <button
-          @click="showBpForm = !showBpForm"
-          class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
-          :class="showBpForm ? 'bg-white/5 text-white/40' : 'bg-[#c8b88a] text-[#0a0a0a]'"
-          x-text="showBpForm ? 'Cancel' : 'Create Blueprint'"
-        ></button>
-      </div>
-
-      <!-- Create Blueprint Form -->
-      <div
-        x-show="showBpForm"
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="opacity-0 -translate-y-2"
-        x-transition:enter-end="opacity-100 translate-y-0"
-        x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-start="opacity-100 translate-y-0"
-        x-transition:leave-end="opacity-0 -translate-y-2"
-        x-cloak
-        class="bg-white/[0.03] border border-white/5 rounded-xl p-6 mb-4"
-      >
-        <h3 class="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">New Blueprint</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs text-white/30 mb-1.5">Name</label>
-            <input
-              type="text"
-              x-model="bpForm.name"
-              @input="bpForm.slug = bpForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')"
-              placeholder="My Blueprint"
-              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/50 transition-colors"
-            />
-          </div>
-          <div>
-            <label class="block text-xs text-white/30 mb-1.5">Slug</label>
-            <input
-              type="text"
-              x-model="bpForm.slug"
-              placeholder="my-blueprint"
-              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/50 transition-colors"
-            />
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-xs text-white/30 mb-1.5">Description</label>
-            <input
-              type="text"
-              x-model="bpForm.description"
-              placeholder="A short description of what this blueprint does"
-              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/50 transition-colors"
-            />
-          </div>
-          <div>
-            <label class="block text-xs text-white/30 mb-1.5">GitHub URL</label>
-            <input
-              type="url"
-              x-model="bpForm.githubUrl"
-              placeholder="https://github.com/org/repo"
-              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/50 transition-colors"
-            />
-          </div>
-          <div>
-            <label class="block text-xs text-white/30 mb-1.5">Est. Monthly Cost ($)</label>
-            <input
-              type="number"
-              x-model.number="bpForm.estimatedMonthlyCost"
-              placeholder="0"
-              min="0"
-              step="0.01"
-              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/50 transition-colors"
-            />
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-xs text-white/30 mb-1.5">Required Permissions (comma-separated)</label>
-            <input
-              type="text"
-              x-model="bpForm.requiredPermissions"
-              placeholder="read:data, write:data, manage:users"
-              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#c8b88a]/50 transition-colors"
-            />
-          </div>
-        </div>
-        <div class="flex justify-end mt-5">
-          <button
-            @click="createBlueprint()"
-            :disabled="bpCreating || !bpForm.name.trim() || !bpForm.slug.trim()"
-            class="px-5 py-2 rounded-lg text-sm font-semibold bg-[#c8b88a] text-[#0a0a0a] hover:bg-[#b8a87a] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            x-text="bpCreating ? 'Creating...' : 'Create'"
-          ></button>
-        </div>
-      </div>
-
-      <!-- Skeleton Table -->
-      <div x-show="loading" x-cloak class="bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-white/5 text-xs uppercase tracking-wider text-white/30">
-              <th class="text-left py-3 px-5">Name</th>
-              <th class="text-left py-3 px-5 hidden sm:table-cell">Creator</th>
-              <th class="text-right py-3 px-5">Runs</th>
-              <th class="text-right py-3 px-5">Stability</th>
-              <th class="text-right py-3 px-5 w-20"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <template x-for="i in 5" :key="'skel-row-'+i">
-              <tr class="border-b border-white/[0.03]">
-                <td class="py-3 px-5">
-                  <div class="skeleton w-32 h-4 mb-1.5 rounded"></div>
-                  <div class="skeleton w-48 h-3 rounded"></div>
-                </td>
-                <td class="py-3 px-5 hidden sm:table-cell">
-                  <div class="skeleton w-16 h-4 rounded"></div>
-                </td>
-                <td class="py-3 px-5 text-right">
-                  <div class="skeleton w-12 h-4 rounded ml-auto"></div>
-                </td>
-                <td class="py-3 px-5 text-right">
-                  <div class="skeleton w-10 h-4 rounded ml-auto"></div>
-                </td>
-                <td class="py-3 px-5 text-right">
-                  <div class="skeleton w-14 h-6 rounded ml-auto"></div>
-                </td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Real Table -->
-      <div x-show="!loading" class="bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-white/5 text-xs uppercase tracking-wider text-white/30">
-              <th class="text-left py-3 px-5">Name</th>
-              <th class="text-left py-3 px-5 hidden sm:table-cell">Creator</th>
-              <th class="text-right py-3 px-5">Runs</th>
-              <th class="text-right py-3 px-5">Stability</th>
-              <th class="text-right py-3 px-5 w-20"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <template x-for="bp in blueprints" :key="bp.id">
-              <tr class="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                <td class="py-3 px-5">
-                  <p class="font-medium text-white" x-text="bp.name"></p>
-                  <p class="text-xs text-white/30 mt-0.5 truncate max-w-xs" x-text="bp.description"></p>
-                </td>
-                <td class="py-3 px-5 text-white/40 hidden sm:table-cell" x-text="bp.creator?.username || '—'"></td>
-                <td class="py-3 px-5 text-right text-white/70 font-medium" x-text="bp.activeRuns.toLocaleString()"></td>
-                <td class="py-3 px-5 text-right">
-                  <span class="inline-flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 rounded-full" :class="bp.stability >= 97 ? 'bg-emerald-400' : bp.stability >= 93 ? 'bg-amber-400' : 'bg-red-400'"></span>
-                    <span class="text-white/50" x-text="bp.stability + '%'"></span>
-                  </span>
-                </td>
-                <td class="py-3 px-5 text-right">
-                  <button
-                    @click="deleteBlueprint(bp.id, bp.name)"
-                    class="px-3 py-1 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
-                  >Delete</button>
-                </td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-        <p x-show="blueprints.length === 0" class="text-center text-white/20 py-8 text-sm">No blueprints</p>
-      </div>
-    </section>
-
-    <!-- Feedback Queue -->
-    <section class="fade-up fade-up-d2">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold text-white" style="font-family: 'Inter', sans-serif;">
-          Feedback
-          <span class="text-sm font-normal text-white/30 ml-2" x-text="`(${feedback.filter(f => f.status === 'PENDING').length} pending / ${feedback.length} total)`"></span>
-        </h2>
-        <div class="flex gap-2">
-          <button @click="fbFilter = ''" :class="fbFilter === '' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">All</button>
-          <button @click="fbFilter = 'PENDING'" :class="fbFilter === 'PENDING' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">Pending</button>
-          <button @click="fbFilter = 'REFACTORED'" :class="fbFilter === 'REFACTORED' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">Resolved</button>
-          <button @click="fbFilter = 'REJECTED'" :class="fbFilter === 'REJECTED' ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/40'" class="px-3 py-1 rounded-lg text-xs font-medium transition-all">Rejected</button>
-        </div>
-      </div>
-
-      <div class="space-y-3">
-        <template x-for="fb in filteredFeedback()" :key="fb.id">
-          <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5 transition-all duration-300" :class="fb._updating ? 'opacity-50 pointer-events-none' : ''">
-            <div class="flex justify-between items-start mb-3">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-xs text-white/40" x-text="fb.email.charAt(0).toUpperCase()"></div>
-                <span class="text-sm text-white/60" x-text="fb.email"></span>
-              </div>
-              <span
-                class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
-                :class="{
-                  'bg-amber-400/10 text-amber-400': fb.status === 'PENDING',
-                  'bg-emerald-400/10 text-emerald-400': fb.status === 'REFACTORED',
-                  'bg-red-400/10 text-red-400': fb.status === 'REJECTED'
-                }"
-                x-text="fb.status"
-              ></span>
-            </div>
-            <p class="text-sm text-white/50 leading-relaxed" x-text="fb.text.length > 250 ? fb.text.slice(0, 250) + '...' : fb.text"></p>
-            <!-- Analysis note (shown after resolve) -->
-            <p x-show="fb.analysis" class="text-xs text-[#c8b88a]/60 mt-2 italic" x-text="fb.analysis ? 'Note: ' + fb.analysis : ''"></p>
-            <div class="flex items-center justify-between mt-3">
-              <p class="text-xs text-white/15" x-text="new Date(fb.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })"></p>
-              <!-- Action buttons for PENDING items -->
-              <div x-show="fb.status === 'PENDING'" class="flex items-center gap-2">
-                <!-- Resolve flow -->
-                <template x-if="fb._resolving">
-                  <div class="flex items-center gap-2">
-                    <input
-                      type="text"
-                      x-model="fb._analysisNote"
-                      @keydown.enter="patchFeedback(fb.id, 'REFACTORED', fb._analysisNote)"
-                      @keydown.escape="fb._resolving = false"
-                      placeholder="Resolution note..."
-                      class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-emerald-400/50 transition-colors w-48"
-                    />
-                    <button
-                      @click="patchFeedback(fb.id, 'REFACTORED', fb._analysisNote)"
-                      class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-all"
-                    >Save</button>
-                    <button
-                      @click="fb._resolving = false"
-                      class="px-2 py-1.5 rounded-lg text-xs font-medium text-white/30 hover:text-white/50 transition-all"
-                    >Cancel</button>
-                  </div>
-                </template>
-                <template x-if="!fb._resolving">
-                  <div class="flex items-center gap-2">
-                    <button
-                      @click="fb._resolving = true; fb._analysisNote = ''; $nextTick(() => { $el.closest('.rounded-xl').querySelector('input[type=text]')?.focus() })"
-                      class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all"
-                    >Resolve</button>
-                    <button
-                      @click="patchFeedback(fb.id, 'REJECTED')"
-                      class="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
-                    >Reject</button>
-                  </div>
-                </template>
-              </div>
-            </div>
-          </div>
-        </template>
-        <p x-show="filteredFeedback().length === 0" class="text-center text-white/20 py-8 text-sm">No feedback items</p>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Footer -->
-  <footer class="border-t border-white/10 mt-20">
-    <div class="max-w-6xl mx-auto px-6 py-10">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 text-xs">
-        <!-- Brand -->
-        <div>
-          <span class="text-white/40 font-medium">GreatLibrary</span>
-          <p class="text-white/20 mt-2 leading-relaxed">A marketplace for deployable<br>agent blueprints.</p>
-        </div>
-        <!-- Platform -->
-        <div>
-          <span class="text-white/20 font-medium uppercase tracking-wider">Platform</span>
-          <div class="mt-2 flex flex-col gap-1.5">
-            <a href="/" class="text-white/40 hover:text-white/60 transition-colors">Store</a>
-            <a href="/workspace.html" class="text-white/40 hover:text-white/60 transition-colors">Workspace</a>
-            <a href="/admin.html" class="text-white/40 hover:text-white/60 transition-colors">Admin</a>
-            <a href="/invest.html" class="text-white/40 hover:text-white/60 transition-colors">Investors</a>
-          </div>
-        </div>
-        <!-- Resources -->
-        <div>
-          <span class="text-white/20 font-medium uppercase tracking-wider">Resources</span>
-          <div class="mt-2 flex flex-col gap-1.5">
-            <a href="/docs.html" class="text-white/40 hover:text-white/60 transition-colors">Docs</a>
-            <a href="/api.html" class="text-white/40 hover:text-white/60 transition-colors">API</a>
-            <a href="/status.html" class="text-white/40 hover:text-white/60 transition-colors">Status</a>
-            <a href="https://github.com/MAZMS/greatlibraryai" target="_blank" rel="noopener" class="text-white/40 hover:text-white/60 transition-colors">GitHub</a>
-          </div>
-        </div>
-      </div>
-      <div class="border-t border-white/5 mt-8 pt-6 text-center text-xs text-white/20">
-        &copy; 2026 GreatLibrary &middot; greatlibrary.ai
+      <div style="font-size:10px;color:#333;line-height:1.8;">
+        gpt-5.4-mini, gpt-5-mini, gpt-4.1-mini, gpt-4o-mini, o3-mini, o4-mini
       </div>
     </div>
-  </footer>
 
+    <div class="card">
+      <h2>Total Requests</h2>
+      <div class="big-number" id="total-requests">0</div>
+      <div class="big-label">today</div>
+    </div>
 
-  <!-- Scroll to Top Button -->
-  <div
-    x-data="{ showTop: false }"
-    x-init="window.addEventListener('scroll', () => { showTop = window.scrollY > 300 })"
-    class="fixed bottom-6 right-6 z-50"
-  >
-    <button
-      x-show="showTop"
-      x-transition:enter="transition ease-out duration-200"
-      x-transition:enter-start="opacity-0 scale-90"
-      x-transition:enter-end="opacity-100 scale-100"
-      x-transition:leave="transition ease-in duration-150"
-      x-transition:leave-start="opacity-100 scale-100"
-      x-transition:leave-end="opacity-0 scale-90"
-      @click="window.scrollTo({ top: 0, behavior: 'smooth' })"
-      class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white/50 hover:text-white/80 flex items-center justify-center transition-all shadow-lg backdrop-blur-sm"
-      aria-label="Back to top"
-    >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
-    </button>
+    <div class="card">
+      <h2>Total Tokens</h2>
+      <div class="big-number" id="total-tokens">0</div>
+      <div class="big-label">consumed today</div>
+    </div>
   </div>
+
+  <!-- Model selector -->
+  <div class="model-section">
+    <h2>Default Model (click to switch)</h2>
+    <div class="model-grid" id="model-grid"></div>
+  </div>
+
+  <!-- History -->
+  <div class="history-section">
+    <h2>Recent Requests</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Agent</th>
+          <th>Model</th>
+          <th>Tier</th>
+          <th>Prompt</th>
+          <th>Completion</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody id="history-body">
+        <tr><td colspan="7" class="empty-state">No requests yet. Summon an agent on the whiteboard.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
   <script>
-    function glToast() {
-      return {
-        visible: false,
-        message: '',
-        type: 'success',
-        _timer: null,
-        show(detail) {
-          this.message = detail.message || '';
-          this.type = detail.type || 'success';
-          this.visible = true;
-          clearTimeout(this._timer);
-          this._timer = setTimeout(() => { this.visible = false; }, 3000);
-        },
-      };
+    let currentModel = '';
+
+    async function loadData() {
+      try {
+        const res = await fetch('/api/admin/usage');
+        const data = await res.json();
+
+        // Date
+        document.getElementById('date-label').textContent = data.date;
+
+        // Premium
+        document.getElementById('premium-used').textContent = data.premium.used.toLocaleString();
+        document.getElementById('premium-remaining').textContent =
+          data.premium.remaining.toLocaleString() + ' tokens remaining';
+        const premBar = document.getElementById('premium-bar');
+        premBar.style.width = data.premium.percent + '%';
+        premBar.className = 'bar-fill' +
+          (data.premium.percent > 90 ? ' danger' : data.premium.percent > 70 ? ' warning' : '');
+
+        // Mini
+        document.getElementById('mini-used').textContent = data.mini.used.toLocaleString();
+        document.getElementById('mini-remaining').textContent =
+          data.mini.remaining.toLocaleString() + ' tokens remaining';
+        const miniBar = document.getElementById('mini-bar');
+        miniBar.style.width = data.mini.percent + '%';
+        miniBar.className = 'bar-fill' +
+          (data.mini.percent > 90 ? ' danger' : data.mini.percent > 70 ? ' warning' : '');
+
+        // Totals
+        document.getElementById('total-requests').textContent = data.history.length;
+        const totalTok = data.history.reduce((s, h) => s + h.total, 0);
+        document.getElementById('total-tokens').textContent = totalTok.toLocaleString();
+
+        // Current model
+        currentModel = data.settings.defaultModel;
+
+        // Model grid
+        const grid = document.getElementById('model-grid');
+        grid.innerHTML = '';
+        const allModels = [
+          ...data.models.premium.map(m => ({ name: m, tier: 'premium' })),
+          ...data.models.mini.map(m => ({ name: m, tier: 'mini' })),
+        ];
+        allModels.forEach(m => {
+          const btn = document.createElement('button');
+          btn.className = 'model-btn' + (m.name === currentModel ? ' active' : '');
+          btn.innerHTML = `${m.name}<span class="tier-tag">${m.tier}</span>`;
+          btn.onclick = () => selectModel(m.name);
+          grid.appendChild(btn);
+        });
+
+        // History
+        const tbody = document.getElementById('history-body');
+        if (data.history.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No requests yet. Summon an agent on the whiteboard.</td></tr>';
+        } else {
+          tbody.innerHTML = data.history.slice().reverse().map(h => `
+            <tr>
+              <td>${new Date(h.timestamp).toLocaleTimeString()}</td>
+              <td>${h.agent}</td>
+              <td>${h.model}</td>
+              <td><span class="tag tag-${h.tier}">${h.tier}</span></td>
+              <td>${h.prompt_tokens.toLocaleString()}</td>
+              <td>${h.completion_tokens.toLocaleString()}</td>
+              <td>${h.total.toLocaleString()}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load admin data:', err);
+      }
     }
-    function dashboard() {
-      return {
-        loading: true,
-        stats: { blueprints: 0, activeRuns: 0, creators: 0, pendingFeedback: 0 },
-        blueprints: [],
-        feedback: [],
-        traffic: {},
-        trafficPeriod: 7,
-        dailyTraffic: [],
-        fbFilter: '',
-        token: '',
-        showBpForm: false,
-        bpCreating: false,
-        bpForm: { name: '', slug: '', description: '', githubUrl: '', estimatedMonthlyCost: 0, requiredPermissions: '' },
-        bpToast: { show: false, message: '', type: 'success' }, // kept for compat
-        async init() {
-          this.token = localStorage.getItem('gl_token') || '';
-          const headers = this.token ? { 'Authorization': 'Bearer ' + this.token } : {};
 
-          const [bpRes, statsRes, fbRes] = await Promise.allSettled([
-            fetch('/api/blueprints'),
-            fetch('/api/admin/stats', { headers }),
-            fetch('/api/admin/feedback', { headers }),
-          ]);
-
-          if (bpRes.status === 'fulfilled' && bpRes.value.ok) {
-            this.blueprints = await bpRes.value.json();
-          }
-
-          if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-            this.stats = await statsRes.value.json();
-          } else {
-            this.stats.blueprints = this.blueprints.length;
-            this.stats.activeRuns = this.blueprints.reduce((s, b) => s + b.activeRuns, 0);
-            this.stats.creators = new Set(this.blueprints.map(b => b.creatorId)).size;
-          }
-
-          if (fbRes.status === 'fulfilled' && fbRes.value.ok) {
-            this.feedback = await fbRes.value.json();
-            if (!this.stats.pendingFeedback) {
-              this.stats.pendingFeedback = this.feedback.filter(f => f.status === 'PENDING').length;
-            }
-          }
-
-          this.loading = false;
-          await this.loadTraffic(7);
-        },
-        async loadTraffic(days) {
-          this.trafficPeriod = days;
-          const headers = this.token ? { 'Authorization': 'Bearer ' + this.token } : {};
-          try {
-            const [trafficRes, dailyRes] = await Promise.allSettled([
-              fetch('/api/admin/traffic?days=' + days, { headers }),
-              fetch('/api/admin/traffic/daily?days=' + days, { headers }),
-            ]);
-            if (trafficRes.status === 'fulfilled' && trafficRes.value.ok) {
-              this.traffic = await trafficRes.value.json();
-            }
-            if (dailyRes.status === 'fulfilled' && dailyRes.value.ok) {
-              this.dailyTraffic = await dailyRes.value.json();
-            }
-          } catch { this.traffic = {}; this.dailyTraffic = []; }
-        },
-        trafficBarWidth(views) {
-          const pages = this.traffic.topPages || [];
-          if (!pages.length) return 0;
-          const max = Math.max(...pages.map(p => p.views));
-          return max > 0 ? Math.round((views / max) * 100) : 0;
-        },
-        sparklineHeight(visitors) {
-          if (!this.dailyTraffic.length) return 0;
-          const max = Math.max(...this.dailyTraffic.map(d => d.visitors));
-          if (max === 0) return 4;
-          return Math.max(4, Math.round((visitors / max) * 100));
-        },
-        filteredFeedback() {
-          if (!this.fbFilter) return this.feedback;
-          return this.feedback.filter(f => f.status === this.fbFilter);
-        },
-        showBpToast(message, type = 'success') {
-          window.dispatchEvent(new CustomEvent('gl-toast', { detail: { message, type } }));
-        },
-        async createBlueprint() {
-          if (!this.bpForm.name.trim() || !this.bpForm.slug.trim()) return;
-          this.bpCreating = true;
-          try {
-            const perms = this.bpForm.requiredPermissions
-              .split(',')
-              .map(p => p.trim())
-              .filter(Boolean);
-            const body = {
-              name: this.bpForm.name.trim(),
-              slug: this.bpForm.slug.trim(),
-              description: this.bpForm.description.trim(),
-              githubUrl: this.bpForm.githubUrl.trim(),
-              estimatedMonthlyCost: this.bpForm.estimatedMonthlyCost || 0,
-              requiredPermissions: perms,
-            };
-            const res = await fetch('/api/admin/blueprints', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + this.token,
-              },
-              body: JSON.stringify(body),
-            });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err.error || err.message || 'Failed to create blueprint');
-            }
-            const created = await res.json();
-            this.blueprints.unshift({ ...created, activeRuns: 0, stability: 100, creator: null });
-            this.stats.blueprints = this.blueprints.length;
-            this.bpForm = { name: '', slug: '', description: '', githubUrl: '', estimatedMonthlyCost: 0, requiredPermissions: '' };
-            this.showBpForm = false;
-            this.showBpToast('Blueprint created');
-          } catch (e) {
-            this.showBpToast(e.message, 'error');
-          } finally {
-            this.bpCreating = false;
-          }
-        },
-        async deleteBlueprint(id, name) {
-          if (!confirm('Delete blueprint "' + name + '"? This cannot be undone.')) return;
-          try {
-            const res = await fetch('/api/admin/blueprints/' + id, {
-              method: 'DELETE',
-              headers: { 'Authorization': 'Bearer ' + this.token },
-            });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err.error || err.message || 'Failed to delete blueprint');
-            }
-            this.blueprints = this.blueprints.filter(b => b.id !== id);
-            this.stats.blueprints = this.blueprints.length;
-            this.showBpToast('Blueprint deleted');
-          } catch (e) {
-            this.showBpToast(e.message, 'error');
-          }
-        },
-        async patchFeedback(id, status, analysis) {
-          const fb = this.feedback.find(f => f.id === id);
-          if (fb) fb._updating = true;
-          try {
-            const body = { status };
-            if (analysis && analysis.trim()) body.analysis = analysis.trim();
-            const res = await fetch('/api/admin/feedback/' + id, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + this.token,
-              },
-              body: JSON.stringify(body),
-            });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err.error || err.message || 'Failed to update feedback');
-            }
-            this.showBpToast(status === 'REFACTORED' ? 'Feedback resolved' : 'Feedback rejected');
-            await this.refreshFeedback();
-          } catch (e) {
-            if (fb) fb._updating = false;
-            this.showBpToast(e.message, 'error');
-          }
-        },
-        async refreshFeedback() {
-          try {
-            const headers = this.token ? { 'Authorization': 'Bearer ' + this.token } : {};
-            const res = await fetch('/api/admin/feedback', { headers });
-            if (res.ok) {
-              this.feedback = await res.json();
-              this.stats.pendingFeedback = this.feedback.filter(f => f.status === 'PENDING').length;
-            }
-          } catch { /* silent */ }
-        },
-      };
+    async function selectModel(model) {
+      try {
+        await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ defaultModel: model }),
+        });
+        loadData();
+      } catch (err) {
+        console.error('Failed to set model:', err);
+      }
     }
+
+    // Auto-refresh every 10s
+    loadData();
+    setInterval(loadData, 10000);
   </script>
 </body>
 </html>
