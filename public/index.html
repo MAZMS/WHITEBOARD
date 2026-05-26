@@ -24,6 +24,12 @@
       --surface: #f0f0f0;
       --grid-dot: #ddd;
     }
+    [data-theme="light"] .agent-card:hover {
+      border-color: #999;
+    }
+    [data-theme="light"] .agent-card .agent-input-row input:focus {
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
+    }
 
     body {
       background: var(--bg);
@@ -119,6 +125,13 @@
       animation: agentAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       box-shadow: 0 0 30px rgba(128,128,128,0.06);
     }
+    .agent-card {
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+    }
+    .agent-card:hover {
+      transform: translateY(-2px);
+      border-color: #444;
+    }
     .agent-card:active { cursor: grabbing; }
     .agent-card .close-btn-top {
       position: absolute;
@@ -162,11 +175,14 @@
       gap: 6px;
     }
     .agent-card .agent-status .dot {
-      width: 6px;
-      height: 6px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: var(--fg);
-      animation: pulse 1.5s infinite;
+      animation: pulse 2s infinite ease-in-out;
+    }
+    .agent-card .agent-status .dot.streaming {
+      animation: pulseFast 0.5s infinite ease-in-out;
     }
     .agent-card .agent-body {
       font-size: 13px;
@@ -178,8 +194,33 @@
       white-space: pre-wrap;
       word-break: break-word;
       scrollbar-width: none;
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-top: 10px;
     }
     .agent-card .agent-body::-webkit-scrollbar { display: none; }
+
+    /* ── Typing indicator ── */
+    .typing-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 0;
+    }
+    .typing-indicator .typing-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--dim);
+      animation: typingBounce 0.6s infinite ease-in-out;
+    }
+    .typing-indicator .typing-dot:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+    .typing-indicator .typing-dot:nth-child(3) {
+      animation-delay: 0.3s;
+    }
     .agent-card .agent-input-row {
       margin-top: 12px;
       display: flex;
@@ -195,6 +236,11 @@
       padding: 8px 12px;
       border-radius: 8px;
       outline: none;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .agent-card .agent-input-row input:focus {
+      border-color: var(--fg);
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.08);
     }
     .agent-card .agent-input-row input::placeholder { color: var(--dim); }
     .agent-card .agent-input-row button {
@@ -207,9 +253,10 @@
       border-radius: 8px;
       cursor: pointer;
       font-weight: 600;
-      transition: opacity 0.2s;
+      transition: opacity 0.2s, transform 0.1s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .agent-card .agent-input-row button:hover { opacity: 0.8; }
+    .agent-card .agent-input-row button:active { transform: scale(0.95); }
     .agent-card .agent-input-row button:disabled {
       opacity: 0.3;
       cursor: not-allowed;
@@ -320,18 +367,32 @@
 
     /* ── Animations ── */
     @keyframes agentAppear {
-      from {
+      0% {
         opacity: 0;
-        transform: scale(0.8) translateY(20px);
+        transform: scale(0.85) translateY(20px);
+        box-shadow: 0 0 40px rgba(255,255,255,0.08);
       }
-      to {
+      60% {
+        opacity: 1;
+        transform: scale(1.02) translateY(-2px);
+      }
+      100% {
         opacity: 1;
         transform: scale(1) translateY(0);
+        box-shadow: 0 0 20px rgba(255,255,255,0.03);
       }
     }
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+      50% { opacity: 0.4; }
+    }
+    @keyframes pulseFast {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-6px); }
     }
 
     /* ── Splashscreen ── */
@@ -781,8 +842,9 @@
       input.value = '';
       btn.disabled = true;
       statusEl.textContent = 'Thinking...';
-      dotEl.style.animation = 'pulse 0.4s infinite';
+      dotEl.classList.add('streaming');
       body.textContent = '';
+      body.innerHTML = '<span class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>';
 
       try {
         const res = await fetch('/api/agent/stream', {
@@ -798,7 +860,7 @@
           const err = await res.json();
           body.textContent = err.error || 'Something went wrong.';
           statusEl.textContent = 'Error';
-          dotEl.style.animation = 'none';
+          dotEl.classList.remove('streaming');
           btn.disabled = false;
           return;
         }
@@ -807,6 +869,7 @@
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let firstChunk = true;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -821,6 +884,10 @@
             try {
               const data = JSON.parse(line.slice(6));
               if (data.text) {
+                if (firstChunk) {
+                  body.textContent = '';
+                  firstChunk = false;
+                }
                 body.textContent += data.text;
                 body.scrollTop = body.scrollHeight;
               }
@@ -832,12 +899,12 @@
         }
 
         statusEl.textContent = 'Done';
-        dotEl.style.animation = 'none';
+        dotEl.classList.remove('streaming');
         dotEl.style.opacity = '0.5';
       } catch (err) {
         body.textContent = 'Connection error: ' + err.message;
         statusEl.textContent = 'Error';
-        dotEl.style.animation = 'none';
+        dotEl.classList.remove('streaming');
       }
 
       btn.disabled = false;
