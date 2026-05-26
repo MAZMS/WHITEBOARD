@@ -24,9 +24,6 @@
       --surface: #f0f0f0;
       --grid-dot: #ddd;
     }
-    [data-theme="light"] .agent-card:hover {
-      border-color: #999;
-    }
     [data-theme="light"] .agent-card .agent-input-row input:focus {
       box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
     }
@@ -110,64 +107,82 @@
       white-space: nowrap;
     }
 
-    /* ── Agent cards ── */
+    /* ── Agent chat panel ── */
     .agent-card {
-      position: absolute;
-      z-index: 50;
+      position: fixed;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 420px;
+      max-width: 100vw;
+      z-index: 80;
       background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      min-width: 320px;
-      max-width: 400px;
-      cursor: grab;
+      border: none;
+      border-left: 1px solid var(--border);
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+      cursor: default;
       user-select: none;
-      animation: agentAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      box-shadow: 0 0 30px rgba(128,128,128,0.06);
+      animation: panelSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      box-shadow: -4px 0 30px rgba(0,0,0,0.15);
     }
-    .agent-card {
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+    .agent-card.dismissing {
+      animation: panelSlideOut 0.35s cubic-bezier(0.4, 0, 1, 1) forwards;
     }
-    .agent-card:hover {
-      transform: translateY(-2px);
-      border-color: #444;
-    }
-    .agent-card:active { cursor: grabbing; }
     .agent-card .close-btn-top {
-      position: absolute;
-      top: 10px;
-      right: 12px;
+      /* now lives inside the header flex row */
+      position: static;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .agent-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
     .agent-avatar {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: 12px;
+      flex-shrink: 0;
     }
     .avatar-head {
-      width: 28px;
-      height: 28px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
       border: 2px solid var(--fg);
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
     .avatar-body {
-      width: 40px;
-      height: 18px;
-      border-radius: 20px 20px 0 0;
+      width: 28px;
+      height: 12px;
+      border-radius: 14px 14px 0 0;
       border: 2px solid var(--fg);
       border-bottom: none;
     }
+    .agent-header-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
     .agent-card .agent-name {
-      text-align: center;
+      text-align: left;
       font-size: 14px;
       font-weight: 600;
       letter-spacing: 0.5px;
-      margin-bottom: 4px;
+      margin-bottom: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .agent-card .agent-status {
-      text-align: center;
-      justify-content: center;
+      text-align: left;
+      justify-content: flex-start;
       font-size: 11px;
       color: var(--dim);
       display: flex;
@@ -191,36 +206,33 @@
       font-size: 13px;
       color: var(--dim);
       line-height: 1.6;
-      min-height: 40px;
-      max-height: 350px;
+      flex: 1;
       overflow-y: auto;
       word-break: break-word;
       scrollbar-width: none;
-      border-radius: 12px;
-      padding: 12px 10px;
-      margin-top: 10px;
+      padding: 20px;
     }
     .agent-card .agent-body::-webkit-scrollbar { display: none; }
 
     /* ── Chat bubbles ── */
     .msg {
-      padding: 10px 14px;
-      max-width: 85%;
+      padding: 10px 16px;
+      max-width: 80%;
       white-space: pre-wrap;
       word-break: break-word;
       line-height: 1.5;
-      font-size: 13px;
+      font-size: 14px;
     }
     .msg-agent {
       background: var(--surface);
       color: var(--dim);
-      border-radius: 12px 12px 12px 4px;
+      border-radius: 18px 18px 18px 4px;
       align-self: flex-start;
     }
     .msg-user {
       background: var(--fg);
       color: var(--bg);
-      border-radius: 12px 12px 4px 12px;
+      border-radius: 18px 18px 4px 18px;
       align-self: flex-end;
     }
 
@@ -244,10 +256,15 @@
     .typing-indicator .typing-dot:nth-child(3) {
       animation-delay: 0.3s;
     }
+    .agent-input-area {
+      flex-shrink: 0;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
     .agent-card .agent-input-row {
-      margin-top: 12px;
       display: flex;
-      gap: 6px;
+      gap: 8px;
+      align-items: center;
     }
     .agent-card .agent-input-row input {
       flex: 1;
@@ -255,9 +272,9 @@
       border: 1px solid var(--border);
       color: var(--fg);
       font-family: inherit;
-      font-size: 12px;
-      padding: 8px 12px;
-      border-radius: 8px;
+      font-size: 14px;
+      padding: 12px 16px;
+      border-radius: 24px;
       outline: none;
       transition: border-color 0.3s ease, box-shadow 0.3s ease;
     }
@@ -271,11 +288,16 @@
       border: none;
       color: var(--bg);
       font-family: inherit;
-      font-size: 12px;
-      padding: 8px 14px;
-      border-radius: 8px;
+      font-size: 14px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
       cursor: pointer;
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
       transition: opacity 0.2s, transform 0.1s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .agent-card .agent-input-row button:hover { opacity: 0.8; }
@@ -287,8 +309,8 @@
     .agent-card .agent-model {
       font-size: 10px;
       color: var(--border);
-      margin-top: 6px;
-      text-align: right;
+      margin-top: 8px;
+      text-align: center;
     }
     .agent-card .close-btn {
       background: none;
@@ -404,6 +426,14 @@
         transform: scale(1) translateY(0);
         box-shadow: 0 0 20px rgba(255,255,255,0.03);
       }
+    }
+    @keyframes panelSlideIn {
+      from { transform: translateX(100%); }
+      to   { transform: translateX(0); }
+    }
+    @keyframes panelSlideOut {
+      from { transform: translateX(0); }
+      to   { transform: translateX(100%); }
     }
     @keyframes pulse {
       0%, 100% { opacity: 1; }
@@ -589,7 +619,6 @@
     let commandOpen = false;
     let dragTarget = null;
     let dragOffset = { x: 0, y: 0 };
-    let agentCount = 0;
 
     const canvas = document.getElementById('canvas');
     const commandBar = document.getElementById('command-bar');
@@ -696,7 +725,7 @@
     document.addEventListener('keydown', (e) => {
       if (!started) return;
       if (commandOpen) return;
-      if (e.target.tagName === 'TEXTAREA') return;
+      if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
 
       switch (e.code) {
         case 'Space':
@@ -705,6 +734,13 @@
           break;
         case 'Escape':
           helpPanel.classList.remove('visible');
+          // Dismiss active agent panel on Escape
+          if (activeAgentId) {
+            const panel = document.getElementById(activeAgentId);
+            if (panel) {
+              dismissAgent(panel.querySelector('.close-btn-top'));
+            }
+          }
           break;
       }
     });
@@ -778,57 +814,64 @@
 
     // ── Conversation memory per agent card ──
     const conversationMap = new Map(); // agentId -> [{ role, content }, ...]
+    let activeAgentId = null; // only one chat panel open at a time
 
     // ── Agent summoning ──
     function summonAgent(name, opts = {}) {
-      agentCount++;
       const agent = agents[name] || { icon: '●', desc: `Custom agent "${name}" is ready. Ask me anything.` };
       const displayName = opts.displayName || (name.charAt(0).toUpperCase() + name.slice(1));
       const greeting = opts.greeting || agent.desc;
       const agentId = 'agent-' + Date.now();
 
-      // Position in a staggered grid
-      const cols = 3;
-      const row = Math.floor((agentCount - 1) / cols);
-      const col = (agentCount - 1) % cols;
-      const x = 100 + col * 420 + (Math.random() * 40 - 20);
-      const y = 120 + row * 320 + (Math.random() * 30 - 15);
+      // Close any existing agent panel first (one-at-a-time)
+      if (activeAgentId) {
+        const prev = document.getElementById(activeAgentId);
+        if (prev) {
+          conversationMap.delete(activeAgentId);
+          prev.remove();
+        }
+        activeAgentId = null;
+      }
 
       // Initialize conversation history with the greeting
       conversationMap.set(agentId, [
         { role: 'assistant', content: greeting },
       ]);
+      activeAgentId = agentId;
 
       const card = document.createElement('div');
       card.className = 'agent-card';
       card.id = agentId;
       card.dataset.agentName = name;
-      card.style.left = x + 'px';
-      card.style.top = y + 'px';
 
       card.innerHTML = `
-        <button class="close-btn close-btn-top" onclick="dismissAgent(this)">&times;</button>
-        <div class="agent-avatar">
-          <div class="avatar-head"></div>
-          <div class="avatar-body"></div>
-        </div>
-        <div class="agent-name">${displayName}</div>
-        <div class="agent-status">
-          <span class="dot"></span>
-          <span>Online</span>
+        <div class="agent-header">
+          <div class="agent-avatar">
+            <div class="avatar-head"></div>
+            <div class="avatar-body"></div>
+          </div>
+          <div class="agent-header-info">
+            <div class="agent-name">${displayName}</div>
+            <div class="agent-status">
+              <span class="dot"></span>
+              <span>Online</span>
+            </div>
+          </div>
+          <button class="close-btn close-btn-top" onclick="dismissAgent(this)">&times;</button>
         </div>
         <div class="agent-body">
           <div class="msg msg-agent">${greeting}</div>
         </div>
-        <div class="agent-input-row">
-          <input type="text" placeholder="Direct this agent..." onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
-          <button onclick="sendToAgent('${agentId}')">Send</button>
+        <div class="agent-input-area">
+          <div class="agent-input-row">
+            <input type="text" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
+            <button onclick="sendToAgent('${agentId}')">&#9654;</button>
+          </div>
+          <div class="agent-model"></div>
         </div>
-        <div class="agent-model"></div>
       `;
 
       document.body.appendChild(card);
-      makeDraggable(card);
       card.querySelector('.agent-input-row input').focus();
       toast(`${displayName} is online`);
     }
@@ -836,10 +879,9 @@
     function dismissAgent(btn) {
       const card = btn.closest('.agent-card');
       conversationMap.delete(card.id);
-      card.style.transition = 'all 0.3s ease';
-      card.style.opacity = '0';
-      card.style.transform = 'scale(0.8)';
-      setTimeout(() => card.remove(), 300);
+      if (activeAgentId === card.id) activeAgentId = null;
+      card.classList.add('dismissing');
+      setTimeout(() => card.remove(), 350);
     }
 
     async function sendToAgent(agentId) {
@@ -980,7 +1022,8 @@
     function clearBoard() {
       canvas.innerHTML = '';
       document.querySelectorAll('.agent-card, .sticky-note').forEach(el => el.remove());
-      agentCount = 0;
+      activeAgentId = null;
+      conversationMap.clear();
       toast('Board cleared');
     }
   </script>
