@@ -228,8 +228,8 @@ app.post('/api/agent/pick', async (req, res) => {
     const pickerPrompt = `You are a router. Given a user's goal, pick the best agent from this list:
 ${agentDescriptions}
 
-Reply with JSON only: { "agent": "key", "greeting": "a short friendly human greeting acknowledging their goal and asking a follow-up question" }.
-The greeting should sound like a real person — casual, warm, direct. Not robotic. Keep it under 2 sentences.`;
+Reply with JSON only: { "agent": "key", "greeting": "a short casual greeting" }.
+The greeting must sound like someone texting a friend — super casual, warm, maybe a little playful. Use lowercase, contractions, natural speech. NO formal language, NO "I'd be happy to help", NO customer service vibes. Think of how a smart friend would reply to your text. Keep it to 1-2 short sentences max.`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
