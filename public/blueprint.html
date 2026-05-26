@@ -20,6 +20,8 @@
     .fade-up-d3 { animation-delay: 0.3s; }
     @keyframes pulse-gold { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
     .glow { box-shadow: 0 0 0 1px rgba(200,184,138,0.1); }
+    @keyframes tabFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .tab-enter { animation: tabFade 0.3s ease-out both; }
     @keyframes shimmer {
       0% { background-position: -200% 0; }
       100% { background-position: 200% 0; }
@@ -160,7 +162,7 @@
         </a>
 
         <!-- Header -->
-        <div class="flex items-start gap-5 mb-10 fade-up">
+        <div class="flex items-start gap-5 mb-8 fade-up">
           <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center flex-shrink-0">
             <span class="text-[#c8b88a] text-2xl" x-text="bp.name.charAt(0)"></span>
           </div>
@@ -174,58 +176,184 @@
           </div>
         </div>
 
-        <!-- Stats Row -->
-        <div class="grid grid-cols-3 gap-4 mb-10 fade-up fade-up-d1">
-          <div class="glow bg-white/[0.03] rounded-xl p-5 text-center">
-            <div class="flex items-center justify-center gap-2 mb-1">
-              <div class="w-2 h-2 rounded-full" :class="bp.stability >= 97 ? 'bg-emerald-400' : bp.stability >= 93 ? 'bg-amber-400' : 'bg-red-400'"></div>
-              <p class="text-2xl font-bold text-white" x-text="bp.stability + '%'"></p>
+        <!-- Tab Bar -->
+        <div class="flex gap-8 border-b border-white/5 mb-10 fade-up fade-up-d1">
+          <button
+            @click="activeTab = 'overview'"
+            :class="activeTab === 'overview' ? 'text-white border-[#c8b88a]' : 'text-white/30 border-transparent hover:text-white/60'"
+            class="pb-3 text-sm font-medium border-b-2 transition-all duration-200 -mb-px"
+          >Overview</button>
+          <button
+            @click="activeTab = 'details'"
+            :class="activeTab === 'details' ? 'text-white border-[#c8b88a]' : 'text-white/30 border-transparent hover:text-white/60'"
+            class="pb-3 text-sm font-medium border-b-2 transition-all duration-200 -mb-px"
+          >Details</button>
+        </div>
+
+        <!-- ==================== OVERVIEW TAB ==================== -->
+        <div x-show="activeTab === 'overview'" x-transition:enter="tab-enter" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
+
+          <!-- Stats Row -->
+          <div class="grid grid-cols-3 gap-4 mb-10 fade-up fade-up-d1">
+            <div class="glow bg-white/[0.03] rounded-xl p-5 text-center">
+              <div class="flex items-center justify-center gap-2 mb-1">
+                <div class="w-2 h-2 rounded-full" :class="bp.stability >= 97 ? 'bg-emerald-400' : bp.stability >= 93 ? 'bg-amber-400' : 'bg-red-400'"></div>
+                <p class="text-2xl font-bold text-white" x-text="bp.stability + '%'"></p>
+              </div>
+              <p class="text-[11px] text-white/30 uppercase tracking-wider">Stability</p>
             </div>
-            <p class="text-[11px] text-white/30 uppercase tracking-wider">Stability</p>
+            <div class="glow bg-white/[0.03] rounded-xl p-5 text-center">
+              <p class="text-2xl font-bold text-white mb-1" x-text="bp.activeRuns.toLocaleString()"></p>
+              <p class="text-[11px] text-white/30 uppercase tracking-wider">Active Runs</p>
+            </div>
+            <div class="glow bg-white/[0.03] rounded-xl p-5 text-center">
+              <p class="text-2xl font-bold text-white mb-1" x-text="'$' + bp.estimatedMonthlyCost"></p>
+              <p class="text-[11px] text-white/30 uppercase tracking-wider">Est. Monthly</p>
+            </div>
           </div>
-          <div class="glow bg-white/[0.03] rounded-xl p-5 text-center">
-            <p class="text-2xl font-bold text-white mb-1" x-text="bp.activeRuns.toLocaleString()"></p>
-            <p class="text-[11px] text-white/30 uppercase tracking-wider">Active Runs</p>
+
+          <!-- Description -->
+          <div class="mb-10 fade-up fade-up-d2">
+            <h2 class="text-xs text-white/30 uppercase tracking-wider mb-3">Description</h2>
+            <p class="text-white/60 text-sm leading-relaxed whitespace-pre-line" x-text="bp.description"></p>
           </div>
-          <div class="glow bg-white/[0.03] rounded-xl p-5 text-center">
-            <p class="text-2xl font-bold text-white mb-1" x-text="'$' + bp.estimatedMonthlyCost"></p>
-            <p class="text-[11px] text-white/30 uppercase tracking-wider">Est. Monthly</p>
+
+          <!-- Permissions -->
+          <div class="mb-10 fade-up fade-up-d2">
+            <h2 class="text-xs text-white/30 uppercase tracking-wider mb-3">Required Permissions</h2>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="perm in bp.requiredPermissions" :key="perm">
+                <span class="text-xs bg-white/5 text-white/50 px-3 py-1.5 rounded-full border border-white/5" x-text="perm"></span>
+              </template>
+              <span x-show="bp.requiredPermissions.length === 0" class="text-sm text-white/20">No special permissions required</span>
+            </div>
+          </div>
+
+          <!-- GitHub Link -->
+          <div class="mb-12 fade-up fade-up-d3">
+            <h2 class="text-xs text-white/30 uppercase tracking-wider mb-3">Source</h2>
+            <a :href="bp.githubUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-white/50 hover:text-[#c8b88a] transition-colors group">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+              <span x-text="bp.githubUrl.replace('https://github.com/', '')" class="group-hover:underline underline-offset-4"></span>
+              <svg class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </a>
+          </div>
+
+          <!-- Deploy Button -->
+          <div class="fade-up fade-up-d3">
+            <a :href="'/workspace.html?deploy=' + bp.slug" class="block w-full bg-[#c8b88a] text-[#0a0a0a] py-4 rounded-xl text-sm font-semibold hover:bg-[#d4c494] transition-colors text-center">
+              Deploy to Workspace
+            </a>
           </div>
         </div>
 
-        <!-- Description -->
-        <div class="mb-10 fade-up fade-up-d2">
-          <h2 class="text-xs text-white/30 uppercase tracking-wider mb-3">Description</h2>
-          <p class="text-white/60 text-sm leading-relaxed whitespace-pre-line" x-text="bp.description"></p>
-        </div>
+        <!-- ==================== DETAILS TAB ==================== -->
+        <div x-show="activeTab === 'details'" x-transition:enter="tab-enter" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" x-cloak>
 
-        <!-- Permissions -->
-        <div class="mb-10 fade-up fade-up-d2">
-          <h2 class="text-xs text-white/30 uppercase tracking-wider mb-3">Required Permissions</h2>
-          <div class="flex flex-wrap gap-2">
-            <template x-for="perm in bp.requiredPermissions" :key="perm">
-              <span class="text-xs bg-white/5 text-white/50 px-3 py-1.5 rounded-full border border-white/5" x-text="perm"></span>
-            </template>
-            <span x-show="bp.requiredPermissions.length === 0" class="text-sm text-white/20">No special permissions required</span>
+          <!-- How it works -->
+          <div class="mb-10">
+            <h2 class="text-xs text-white/30 uppercase tracking-wider mb-4">How it works</h2>
+            <div class="bg-white/[0.03] border border-white/5 rounded-xl p-6">
+              <ol class="space-y-4">
+                <template x-for="(step, i) in howItWorks" :key="'step-'+i">
+                  <li class="flex gap-4">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-[#c8b88a]/10 text-[#c8b88a] text-xs font-semibold flex items-center justify-center" x-text="i + 1"></span>
+                    <p class="text-white/60 text-sm leading-relaxed pt-1" x-text="step"></p>
+                  </li>
+                </template>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Permissions Explained -->
+          <div class="mb-10">
+            <h2 class="text-xs text-white/30 uppercase tracking-wider mb-4">Permissions explained</h2>
+            <div x-show="bp.requiredPermissions.length === 0" class="bg-white/[0.03] border border-white/5 rounded-xl p-6">
+              <p class="text-white/30 text-sm">This blueprint requires no special permissions.</p>
+            </div>
+            <div x-show="bp.requiredPermissions.length > 0" class="space-y-3">
+              <template x-for="perm in bp.requiredPermissions" :key="'perm-detail-'+perm">
+                <div class="bg-white/[0.03] border border-white/5 rounded-xl p-5 flex items-start gap-4">
+                  <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-[#c8b88a]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-white/80" x-text="perm"></p>
+                    <p class="text-xs text-white/40 mt-1 leading-relaxed" x-text="permissionDescriptions[perm.toLowerCase()] || 'Grants the blueprint access to ' + perm.toLowerCase() + ' operations within your workspace.'"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Pricing Breakdown -->
+          <div class="mb-10">
+            <h2 class="text-xs text-white/30 uppercase tracking-wider mb-4">Pricing breakdown</h2>
+            <div class="bg-white/[0.03] border border-white/5 rounded-xl p-6">
+              <div class="flex items-baseline justify-between mb-4">
+                <span class="text-white/50 text-sm">Estimated monthly cost</span>
+                <span class="text-2xl font-bold text-white" x-text="'$' + bp.estimatedMonthlyCost"></span>
+              </div>
+              <div class="border-t border-white/5 pt-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-white/40 text-xs">Compute (container runtime)</span>
+                  <span class="text-white/60 text-xs" x-text="'~$' + (bp.estimatedMonthlyCost * 0.6).toFixed(2)"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-white/40 text-xs">API calls (LLM inference)</span>
+                  <span class="text-white/60 text-xs" x-text="'~$' + (bp.estimatedMonthlyCost * 0.3).toFixed(2)"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-white/40 text-xs">Storage &amp; networking</span>
+                  <span class="text-white/60 text-xs" x-text="'~$' + (bp.estimatedMonthlyCost * 0.1).toFixed(2)"></span>
+                </div>
+              </div>
+              <p class="text-[11px] text-white/20 mt-4 leading-relaxed">Actual cost depends on usage volume, agent run frequency, and selected model. Idle agents incur minimal charges.</p>
+            </div>
+          </div>
+
+          <!-- Similar Blueprints -->
+          <div class="mb-12">
+            <h2 class="text-xs text-white/30 uppercase tracking-wider mb-4">Similar blueprints</h2>
+            <div x-show="similarBlueprints.length === 0" class="bg-white/[0.03] border border-white/5 rounded-xl p-6">
+              <p class="text-white/30 text-sm">No similar blueprints found.</p>
+            </div>
+            <div x-show="similarBlueprints.length > 0" class="space-y-3">
+              <template x-for="sim in similarBlueprints" :key="'sim-'+sim.slug">
+                <a :href="'/blueprint.html?slug=' + sim.slug" class="block bg-white/[0.03] border border-white/5 rounded-xl p-5 hover:border-[#c8b88a]/20 transition-all duration-200 group">
+                  <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#c8b88a]/15 to-[#c8b88a]/5 flex items-center justify-center flex-shrink-0">
+                      <span class="text-[#c8b88a] text-sm font-medium" x-text="sim.name.charAt(0)"></span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-white/80 group-hover:text-white transition-colors truncate" x-text="sim.name"></p>
+                      <p class="text-xs text-white/30 mt-0.5 truncate" x-text="sim.description"></p>
+                    </div>
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                      <span class="text-xs text-white/30" x-text="sim.stability + '% stable'"></span>
+                      <span class="text-xs text-white/30" x-text="'$' + sim.estimatedMonthlyCost + '/mo'"></span>
+                      <svg class="w-4 h-4 text-white/20 group-hover:text-[#c8b88a] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </div>
+                  </div>
+                  <!-- Shared tags -->
+                  <div x-show="getSharedTags(sim).length > 0" class="flex flex-wrap gap-1.5 mt-3 pl-14">
+                    <template x-for="tag in getSharedTags(sim)" :key="'stag-'+sim.slug+'-'+tag">
+                      <span class="text-[10px] bg-[#c8b88a]/10 text-[#c8b88a]/60 px-2 py-0.5 rounded-full" x-text="tag"></span>
+                    </template>
+                  </div>
+                </a>
+              </template>
+            </div>
+          </div>
+
+          <!-- Deploy Button (also on Details tab) -->
+          <div>
+            <a :href="'/workspace.html?deploy=' + bp.slug" class="block w-full bg-[#c8b88a] text-[#0a0a0a] py-4 rounded-xl text-sm font-semibold hover:bg-[#d4c494] transition-colors text-center">
+              Deploy to Workspace
+            </a>
           </div>
         </div>
 
-        <!-- GitHub Link -->
-        <div class="mb-12 fade-up fade-up-d3">
-          <h2 class="text-xs text-white/30 uppercase tracking-wider mb-3">Source</h2>
-          <a :href="bp.githubUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-white/50 hover:text-[#c8b88a] transition-colors group">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-            <span x-text="bp.githubUrl.replace('https://github.com/', '')" class="group-hover:underline underline-offset-4"></span>
-            <svg class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-          </a>
-        </div>
-
-        <!-- Deploy Button -->
-        <div class="fade-up fade-up-d3">
-          <a :href="'/workspace.html?deploy=' + bp.slug" class="block w-full bg-[#c8b88a] text-[#0a0a0a] py-4 rounded-xl text-sm font-semibold hover:bg-[#d4c494] transition-colors text-center">
-            Deploy to Workspace
-          </a>
-        </div>
       </div>
     </template>
 
@@ -272,6 +400,32 @@
         bp: null,
         loading: true,
         notFound: false,
+        activeTab: 'overview',
+        allBlueprints: [],
+        similarBlueprints: [],
+        howItWorks: [],
+        permissionDescriptions: {
+          'read': 'Allows the agent to read files, data, and configurations from your workspace.',
+          'write': 'Allows the agent to create and modify files or data within your workspace.',
+          'execute': 'Allows the agent to run commands, scripts, and processes in the container.',
+          'network': 'Allows the agent to make outbound network requests to external APIs and services.',
+          'admin': 'Grants elevated privileges for managing workspace settings and user access.',
+          'storage': 'Allows the agent to persist data to disk or object storage between runs.',
+          'secrets': 'Allows the agent to access stored secrets and environment variables.',
+          'docker': 'Allows the agent to build, run, and manage Docker containers.',
+          'git': 'Allows the agent to clone, pull, push, and manage Git repositories.',
+          'database': 'Allows the agent to connect to and query databases within the workspace.',
+          'deploy': 'Allows the agent to trigger deployments and manage infrastructure.',
+          'logs': 'Allows the agent to read and write to system and application logs.',
+          'api': 'Allows the agent to expose or consume HTTP endpoints.',
+          'email': 'Allows the agent to send notifications and emails on your behalf.',
+          'webhook': 'Allows the agent to register and receive incoming webhook events.',
+          'cron': 'Allows the agent to schedule recurring tasks and background jobs.',
+          'monitoring': 'Allows the agent to collect metrics, set alerts, and report health status.',
+          'filesystem': 'Allows the agent to browse, read, and modify the container filesystem.',
+          'gpu': 'Allows the agent to access GPU resources for inference or training workloads.',
+        },
+
         async init() {
           const slug = new URLSearchParams(window.location.search).get('slug');
           if (!slug) {
@@ -279,7 +433,7 @@
             this.notFound = true;
             return;
           }
-          document.title = 'Loading... — GreatLibrary';
+          document.title = 'Loading... \u2014 GreatLibrary';
           try {
             const res = await fetch('/api/blueprints/' + encodeURIComponent(slug));
             if (!res.ok) {
@@ -288,11 +442,69 @@
               return;
             }
             this.bp = await res.json();
-            document.title = this.bp.name + ' — GreatLibrary';
+            document.title = this.bp.name + ' \u2014 GreatLibrary';
+            this.howItWorks = this.generateHowItWorks();
+            this.fetchSimilar(slug);
           } catch {
             this.notFound = true;
           }
           this.loading = false;
+        },
+
+        generateHowItWorks() {
+          if (!this.bp) return [];
+          const name = this.bp.name;
+          const perms = this.bp.requiredPermissions || [];
+          const steps = [
+            'Deploy ' + name + ' to your workspace with a single click. A dedicated container is provisioned with all required dependencies.',
+          ];
+          if (perms.length > 0) {
+            steps.push('The agent requests ' + perms.slice(0, 3).join(', ') + (perms.length > 3 ? ', and more' : '') + ' permissions. You review and approve each before the agent can act.');
+          } else {
+            steps.push('The agent runs in a sandboxed environment with no special permissions required, keeping your workspace secure by default.');
+          }
+          steps.push('Once running, the agent continuously monitors its assigned tasks, executing workflows and reporting results back to your dashboard.');
+          steps.push('View real-time logs, adjust configuration, or stop the agent at any time from your workspace panel. Billing is usage-based with no lock-in.');
+          return steps;
+        },
+
+        async fetchSimilar(currentSlug) {
+          try {
+            const res = await fetch('/api/blueprints');
+            if (!res.ok) return;
+            this.allBlueprints = await res.json();
+            const currentTags = new Set((this.bp.tags || []).map(function(t) { return t.toLowerCase(); }));
+            const currentPerms = new Set((this.bp.requiredPermissions || []).map(function(p) { return p.toLowerCase(); }));
+            const self = this;
+            const scored = this.allBlueprints
+              .filter(function(b) { return b.slug !== currentSlug; })
+              .map(function(b) {
+                let score = 0;
+                (b.tags || []).forEach(function(t) { if (currentTags.has(t.toLowerCase())) score += 3; });
+                (b.requiredPermissions || []).forEach(function(p) { if (currentPerms.has(p.toLowerCase())) score += 1; });
+                return { bp: b, score: score };
+              })
+              .filter(function(x) { return x.score > 0; })
+              .sort(function(a, b) { return b.score - a.score; })
+              .slice(0, 3)
+              .map(function(x) { return x.bp; });
+            if (scored.length > 0) {
+              this.similarBlueprints = scored;
+            } else {
+              this.similarBlueprints = this.allBlueprints
+                .filter(function(b) { return b.slug !== currentSlug; })
+                .sort(function(a, b) { return b.activeRuns - a.activeRuns; })
+                .slice(0, 3);
+            }
+          } catch {
+            this.similarBlueprints = [];
+          }
+        },
+
+        getSharedTags(other) {
+          if (!this.bp) return [];
+          const myTags = new Set((this.bp.tags || []).map(function(t) { return t.toLowerCase(); }));
+          return (other.tags || []).filter(function(t) { return myTags.has(t.toLowerCase()); });
         },
       };
     }
