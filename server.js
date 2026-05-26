@@ -58,8 +58,6 @@ function getModelTier(model) {
   return 'premium'; // default to premium for unknown models
 }
 
-// ── Agent system prompts (loaded from agents/index.js) ──
-
 // ── API: Chat with agent ──
 app.post('/api/agent', async (req, res) => {
   try {
@@ -239,7 +237,13 @@ app.post('/api/agent/pick', async (req, res) => {
 ${agentDescriptions}
 
 Reply with JSON only: { "agent": "key", "greeting": "a short casual greeting" }.
-The greeting must sound like someone texting a friend — super casual, warm, maybe a little playful. Use lowercase, contractions, natural speech. NO formal language, NO "I'd be happy to help", NO customer service vibes. Think of how a smart friend would reply to your text. Keep it to 1-2 short sentences max.`;
+The greeting must sound like a real friend texting back. Rules:
+- Super casual, warm, maybe a little playful. Lowercase is fine.
+- Use contractions. Natural speech only.
+- React to what they actually said — reference their specific topic.
+- NEVER use phrases like "I'd be happy to help", "Great question", "Let's dive in", "Absolutely!", "Of course!", or anything that sounds like customer support.
+- Think of how a smart friend would text you back if you asked them about this topic. They'd probably react to it first, then offer to dig in.
+- 1-2 short sentences max. No exclamation-point overload.`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -274,7 +278,7 @@ The greeting must sound like someone texting a friend — super casual, warm, ma
       agent: agentKey,
       displayName: agentKey.charAt(0).toUpperCase() + agentKey.slice(1),
       icon: matched ? matched.icon : '●',
-      greeting: parsed.greeting || 'Hey, let me help you with that. What details can you share?',
+      greeting: parsed.greeting || 'oh nice, tell me more about what you\'re working on',
     });
   } catch (err) {
     console.error('Pick error:', err.message);
