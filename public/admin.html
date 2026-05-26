@@ -9,6 +9,16 @@
     :root { --bg: #000; --fg: #fff; --dim: #555; --border: #222; --surface: #0a0a0a; --surface-dim: #111; }
     [data-theme="light"] { --bg: #fff; --fg: #000; --dim: #777; --border: #ccc; --surface: #f5f5f5; --surface-dim: #eee; }
 
+    /* ── Page fade-in ── */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .page-wrapper {
+      opacity: 0;
+      animation: fadeIn 0.5s ease forwards;
+    }
+
     body {
       background: var(--bg);
       color: var(--fg);
@@ -78,6 +88,24 @@
     /* ── Usage bars ── */
     .usage-row {
       margin-bottom: 20px;
+    }
+    .usage-row-inner {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .usage-bar-col {
+      flex: 1;
+      min-width: 0;
+    }
+    .usage-pct {
+      font-size: 28px;
+      font-weight: 200;
+      letter-spacing: 1px;
+      color: var(--fg);
+      min-width: 60px;
+      text-align: right;
+      white-space: nowrap;
     }
     .usage-label {
       display: flex;
@@ -172,6 +200,10 @@
       border-color: var(--fg);
       color: var(--fg);
       background: var(--surface-dim);
+      box-shadow: 0 0 12px rgba(255,255,255,0.1);
+    }
+    [data-theme="light"] .model-btn.active {
+      box-shadow: 0 0 12px rgba(0,0,0,0.08);
     }
     .model-btn .tier-tag {
       font-size: 9px;
@@ -232,11 +264,46 @@
     .tag-premium { background: var(--surface-dim); color: var(--fg); }
     .tag-mini { background: var(--surface); color: var(--dim); }
 
+    /* ── Empty state breathing ── */
+    @keyframes breathe {
+      0%, 100% { opacity: 0.4; }
+      50%      { opacity: 0.8; }
+    }
     .empty-state {
       text-align: center;
       padding: 40px;
       color: var(--dim);
       font-size: 13px;
+      animation: breathe 3s ease-in-out infinite;
+    }
+
+    /* ── History row stagger ── */
+    @keyframes rowFadeIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    tbody tr.row-enter {
+      opacity: 0;
+      animation: rowFadeIn 0.35s ease forwards;
+    }
+
+    /* ── Auto-refresh indicator ── */
+    @keyframes fadeInOut {
+      0%   { opacity: 0; transform: translateY(4px); }
+      15%  { opacity: 1; transform: translateY(0); }
+      70%  { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-4px); }
+    }
+    .auto-refresh-label {
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--dim);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .auto-refresh-label.visible {
+      animation: fadeInOut 2s ease forwards;
     }
 
     /* ── Top bar ── */
@@ -288,13 +355,15 @@
   </style>
 </head>
 <body>
+<div class="page-wrapper">
 
   <div class="top-bar">
     <div>
       <h1>Token Tracker</h1>
       <div class="subtitle" id="date-label">Loading...</div>
     </div>
-    <div style="display:flex;gap:8px;">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="auto-refresh-label" id="auto-refresh-label">Auto-refreshing...</span>
       <button class="refresh-btn" id="theme-toggle" onclick="toggleTheme()">◐</button>
       <button class="refresh-btn" id="refresh-btn" onclick="refreshWithSpin()">Refresh</button>
       <a href="/">Whiteboard</a>
@@ -306,12 +375,17 @@
     <div class="card">
       <h2>Premium Models</h2>
       <div class="usage-row" id="premium-usage">
-        <div class="usage-label">
-          <span class="value" id="premium-used">0</span>
-          <span class="limit">/ <span id="premium-limit">250,000</span></span>
+        <div class="usage-row-inner">
+          <div class="usage-bar-col">
+            <div class="usage-label">
+              <span class="value" id="premium-used">0</span>
+              <span class="limit">/ <span id="premium-limit">250,000</span></span>
+            </div>
+            <div class="bar-bg"><div class="bar-fill" id="premium-bar" style="width:0%"></div></div>
+            <div class="remaining" id="premium-remaining">250,000 tokens remaining</div>
+          </div>
+          <div class="usage-pct" id="premium-pct">0%</div>
         </div>
-        <div class="bar-bg"><div class="bar-fill" id="premium-bar" style="width:0%"></div></div>
-        <div class="remaining" id="premium-remaining">250,000 tokens remaining</div>
       </div>
       <div style="font-size:10px;color:var(--border);line-height:1.8;">
         gpt-5.4, gpt-5.2, gpt-5.1, gpt-5, gpt-4.1, gpt-4o, o1, o3
@@ -321,12 +395,17 @@
     <div class="card">
       <h2>Mini Models</h2>
       <div class="usage-row" id="mini-usage">
-        <div class="usage-label">
-          <span class="value" id="mini-used">0</span>
-          <span class="limit">/ <span id="mini-limit">2,500,000</span></span>
+        <div class="usage-row-inner">
+          <div class="usage-bar-col">
+            <div class="usage-label">
+              <span class="value" id="mini-used">0</span>
+              <span class="limit">/ <span id="mini-limit">2,500,000</span></span>
+            </div>
+            <div class="bar-bg"><div class="bar-fill" id="mini-bar" style="width:0%"></div></div>
+            <div class="remaining" id="mini-remaining">2,500,000 tokens remaining</div>
+          </div>
+          <div class="usage-pct" id="mini-pct">0%</div>
         </div>
-        <div class="bar-bg"><div class="bar-fill" id="mini-bar" style="width:0%"></div></div>
-        <div class="remaining" id="mini-remaining">2,500,000 tokens remaining</div>
       </div>
       <div style="font-size:10px;color:var(--border);line-height:1.8;">
         gpt-5.4-mini, gpt-5-mini, gpt-4.1-mini, gpt-4o-mini, o3-mini, o4-mini
@@ -373,6 +452,8 @@
     </table>
   </div>
 
+</div><!-- /.page-wrapper -->
+
   <script>
     // ── Theme ──
     (function initTheme() {
@@ -415,13 +496,18 @@
         const res = await fetch('/api/admin/usage');
         const data = await res.json();
 
-        // Date
-        document.getElementById('date-label').textContent = data.date;
+        // Date — human-friendly format
+        const dateObj = new Date(data.date + 'T00:00:00');
+        const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const friendlyDate = dayNames[dateObj.getDay()] + ', ' + monthNames[dateObj.getMonth()] + ' ' + dateObj.getDate();
+        document.getElementById('date-label').textContent = friendlyDate;
 
         // Premium
         document.getElementById('premium-used').textContent = data.premium.used.toLocaleString();
         document.getElementById('premium-remaining').textContent =
           data.premium.remaining.toLocaleString() + ' tokens remaining';
+        document.getElementById('premium-pct').textContent = data.premium.percent + '%';
         const premBar = document.getElementById('premium-bar');
         premBar.style.width = data.premium.percent + '%';
         premBar.className = 'bar-fill' +
@@ -431,6 +517,7 @@
         document.getElementById('mini-used').textContent = data.mini.used.toLocaleString();
         document.getElementById('mini-remaining').textContent =
           data.mini.remaining.toLocaleString() + ' tokens remaining';
+        document.getElementById('mini-pct').textContent = data.mini.percent + '%';
         const miniBar = document.getElementById('mini-bar');
         miniBar.style.width = data.mini.percent + '%';
         miniBar.className = 'bar-fill' +
@@ -464,10 +551,11 @@
         if (data.history.length === 0) {
           tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No requests yet. Summon an agent on the whiteboard.</td></tr>';
         } else {
-          tbody.innerHTML = data.history.slice().reverse().map(h => `
-            <tr>
+          const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+          tbody.innerHTML = data.history.slice().reverse().map((h, i) => `
+            <tr class="row-enter" style="animation-delay:${i * 0.04}s;">
               <td>${new Date(h.timestamp).toLocaleTimeString()}</td>
-              <td>${h.agent}</td>
+              <td>${capitalize(h.agent)}</td>
               <td>${h.model}</td>
               <td><span class="tag tag-${h.tier}">${h.tier}</span></td>
               <td>${h.prompt_tokens.toLocaleString()}</td>
@@ -505,9 +593,20 @@
       loadData();
     }
 
-    // Auto-refresh every 10s
+    // ── Auto-refresh with indicator ──
+    function showAutoRefreshLabel() {
+      const label = document.getElementById('auto-refresh-label');
+      label.classList.remove('visible');
+      void label.offsetWidth; // force reflow to restart animation
+      label.classList.add('visible');
+      label.addEventListener('animationend', () => label.classList.remove('visible'), { once: true });
+    }
+
     loadData();
-    setInterval(loadData, 10000);
+    setInterval(() => {
+      showAutoRefreshLabel();
+      loadData();
+    }, 10000);
   </script>
 </body>
 </html>
