@@ -215,38 +215,23 @@
       pointer-events: none;
     }
 
-    /* ── Toolbar ── */
-    #toolbar {
+    /* ── Theme toggle ── */
+    #theme-toggle {
       position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+      bottom: 20px;
+      right: 20px;
       z-index: 100;
-      display: flex;
-      gap: 2px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 6px;
-      transition: background 0.3s ease, border-color 0.3s ease;
-    }
-    .tool-btn {
       background: none;
-      border: 1px solid transparent;
+      border: 1px solid var(--border);
       color: var(--dim);
-      font-family: inherit;
-      font-size: 13px;
-      padding: 8px 16px;
-      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
       cursor: pointer;
+      font-size: 16px;
       transition: all 0.2s;
     }
-    .tool-btn:hover { color: var(--fg); }
-    .tool-btn.active {
-      color: var(--fg);
-      border-color: var(--border);
-      background: var(--surface);
-    }
+    #theme-toggle:hover { color: var(--fg); }
 
     /* ── Sticky notes ── */
     .sticky-note {
@@ -291,7 +276,7 @@
     /* ── Toast ── */
     #toast {
       position: fixed;
-      top: 80px;
+      top: 20px;
       left: 50%;
       transform: translateX(-50%) translateY(-20px);
       z-index: 200;
@@ -336,6 +321,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 0;
       transition: opacity 0.6s ease, background 0.3s ease;
     }
     #splash.fade-out {
@@ -343,19 +329,54 @@
       pointer-events: none;
     }
     #splash h1 {
-      font-size: 28px;
-      font-weight: 300;
+      font-size: 32px;
+      font-weight: 200;
       letter-spacing: 6px;
       text-transform: uppercase;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
       animation: fadeUp 0.8s ease forwards;
     }
-    #splash p {
-      font-size: 13px;
+    #splash .subtitle {
+      font-size: 14px;
       color: var(--dim);
-      letter-spacing: 2px;
-      animation: fadeUp 0.8s 0.2s ease forwards;
+      letter-spacing: 3px;
       opacity: 0;
+      animation: fadeUp 0.8s 0.2s ease forwards;
+    }
+    #splash .disclaimer {
+      font-size: 12px;
+      color: var(--border);
+      letter-spacing: 1px;
+      margin-top: 16px;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.4s ease forwards;
+    }
+    #splash .enter-btn {
+      margin-top: 32px;
+      background: transparent;
+      border: 1px solid #fff;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      letter-spacing: 2px;
+      padding: 14px 40px;
+      border-radius: 8px;
+      cursor: pointer;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.6s ease forwards;
+      transition: background 0.3s, color 0.3s;
+    }
+    [data-theme="light"] #splash .enter-btn {
+      border-color: #000;
+      color: #000;
+    }
+    #splash .enter-btn:hover {
+      background: #fff;
+      color: #000;
+    }
+    [data-theme="light"] #splash .enter-btn:hover {
+      background: #000;
+      color: #fff;
     }
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(10px); }
@@ -395,8 +416,10 @@
 
   <!-- Splash -->
   <div id="splash">
-    <h1>Whiteboard</h1>
-    <p>press space to begin</p>
+    <h1>The Great Library</h1>
+    <p class="subtitle">AI Agent Workspace</p>
+    <p class="disclaimer">Designed for desktop. Best experienced on a computer.</p>
+    <button class="enter-btn" onclick="startApp()">Enter the Library</button>
   </div>
 
   <!-- Grid background -->
@@ -405,15 +428,8 @@
   <!-- Drawing canvas -->
   <svg id="canvas"></svg>
 
-  <!-- Toolbar -->
-  <div id="toolbar" style="display:none;">
-    <button class="tool-btn active" data-tool="draw">Draw</button>
-    <button class="tool-btn" data-tool="note">Note</button>
-    <button class="tool-btn" data-tool="move">Move</button>
-    <button class="tool-btn" data-tool="erase">Erase</button>
-    <button class="tool-btn" onclick="toggleHelp()">?</button>
-    <button class="tool-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">◐</button>
-  </div>
+  <!-- Theme toggle -->
+  <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="display:none;">◐</button>
 
   <!-- Command bar -->
   <div id="command-bar">
@@ -472,7 +488,7 @@
     const canvas = document.getElementById('canvas');
     const commandBar = document.getElementById('command-bar');
     const commandInput = document.getElementById('command-input');
-    const toolbar = document.getElementById('toolbar');
+    const themeToggle = document.getElementById('theme-toggle');
     const splash = document.getElementById('splash');
     const helpPanel = document.getElementById('help-panel');
 
@@ -497,14 +513,19 @@
     loadAgents();
 
     // ── Splash ──
+    function startApp() {
+      if (started) return;
+      started = true;
+      splash.classList.add('fade-out');
+      setTimeout(() => { splash.style.display = 'none'; }, 600);
+      themeToggle.style.display = '';
+      toast('Ready — press Space to summon agents');
+    }
+
     document.addEventListener('keydown', (e) => {
       if (!started && e.code === 'Space') {
         e.preventDefault();
-        started = true;
-        splash.classList.add('fade-out');
-        setTimeout(() => { splash.style.display = 'none'; }, 600);
-        toolbar.style.display = 'flex';
-        toast('Ready — press Space to summon agents');
+        startApp();
       }
     });
 
@@ -580,9 +601,6 @@
     // ── Tool switching ──
     function setTool(tool) {
       currentTool = tool;
-      document.querySelectorAll('.tool-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.tool === tool);
-      });
       document.body.style.cursor =
         tool === 'draw' ? 'crosshair' :
         tool === 'move' ? 'grab' :
@@ -590,10 +608,6 @@
         'default';
       toast(tool.charAt(0).toUpperCase() + tool.slice(1) + ' mode');
     }
-
-    document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
-      btn.addEventListener('click', () => setTool(btn.dataset.tool));
-    });
 
     // ── Drawing ──
     canvas.addEventListener('mousedown', (e) => {
