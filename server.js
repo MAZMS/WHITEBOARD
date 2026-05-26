@@ -241,6 +241,16 @@ app.get('/api/admin/usage', (req, res) => {
   });
 });
 
+// ── Admin API: Reset daily usage ──
+app.post('/api/admin/reset', (req, res) => {
+  tokenUsage.premium = 0;
+  tokenUsage.mini = 0;
+  tokenUsage.history = [];
+  tokenUsage.date = todayStr();
+  console.log(`[${new Date().toISOString()}] Admin reset: usage counters cleared`);
+  res.json({ message: 'Usage reset', date: todayStr() });
+});
+
 // ── Admin API: Update settings ──
 app.post('/api/admin/settings', (req, res) => {
   const { defaultModel } = req.body;

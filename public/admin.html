@@ -540,6 +540,22 @@
       animation: spinOnce 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
+    /* ── Focus-visible states for keyboard navigation ── */
+    button:focus-visible,
+    input:focus-visible,
+    a:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
+
+    /* ── Smooth theme transition on surfaces ── */
+    th, td,
+    .bar-bg,
+    .tag,
+    .nav-indicator {
+      transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 700px) {
       body { padding: 16px; }
@@ -572,6 +588,7 @@
     <div class="top-bar-right" style="display:flex;gap:8px;align-items:center;">
       <span class="auto-refresh-label" id="auto-refresh-label">Auto-refreshing...</span>
       <button id="theme-toggle" onclick="toggleTheme()">&#9684;</button>
+      <button class="refresh-btn" id="reset-btn" onclick="handleReset()">Reset</button>
       <button class="refresh-btn" id="refresh-btn" onclick="refreshWithSpin()">Refresh</button>
       <a href="/" class="nav-link"><span class="nav-arrow">&larr;</span> Whiteboard</a>
     </div>
@@ -841,6 +858,38 @@
       void label.offsetWidth; // force reflow to restart animation
       label.classList.add('visible');
       label.addEventListener('animationend', () => label.classList.remove('visible'), { once: true });
+    }
+
+    // ── Reset with double-click confirmation ──
+    let resetPending = false;
+    let resetTimer = null;
+
+    async function handleReset() {
+      const btn = document.getElementById('reset-btn');
+      if (!resetPending) {
+        resetPending = true;
+        btn.textContent = 'Confirm reset?';
+        btn.style.borderColor = 'var(--fg)';
+        btn.style.color = 'var(--fg)';
+        resetTimer = setTimeout(() => {
+          resetPending = false;
+          btn.textContent = 'Reset';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      } else {
+        clearTimeout(resetTimer);
+        resetPending = false;
+        btn.textContent = 'Reset';
+        btn.style.borderColor = '';
+        btn.style.color = '';
+        try {
+          await fetch('/api/admin/reset', { method: 'POST' });
+          loadData();
+        } catch (err) {
+          console.error('Failed to reset usage:', err);
+        }
+      }
     }
 
     loadData();
