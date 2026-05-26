@@ -127,6 +127,43 @@
     #command-input::placeholder {
       color: var(--dim);
     }
+    #command-bar .input-wrapper {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+    #cmd-ghost {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      font-family: inherit;
+      font-size: 16px;
+      color: var(--border);
+    }
+    #cmd-ghost.visible {
+      opacity: 1;
+    }
+    #cmd-ghost kbd {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-family: inherit;
+      font-size: 10px;
+      color: var(--dim);
+      letter-spacing: 0.3px;
+      flex-shrink: 0;
+    }
     #command-bar .hint {
       color: var(--border);
       font-size: 11px;
@@ -1128,7 +1165,10 @@
   <!-- Command bar -->
   <div id="command-bar">
     <span class="prefix">&gt;</span>
-    <input id="command-input" type="text" placeholder="What are you trying to achieve?" autocomplete="off" spellcheck="false">
+    <div class="input-wrapper">
+      <input id="command-input" type="text" placeholder="" autocomplete="off" spellcheck="false">
+      <span id="cmd-ghost"><span id="cmd-ghost-text"></span><kbd>tab</kbd></span>
+    </div>
     <span class="hint">enter to begin</span>
   </div>
 
@@ -1270,12 +1310,90 @@
 
     // ── Command bar ──
     const commandBackdrop = document.getElementById('command-backdrop');
+    const cmdGhost = document.getElementById('cmd-ghost');
+    const cmdGhostText = document.getElementById('cmd-ghost-text');
+
+    // ── Rotating goal suggestions ──
+    const goalSuggestions = [
+      'make money online',
+      'build a website',
+      'learn a new skill',
+      'plan my week',
+      'write a blog post',
+      'start a business',
+      'get fit and healthy',
+      'organize my life',
+      'create a budget',
+      'design a logo',
+      'find a new job',
+      'learn to cook',
+      'write a book',
+      'plan a trip',
+      'improve my resume',
+    ];
+    let cmdGhostTimer = null;
+    let cmdGhostIndex = 0;
+    let cmdGhostCurrent = '';
+
+    function shuffleArray(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    let cmdGhostOrder = [];
+
+    function startCmdGhost() {
+      stopCmdGhost();
+      cmdGhostOrder = shuffleArray(goalSuggestions);
+      cmdGhostIndex = 0;
+      showNextGhost();
+    }
+
+    function showNextGhost() {
+      if (cmdGhostIndex >= cmdGhostOrder.length) {
+        cmdGhostOrder = shuffleArray(goalSuggestions);
+        cmdGhostIndex = 0;
+      }
+      // Fade out, swap text, fade in
+      cmdGhost.classList.remove('visible');
+      setTimeout(() => {
+        cmdGhostCurrent = cmdGhostOrder[cmdGhostIndex];
+        cmdGhostText.textContent = cmdGhostCurrent;
+        cmdGhost.classList.add('visible');
+        cmdGhostIndex++;
+      }, 200);
+      cmdGhostTimer = setTimeout(showNextGhost, 2000);
+    }
+
+    function stopCmdGhost() {
+      clearTimeout(cmdGhostTimer);
+      cmdGhostTimer = null;
+      cmdGhost.classList.remove('visible');
+      cmdGhostCurrent = '';
+    }
+
+    function updateCmdGhostVisibility() {
+      if (commandInput.value.length > 0) {
+        cmdGhost.classList.remove('visible');
+        clearTimeout(cmdGhostTimer);
+        cmdGhostTimer = null;
+      } else if (commandOpen && !cmdGhostTimer) {
+        startCmdGhost();
+      }
+    }
+
+    commandInput.addEventListener('input', updateCmdGhostVisibility);
 
     function openCommand() {
       commandOpen = true;
       commandBar.classList.add('visible');
       commandBackdrop.classList.add('visible');
       commandInput.value = '';
+      startCmdGhost();
       // Immediate auto-focus with a microtask to ensure DOM is ready
       requestAnimationFrame(() => commandInput.focus());
     }
@@ -1284,13 +1402,24 @@
       commandBar.classList.remove('visible');
       commandBackdrop.classList.remove('visible');
       commandInput.blur();
+      stopCmdGhost();
     }
 
     commandInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Escape') { closeCommand(); }
+      // Tab to accept ghost suggestion
+      if (e.key === 'Tab' && commandOpen) {
+        if (commandInput.value.trim() === '' && cmdGhostCurrent) {
+          e.preventDefault();
+          commandInput.value = cmdGhostCurrent;
+          stopCmdGhost();
+        }
+        return;
+      }
       if (e.key === 'Enter') {
         const val = commandInput.value.trim();
         if (!val) return;
+        stopCmdGhost();
         // Brief in-bar loading state before closing
         commandInput.disabled = true;
         commandInput.value = '';
@@ -1300,7 +1429,7 @@
         // Close after a beat so the user sees the state
         await new Promise(r => setTimeout(r, 600));
         commandInput.disabled = false;
-        commandInput.placeholder = 'What are you trying to achieve?';
+        commandInput.placeholder = '';
         if (hintEl) hintEl.style.display = '';
         closeCommand();
         try {
