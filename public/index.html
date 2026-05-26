@@ -43,6 +43,18 @@
       animation: shimmer 1.5s infinite;
       border-radius: 0.5rem;
     }
+    /* Onboarding tour */
+    @keyframes tourFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tour-tooltip { animation: tourFadeIn 0.25s ease-out both; }
+    @keyframes tourPulseRing {
+      0% { box-shadow: 0 0 0 0 rgba(200,184,138,0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(200,184,138,0); }
+      100% { box-shadow: 0 0 0 0 rgba(200,184,138,0); }
+    }
+    .tour-ring { animation: tourPulseRing 1.5s ease-out infinite; }
   </style>
   <script>
     // Apply saved theme before first paint to prevent flash
@@ -187,7 +199,7 @@
 
     <!-- Search + Filter -->
     <div class="flex flex-col sm:flex-row gap-3 mb-10 fade-up fade-up-d1">
-      <div class="relative flex-1">
+      <div id="tour-search" class="relative flex-1">
         <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
         </svg>
@@ -258,7 +270,7 @@
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"/></svg>
         Compare
       </button>
-      <div class="flex gap-2 flex-wrap">
+      <div id="tour-filters" class="flex gap-2 flex-wrap">
         <button
           @click="tag = ''; showFavoritesOnly = false"
           :class="tag === '' && !showFavoritesOnly ? 'bg-[#c8b88a] text-[#0a0a0a]' : 'bg-white/5 text-white/50 hover:text-white'"
@@ -319,7 +331,7 @@
     <!-- Blueprint Grid -->
     <div x-show="!loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12 fade-up fade-up-d3">
       <template x-for="(bp, i) in filtered()" :key="bp.id">
-        <div class="glow bg-white/[0.03] theme-card rounded-xl p-6 flex flex-col transition-all duration-300 hover:bg-white/[0.05] group cursor-pointer relative" :class="compareSlugs.includes(bp.slug) ? 'ring-1 ring-[#c8b88a]/40' : ''" @click="compareMode ? toggleCompare(bp.slug) : (window.location.href = '/blueprint.html?slug=' + bp.slug)">
+        <div :id="i === 0 ? 'tour-card' : null" class="glow bg-white/[0.03] theme-card rounded-xl p-6 flex flex-col transition-all duration-300 hover:bg-white/[0.05] group cursor-pointer relative" :class="compareSlugs.includes(bp.slug) ? 'ring-1 ring-[#c8b88a]/40' : ''" @click="compareMode ? toggleCompare(bp.slug) : (window.location.href = '/blueprint.html?slug=' + bp.slug)">
           <!-- Compare Checkbox -->
           <div
             x-show="compareMode"
@@ -511,7 +523,7 @@
 
     <!-- Support Chat -->
     <div x-data="supportChat()" class="fixed bottom-6 right-6 z-50">
-      <button @click="open = !open" class="w-12 h-12 rounded-full bg-[#c8b88a] text-[#0a0a0a] flex items-center justify-center shadow-lg shadow-[#c8b88a]/20 hover:bg-[#d4c494] transition-colors">
+      <button id="tour-support" @click="open = !open" class="w-12 h-12 rounded-full bg-[#c8b88a] text-[#0a0a0a] flex items-center justify-center shadow-lg shadow-[#c8b88a]/20 hover:bg-[#d4c494] transition-colors">
         <svg x-show="!open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
         <svg x-show="open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
@@ -664,7 +676,185 @@
     </div>
   </footer>
 
+  <!-- Onboarding Tour -->
+  <div x-data="onboardingTour()" x-cloak>
+    <!-- Semi-transparent overlay -->
+    <div
+      x-show="active"
+      class="fixed inset-0 z-[60] bg-black/50 transition-opacity duration-300"
+      @click="skip()"
+    ></div>
+
+    <!-- Welcome step (centered card, no target) -->
+    <div
+      x-show="active && step === 0"
+      class="fixed inset-0 z-[70] flex items-center justify-center p-6"
+    >
+      <div class="tour-tooltip bg-[#161616] border border-[#c8b88a]/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl" @click.stop>
+        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#c8b88a] to-[#a89868] flex items-center justify-center mx-auto mb-5">
+          <span class="text-[#0a0a0a] font-bold text-xl">GL</span>
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-3" style="font-family: Georgia, serif;">Welcome to GreatLibrary</h2>
+        <p class="text-white/50 text-sm leading-relaxed mb-8">Your marketplace for production-ready agent blueprints. Let us show you around in 30 seconds.</p>
+        <div class="flex items-center justify-center gap-3">
+          <button @click="skip()" class="px-5 py-2.5 rounded-lg text-sm text-white/40 hover:text-white/70 hover:bg-white/5 transition-all">Skip</button>
+          <button @click="next()" class="px-6 py-2.5 rounded-lg text-sm font-semibold bg-[#c8b88a] text-[#0a0a0a] hover:bg-[#d4c494] transition-colors">Start Tour</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating tooltip for steps 1-4 -->
+    <template x-if="active && step >= 1 && step <= 4">
+      <div
+        class="fixed z-[70] tour-tooltip"
+        :style="tooltipStyle"
+        @click.stop
+        x-effect="positionTooltip()"
+      >
+        <div class="bg-[#161616] border border-[#c8b88a]/30 rounded-xl p-5 shadow-2xl w-72">
+          <!-- Step counter -->
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[10px] text-[#c8b88a] uppercase tracking-widest font-medium" x-text="'Step ' + (step + 1) + ' of 6'"></span>
+            <div class="flex gap-1">
+              <template x-for="s in 6" :key="'dot-'+s">
+                <div class="w-1.5 h-1.5 rounded-full transition-colors" :class="s - 1 <= step ? 'bg-[#c8b88a]' : 'bg-white/10'"></div>
+              </template>
+            </div>
+          </div>
+          <!-- Content -->
+          <p class="text-sm text-white/80 leading-relaxed mb-4" x-text="steps[step].text"></p>
+          <!-- Actions -->
+          <div class="flex items-center justify-between">
+            <button @click="skip()" class="text-xs text-white/30 hover:text-white/60 transition-colors">Skip tour</button>
+            <button @click="next()" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#c8b88a] text-[#0a0a0a] hover:bg-[#d4c494] transition-colors">Next</button>
+          </div>
+        </div>
+        <!-- Arrow pointer -->
+        <div class="absolute w-3 h-3 bg-[#161616] border-[#c8b88a]/30 rotate-45" :style="arrowStyle"></div>
+      </div>
+    </template>
+
+    <!-- Highlight ring around target element -->
+    <div
+      x-show="active && step >= 1 && step <= 4"
+      class="fixed z-[65] rounded-lg border-2 border-[#c8b88a]/60 tour-ring pointer-events-none transition-all duration-300"
+      :style="highlightStyle"
+    ></div>
+
+    <!-- Done step (centered card) -->
+    <div
+      x-show="active && step === 5"
+      class="fixed inset-0 z-[70] flex items-center justify-center p-6"
+    >
+      <div class="tour-tooltip bg-[#161616] border border-[#c8b88a]/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl" @click.stop>
+        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center mx-auto mb-5">
+          <svg class="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-3" style="font-family: Georgia, serif;">You're all set!</h2>
+        <p class="text-white/50 text-sm leading-relaxed mb-8">Explore the marketplace, deploy blueprints, and build something great.</p>
+        <button @click="finish()" class="px-8 py-2.5 rounded-lg text-sm font-semibold bg-[#c8b88a] text-[#0a0a0a] hover:bg-[#d4c494] transition-colors">Got it</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // ── Onboarding Tour ──
+    function onboardingTour() {
+      return {
+        active: false,
+        step: 0,
+        tooltipStyle: '',
+        arrowStyle: '',
+        highlightStyle: '',
+        steps: [
+          { target: null, text: '' }, // step 0 = welcome (centered)
+          { target: '#tour-search', text: "Search for blueprints by name or description. Try '/' for quick access." },
+          { target: '#tour-filters', text: 'Filter by category or click Favorites to see your saved blueprints.' },
+          { target: '#tour-card', text: 'Click any blueprint to see details, or use Compare mode to compare multiple.' },
+          { target: '#tour-support', text: 'Need help? Chat with our AI support agent anytime.' },
+          { target: null, text: '' }, // step 5 = done (centered)
+        ],
+        init() {
+          if (!localStorage.getItem('gl_toured')) {
+            // Wait for blueprints to load so #tour-card exists
+            const check = () => {
+              const cardEl = document.getElementById('tour-card');
+              if (cardEl || this._waited > 4000) {
+                this.active = true;
+              } else {
+                this._waited = (this._waited || 0) + 200;
+                setTimeout(check, 200);
+              }
+            };
+            setTimeout(check, 500);
+          }
+        },
+        next() {
+          if (this.step < this.steps.length - 1) {
+            this.step++;
+            this.$nextTick(() => this.positionTooltip());
+          } else {
+            this.finish();
+          }
+        },
+        skip() {
+          this.finish();
+        },
+        finish() {
+          this.active = false;
+          localStorage.setItem('gl_toured', 'true');
+        },
+        positionTooltip() {
+          const s = this.steps[this.step];
+          if (!s || !s.target) return;
+          const el = document.querySelector(s.target);
+          if (!el) return;
+
+          const rect = el.getBoundingClientRect();
+          const pad = 8;
+
+          // Highlight ring
+          this.highlightStyle = `top:${rect.top - pad}px;left:${rect.left - pad}px;width:${rect.width + pad * 2}px;height:${rect.height + pad * 2}px;`;
+
+          const tooltipW = 288; // w-72
+          const tooltipH = 160; // approximate
+          const gap = 16;
+
+          // Decide placement: prefer below, fallback above, then right
+          let top, left, arrowTop, arrowLeft, arrowBorder;
+
+          const spaceBelow = window.innerHeight - rect.bottom;
+          const spaceAbove = rect.top;
+
+          if (s.target === '#tour-support') {
+            // Position above and to the left of the FAB
+            top = rect.top - tooltipH - gap;
+            left = rect.right - tooltipW;
+            arrowTop = '';
+            arrowLeft = '';
+            this.arrowStyle = `bottom:-6px;right:20px;border-bottom:1px solid;border-right:1px solid;border-color:rgba(200,184,138,0.3);`;
+          } else if (spaceBelow > tooltipH + gap) {
+            // Below
+            top = rect.bottom + gap;
+            left = rect.left + rect.width / 2 - tooltipW / 2;
+            // Clamp left
+            left = Math.max(12, Math.min(left, window.innerWidth - tooltipW - 12));
+            const arrowX = rect.left + rect.width / 2 - left;
+            this.arrowStyle = `top:-6px;left:${Math.max(16, Math.min(arrowX, tooltipW - 16))}px;border-top:1px solid;border-left:1px solid;border-color:rgba(200,184,138,0.3);`;
+          } else {
+            // Above
+            top = rect.top - tooltipH - gap;
+            left = rect.left + rect.width / 2 - tooltipW / 2;
+            left = Math.max(12, Math.min(left, window.innerWidth - tooltipW - 12));
+            const arrowX = rect.left + rect.width / 2 - left;
+            this.arrowStyle = `bottom:-6px;left:${Math.max(16, Math.min(arrowX, tooltipW - 16))}px;border-bottom:1px solid;border-right:1px solid;border-color:rgba(200,184,138,0.3);`;
+          }
+
+          this.tooltipStyle = `top:${top}px;left:${left}px;`;
+        },
+      };
+    }
+
     // ── Favorites helpers (localStorage) ──
     function getFavorites() {
       try { return JSON.parse(localStorage.getItem('gl_favorites')) || []; }
