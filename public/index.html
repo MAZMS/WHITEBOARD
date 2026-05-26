@@ -566,7 +566,7 @@
     #admin-link {
       position: fixed;
       bottom: 24px;
-      right: 66px;
+      right: 124px;
       z-index: 100;
       color: var(--border);
       text-decoration: none;
@@ -837,28 +837,119 @@
       z-index: 100;
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      width: 260px;
+      border-radius: 16px;
+      padding: 24px 24px 20px;
+      width: 290px;
       font-size: 12px;
       color: var(--dim);
-      line-height: 2;
+      line-height: 1.6;
       display: none;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     }
-    #help-panel.visible { display: block; animation: agentAppear 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    #help-panel.visible {
+      display: block;
+      animation: helpPanelIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    #help-panel.dismissing {
+      animation: helpPanelOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    @keyframes helpPanelIn {
+      0% { opacity: 0; transform: scale(0.9) translateY(12px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes helpPanelOut {
+      0% { opacity: 1; transform: scale(1) translateY(0); }
+      100% { opacity: 0; transform: scale(0.95) translateY(8px); }
+    }
     [data-theme="light"] #help-panel {
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
     }
-    #help-panel h3 { color: var(--fg); font-size: 13px; margin-bottom: 8px; letter-spacing: 1px; }
+    #help-panel h3 {
+      color: var(--fg);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    #help-panel h3:not(:first-child) { margin-top: 16px; }
+    #help-panel .help-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+    #help-panel .help-row span { flex: 1; }
     #help-panel kbd {
       background: var(--surface);
       border: 1px solid var(--border);
-      padding: 2px 6px;
-      border-radius: 4px;
+      padding: 3px 8px;
+      border-radius: 6px;
       font-family: inherit;
-      font-size: 11px;
+      font-size: 10px;
       color: var(--fg);
+      white-space: nowrap;
+      letter-spacing: 0.3px;
     }
+    #help-panel .help-close-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--border);
+      font-size: 14px;
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                  background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #help-panel .help-close-btn:hover {
+      color: var(--fg);
+      background: var(--surface);
+    }
+    #help-panel .help-feature {
+      padding: 3px 0;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    #help-panel .help-feature::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--border);
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    /* ── Help trigger button ── */
+    #help-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 72px;
+      z-index: 100;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #help-btn:hover { color: var(--fg); border-color: var(--fg); }
+    #help-btn:active { transform: scale(0.92); }
 
     /* ── Focus-visible states for keyboard navigation ── */
     button:focus-visible,
@@ -969,8 +1060,9 @@
   <!-- Drawing canvas -->
   <svg id="canvas"></svg>
 
-  <!-- Theme toggle -->
+  <!-- Theme toggle + help button -->
   <a id="admin-link" href="/admin" title="Admin panel" style="display:none;">Admin</a>
+  <button id="help-btn" onclick="toggleHelp()" title="Help &amp; shortcuts (?)" style="display:none;">?</button>
   <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="display:none;">&#9684;</button>
 
   <!-- Command bar backdrop -->
@@ -985,17 +1077,19 @@
 
   <!-- Help panel -->
   <div id="help-panel">
+    <button class="help-close-btn" onclick="closeHelp()" title="Close">&times;</button>
     <h3>SHORTCUTS</h3>
-    <div><kbd>Space</kbd> &mdash; command bar</div>
-    <div><kbd>D</kbd> &mdash; draw mode</div>
-    <div><kbd>N</kbd> &mdash; new note</div>
-    <div><kbd>M</kbd> &mdash; move mode</div>
-    <div><kbd>E</kbd> &mdash; eraser</div>
-    <div><kbd>Esc</kbd> &mdash; close / cancel</div>
-    <div><kbd>Ctrl+Shift+C</kbd> &mdash; clear board</div>
-    <h3 style="margin-top:12px;">AGENTS</h3>
-    <div>Describe your goal — AI picks the best agent</div>
-    <div id="agent-list-help" style="margin-top:4px;color:var(--dim);font-size:11px;line-height:1.8;"></div>
+    <div class="help-row"><span>Open command bar</span> <kbd>Space</kbd></div>
+    <div class="help-row"><span>Close panel / bar</span> <kbd>Esc</kbd></div>
+    <div class="help-row"><span>Clear board</span> <kbd>Ctrl+Shift+C</kbd></div>
+    <h3>HOW IT WORKS</h3>
+    <div class="help-feature">Type a goal &mdash; AI picks the right agent</div>
+    <div class="help-feature">Click &ldquo;Message&rdquo; on a card to chat</div>
+    <div class="help-feature">Drag cards to reposition them</div>
+    <div class="help-feature">Clear chat with the button in chat header</div>
+    <div class="help-feature">Toggle dark / light mode (bottom-right)</div>
+    <h3>AGENTS</h3>
+    <div id="agent-list-help" style="color:var(--dim);font-size:11px;line-height:1.8;"></div>
   </div>
 
   <!-- Toast -->
@@ -1033,6 +1127,25 @@
     const themeToggle = document.getElementById('theme-toggle');
     const splash = document.getElementById('splash');
     const helpPanel = document.getElementById('help-panel');
+    const helpBtn = document.getElementById('help-btn');
+
+    // ── Help panel ──
+    function toggleHelp() {
+      if (helpPanel.classList.contains('visible')) {
+        closeHelp();
+      } else {
+        helpPanel.classList.remove('dismissing');
+        helpPanel.classList.add('visible');
+      }
+    }
+    function closeHelp() {
+      if (!helpPanel.classList.contains('visible')) return;
+      helpPanel.classList.add('dismissing');
+      helpPanel.addEventListener('animationend', function onEnd() {
+        helpPanel.removeEventListener('animationend', onEnd);
+        helpPanel.classList.remove('visible', 'dismissing');
+      }, { once: true });
+    }
 
     // ── Agent definitions (loaded from server) ──
     let agents = {};
@@ -1061,6 +1174,7 @@
       splash.classList.add('fade-out');
       setTimeout(() => { splash.style.display = 'none'; }, 600);
       themeToggle.style.display = '';
+      helpBtn.style.display = '';
       document.getElementById('admin-link').style.display = '';
       // Restore any saved conversations from localStorage
       loadConversations();
@@ -1164,6 +1278,13 @@
         return;
       }
 
+      // ? key — toggle help panel
+      if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
+        e.preventDefault();
+        toggleHelp();
+        return;
+      }
+
       switch (e.code) {
         case 'Space':
           // Don't open command bar while a chat panel is open
@@ -1172,7 +1293,7 @@
           openCommand();
           break;
         case 'Escape':
-          helpPanel.classList.remove('visible');
+          closeHelp();
           // Close active chat panel on Escape
           if (openPanelId) {
             closeChatPanel();
