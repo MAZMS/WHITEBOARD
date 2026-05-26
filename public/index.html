@@ -32,7 +32,7 @@
       overflow: hidden;
       height: 100vh;
       width: 100vw;
-      cursor: crosshair;
+      cursor: default;
       transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -199,6 +199,23 @@
     .agent-contact-card .card-status .dot.streaming {
       animation: pulseFast 0.5s infinite ease-in-out;
     }
+    .agent-contact-card .card-close-btn {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: var(--border);
+      font-size: 15px;
+      cursor: pointer;
+      line-height: 1;
+      opacity: 0;
+      transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s;
+      z-index: 1;
+    }
+    .agent-contact-card:hover .card-close-btn { opacity: 1; }
+    .agent-contact-card .card-close-btn:hover { color: var(--fg); }
+
     .agent-contact-card .message-btn {
       width: 100%;
       padding: 10px;
@@ -241,7 +258,7 @@
       box-shadow: -4px 0 30px rgba(0,0,0,0.15);
     }
     .agent-chat-panel.dismissing {
-      animation: panelSlideOut 0.35s cubic-bezier(0.4, 0, 1, 1) forwards;
+      animation: panelSlideOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     .agent-header {
       display: flex;
@@ -563,6 +580,17 @@
         transform: scale(1) translateY(0);
       }
     }
+    @keyframes cardDismiss {
+      from {
+        opacity: 1;
+        transform: scale(1);
+      }
+      to {
+        opacity: 0;
+        transform: scale(0.85);
+      }
+    }
+
     @keyframes bubbleFadeIn {
       from {
         opacity: 0;
@@ -687,6 +715,22 @@
       50% { box-shadow: 0 0 20px rgba(0,0,0,0.08); }
     }
 
+    /* ── Empty state hint ── */
+    #empty-hint {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      color: var(--border);
+      font-size: 12px;
+      letter-spacing: 2px;
+      pointer-events: none;
+      user-select: none;
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #empty-hint.hidden { opacity: 0; }
+
     /* ── Help panel ── */
     #help-panel {
       position: fixed;
@@ -767,6 +811,9 @@
 
   <!-- Grid background -->
   <div id="grid"></div>
+
+  <!-- Empty state hint -->
+  <div id="empty-hint" style="display:none;">press space to begin</div>
 
   <!-- Drawing canvas -->
   <svg id="canvas"></svg>
@@ -863,6 +910,10 @@
       splash.classList.add('fade-out');
       setTimeout(() => { splash.style.display = 'none'; }, 600);
       themeToggle.style.display = '';
+      // Show empty state hint if no agents yet
+      if (agentCards.size === 0) {
+        document.getElementById('empty-hint').style.display = '';
+      }
       toast('Ready — press Space to begin');
     }
 
@@ -968,7 +1019,6 @@
     function setTool(tool) {
       currentTool = tool;
       document.body.style.cursor =
-        tool === 'draw' ? 'crosshair' :
         tool === 'move' ? 'grab' :
         tool === 'erase' ? 'pointer' :
         'default';
@@ -1079,6 +1129,7 @@
       card.style.top = pos.y + 'px';
 
       card.innerHTML = `
+        <button class="card-close-btn" onclick="dismissAgent('${agentId}')">&times;</button>
         <div class="card-avatar">
           <div class="avatar-head"></div>
           <div class="avatar-body"></div>
@@ -1093,6 +1144,10 @@
 
       // Track the card
       agentCards.set(agentId, { name, displayName, element: card });
+
+      // Hide empty state hint on first agent
+      const hint = document.getElementById('empty-hint');
+      if (hint) hint.classList.add('hidden');
 
       toast(`${displayName} is online`);
     }
@@ -1200,6 +1255,33 @@
       openPanelId = null;
     }
 
+    // ── Dismiss agent card from canvas ──
+    function dismissAgent(agentId) {
+      // Close chat panel if this agent's panel is open
+      if (openPanelId === agentId) {
+        closeChatPanel();
+      }
+
+      const card = document.getElementById(agentId);
+      if (card) {
+        card.style.animation = 'cardDismiss 0.3s cubic-bezier(0.4, 0, 1, 1) forwards';
+        setTimeout(() => card.remove(), 300);
+      }
+
+      // Clean up conversation memory and card tracking
+      conversationMap.delete(agentId);
+      agentCards.delete(agentId);
+
+      // Show empty hint again if no agents remain
+      if (agentCards.size === 0) {
+        const hint = document.getElementById('empty-hint');
+        if (hint) {
+          hint.classList.remove('hidden');
+          hint.style.display = '';
+        }
+      }
+    }
+
     // ── Send message to agent ──
     async function sendToAgent(agentId) {
       const panel = document.getElementById('chat-panel');
@@ -1235,8 +1317,8 @@
       agentBubble.innerHTML = '<span class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>';
       body.appendChild(agentBubble);
 
-      // Auto-scroll
-      body.scrollTop = body.scrollHeight;
+      // Auto-scroll smoothly
+      agentBubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
       // Set running state
       input.value = '';
@@ -1294,7 +1376,7 @@
                 }
                 replyText += data.text;
                 agentBubble.textContent = replyText;
-                body.scrollTop = body.scrollHeight;
+                agentBubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
               }
               if (data.done) {
                 modelEl.textContent = data.total_tokens ? `${data.total_tokens} tokens` : '';
