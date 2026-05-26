@@ -31,7 +31,7 @@ greatlibraryai/
 ├── agents/
 │   └── index.js       # 10 agent definitions (system prompts, icons, tiers)
 ├── public/
-│   ├── index.html     # Whiteboard — canvas, contact cards, chat panels, command bar
+│   ├── index.html     # Whiteboard — canvas, contact cards, chat panel, command bar
 │   └── admin.html     # Admin — token tracker, model picker, request history
 ├── package.json       # express + openai — no build step
 ├── .env.example       # OPENAI_API_KEY, ADMIN_PASSWORD, PORT
@@ -41,10 +41,11 @@ greatlibraryai/
 **Key routes in server.js:**
 - `POST /api/agent` — chat with agent (single response)
 - `POST /api/agent/stream` — streaming chat with SSE
-- `POST /api/agent/pick` — goal-based agent router (uses gpt-4o-mini)
+- `POST /api/agent/pick` — goal-based agent router (uses gpt-4o-mini to match goal to best agent)
 - `GET /api/agents` — list all agent contact cards
-- `GET /api/admin/usage` — token usage stats
+- `GET /api/admin/usage` — token usage stats (premium + mini breakdown)
 - `POST /api/admin/settings` — update default model
+- `POST /api/admin/reset` — reset daily usage counters
 - `GET /health` — health check
 
 ## Invariants
@@ -59,37 +60,62 @@ greatlibraryai/
 6. **Admin at `/admin`** — always accessible, always shows real-time usage.
 7. **New env var → add to `.env.example`** in the same commit.
 
+## Security & Hardening
+
+- **Security headers:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` on every response.
+- **Body size limit:** `express.json({ limit: '50kb' })` — prevents payload abuse.
+- **Graceful shutdown:** `SIGTERM` handler for clean Railway restarts.
+- **Safe error messages:** `safeErrorMessage()` never leaks stack traces or internal details.
+- **Client disconnect handling:** SSE streams abort upstream when client disconnects.
+
 ## Design Rules — Dopamine Philosophy
 
 - **Micro-animations everywhere.** Cubic-bezier transitions, entrance bounce, hover lift, typing dots. Every interaction rewards the user.
 - No visible scrollbars. `scrollbar-width: none` globally.
-- Mobile-friendly. Touch targets >= 44px. No horizontal overflow.
+- **Mobile responsive.** 640px breakpoint. Touch targets >= 44px. No horizontal overflow.
+- **Accessibility.** `focus-visible` outlines on interactive elements. 44px minimum touch targets throughout.
 - Monospace font stack: `'SF Mono', 'Fira Code', 'Consolas', monospace`.
 - Every interaction should feel instant. Optimistic UI.
 - Conversational tone: agents talk like smart friends texting, never like customer service bots.
 
 ## Agent System
 
-**Goal-based summoning:** User types a goal in the command bar. The router (`/api/agent/pick`) selects the best agent and opens it with a casual greeting.
+**Goal-based summoning:** User types a goal in the command bar. The router (`/api/agent/pick`) uses gpt-4o-mini to select the best agent and returns a casual greeting. Tokens from the pick call count against the mini tier budget.
 
 **Two-stage UX:**
-1. **Contact cards** — draggable agent icons on the canvas, showing name + description.
-2. **Chat panel** — slides in from the right as a full-height messenger-style panel with streaming responses.
+1. **Contact cards on canvas** — draggable agent icons showing name, icon, description, and tier badge. Click or tap to open chat.
+2. **Slide-in chat panel** — full-height messenger panel slides in from the right with streaming SSE responses, typing indicator, and conversation history.
+
+**Conversation memory:** Each chat panel maintains message history. The server trims to the **last 20 messages** before sending to OpenAI, keeping context useful without blowing token budgets.
 
 **10 agents** (defined in `agents/index.js`):
 - Premium tier: architect, coder, designer, thinker, debugger, reviewer
 - Mini tier: writer, researcher, planner, ops
 
+All agents share a `HUMAN_VOICE` suffix enforcing casual texting style, no markdown, short responses, and natural follow-up questions.
+
 When adding agents: define in `agents/index.js` — they auto-register in the API and whiteboard.
 
-## Recursive Improvement
+## Admin Dashboard (`/admin`)
 
-When running improvement cycles, each agent has a lane:
-- **Coder** owns `server.js` + `agents/index.js`
-- **Designer** owns `public/index.html`
-- **Ops** owns `CLAUDE.md` + Railway
+- **Token usage gauges** — real-time premium + mini usage with percentage bars.
+- **Model selector** — dropdown with grouped models (premium vs mini). Changes the default model for all agent calls.
+- **Request history** — last 100 requests showing agent, model, tier, and token count.
+- **Reset button** — clears daily counters without restarting the server.
+- Models are served from the server's `PREMIUM_MODELS` and `MINI_MODELS` arrays so admin always matches reality.
 
-Never add features during polish cycles — only perfect what exists.
+## Claude Code Agent Lanes
+
+4 parallel Claude Code agents for recursive improvement cycles:
+
+| Agent | Owns | Focus |
+|-------|------|-------|
+| **Designer** | `public/index.html` | UI, animations, responsiveness, accessibility |
+| **Coder** | `server.js` + `agents/index.js` | API routes, streaming, token tracking, error handling |
+| **Ops** | `CLAUDE.md` + Railway | Docs, deployment, hardening, monitoring |
+| **Tester** | All files (read-only) | Manual QA, edge cases, regression checks |
+
+**Recursive improvement cycle:** Designer and Coder run in parallel on their files. Ops updates docs. Tester reviews everything last. Each cycle ships a commit. Never add features during polish cycles — only perfect what exists.
 
 ## Recursive Learning
 
