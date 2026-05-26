@@ -66,6 +66,8 @@ greatlibraryai/
 - **Body size limit:** `express.json({ limit: '50kb' })` — prevents payload abuse.
 - **Graceful shutdown:** `SIGTERM` handler for clean Railway restarts.
 - **Safe error messages:** `safeErrorMessage()` never leaks stack traces or internal details.
+- **Rate limit handling:** 429 responses surface a friendly "slow down" toast instead of raw errors.
+- **Error toasts + retry:** Failed API calls show a dismissible toast with a retry button.
 - **Client disconnect handling:** SSE streams abort upstream when client disconnects.
 
 ## Design Rules — Dopamine Philosophy
@@ -76,17 +78,20 @@ greatlibraryai/
 - **Accessibility.** `focus-visible` outlines on interactive elements. 44px minimum touch targets throughout.
 - Monospace font stack: `'SF Mono', 'Fira Code', 'Consolas', monospace`.
 - Every interaction should feel instant. Optimistic UI.
+- **Full light mode parity.** Both `index.html` and `admin.html` are polished in light and dark themes via `[data-theme="light"]`.
 - Conversational tone: agents talk like smart friends texting, never like customer service bots.
 
 ## Agent System
 
-**Goal-based summoning:** User types a goal in the command bar. The router (`/api/agent/pick`) uses gpt-4o-mini to select the best agent and returns a casual greeting. Tokens from the pick call count against the mini tier budget.
+**Goal-based summoning:** User types a goal in the frosted-glass command bar (`backdrop-filter: blur`). The router (`/api/agent/pick`) uses gpt-4o-mini to select the best agent and returns a casual greeting. Tokens from the pick call count against the mini tier budget.
 
 **Two-stage UX:**
 1. **Contact cards on canvas** — draggable agent icons showing name, icon, description, and tier badge. Click or tap to open chat.
-2. **Slide-in chat panel** — full-height messenger panel slides in from the right with streaming SSE responses, typing indicator, and conversation history.
+2. **Slide-in chat panel** — full-height messenger panel slides in from the right with streaming SSE responses, "typing..." header status, message timestamps, and conversation history.
 
-**Conversation memory:** Each chat panel maintains message history. The server trims to the **last 20 messages** before sending to OpenAI, keeping context useful without blowing token budgets.
+**Conversation persistence:** Chat history is saved to `localStorage` per agent and restored on page load. A clear-chat button in the panel header wipes the stored conversation.
+
+**Context window:** The server trims to the **last 20 messages** before sending to OpenAI, keeping context useful without blowing token budgets.
 
 **10 agents** (defined in `agents/index.js`):
 - Premium tier: architect, coder, designer, thinker, debugger, reviewer
@@ -100,9 +105,18 @@ When adding agents: define in `agents/index.js` — they auto-register in the AP
 
 - **Token usage gauges** — real-time premium + mini usage with percentage bars.
 - **Model selector** — dropdown with grouped models (premium vs mini). Changes the default model for all agent calls.
-- **Request history** — last 100 requests showing agent, model, tier, and token count.
-- **Reset button** — clears daily counters without restarting the server.
+- **Request history** — last 100 requests with alternating row stripes, right-aligned numbers, and pill-style tier tags.
+- **Reset button** — double-click to confirm, clears daily counters without restarting the server.
 - Models are served from the server's `PREMIUM_MODELS` and `MINI_MODELS` arrays so admin always matches reality.
+
+## Keyboard Shortcuts
+
+- **Ctrl+Shift+C** — clear the whiteboard (reset all cards to default positions).
+
+## UX Polish
+
+- **Scroll-to-bottom pill** — appears when scrolled up in chat; click to jump to latest message.
+- **Placeholder rotation** — input cycles through phrases ("Say something...", "What's on your mind?", etc.).
 
 ## Claude Code Agent Lanes
 
