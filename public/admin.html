@@ -145,8 +145,8 @@
 
     /* ── Bar shimmer sweep ── */
     @keyframes barShimmer {
-      0%   { transform: translateX(-100%); }
-      100% { transform: translateX(200%); }
+      0%   { opacity: 1; transform: translateX(-100%); }
+      100% { opacity: 1; transform: translateX(250%); }
     }
 
     .bar-fill {
@@ -163,15 +163,14 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 50%;
+      width: 40%;
       height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
-      animation: barShimmer 1.2s 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
       opacity: 0;
-      animation-fill-mode: forwards;
+      animation: barShimmer 0.9s 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     [data-theme="light"] .bar-fill::after {
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
     }
     .bar-fill.shimmer-done::after {
       display: none;
@@ -773,7 +772,28 @@
       }
     }
 
-    async function selectModel(model) {
+    // ── Bar class helper ──
+    function getBarClasses(percent) {
+      if (percent > 90) return ' danger';
+      if (percent > 80) return ' warning near-limit';
+      if (percent > 70) return ' warning';
+      return '';
+    }
+
+    // ── Remove shimmer after it plays once ──
+    function scheduleShimmerCleanup(bar) {
+      setTimeout(() => bar.classList.add('shimmer-done'), 2200);
+    }
+
+    // ── Model select with flash ──
+    async function selectModelWithFlash(btn, model) {
+      const flash = btn.querySelector('.flash-overlay');
+      if (flash) {
+        flash.classList.remove('flash');
+        void flash.offsetWidth;
+        flash.classList.add('flash');
+        flash.addEventListener('animationend', () => flash.classList.remove('flash'), { once: true });
+      }
       try {
         await fetch('/api/admin/settings', {
           method: 'POST',
