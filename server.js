@@ -86,10 +86,11 @@ app.post('/api/agent', async (req, res) => {
 
     const systemPrompt = getSystemPrompt(agent);
 
-    // Build messages: system prompt + full conversation history (or single message for backward compat)
+    // Build messages: system prompt + conversation history (trimmed to last 20 to limit token usage)
     const chatMessages = [{ role: 'system', content: systemPrompt }];
     if (msgHistory && Array.isArray(msgHistory)) {
-      chatMessages.push(...msgHistory);
+      const trimmed = msgHistory.length > 20 ? msgHistory.slice(-20) : msgHistory;
+      chatMessages.push(...trimmed);
     } else {
       chatMessages.push({ role: 'user', content: message });
     }
@@ -150,10 +151,11 @@ app.post('/api/agent/stream', async (req, res) => {
 
     const systemPrompt = getSystemPrompt(agent);
 
-    // Build messages: system prompt + full conversation history (or single message for backward compat)
+    // Build messages: system prompt + conversation history (trimmed to last 20 to limit token usage)
     const chatMessages = [{ role: 'system', content: systemPrompt }];
     if (msgHistory && Array.isArray(msgHistory)) {
-      chatMessages.push(...msgHistory);
+      const trimmed = msgHistory.length > 20 ? msgHistory.slice(-20) : msgHistory;
+      chatMessages.push(...trimmed);
     } else {
       chatMessages.push({ role: 'user', content: message });
     }
