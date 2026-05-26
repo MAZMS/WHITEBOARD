@@ -484,6 +484,20 @@
     #theme-toggle:hover { color: var(--fg); border-color: var(--fg); }
     #theme-toggle:active { transform: scale(0.92); }
 
+    /* ── Admin link ── */
+    #admin-link {
+      position: fixed;
+      bottom: 24px;
+      right: 66px;
+      z-index: 100;
+      color: var(--border);
+      text-decoration: none;
+      font-size: 10px;
+      letter-spacing: 1px;
+      transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #admin-link:hover { color: var(--dim); }
+
     /* ── Sticky notes ── */
     .sticky-note {
       position: absolute;
@@ -813,6 +827,7 @@
   <svg id="canvas"></svg>
 
   <!-- Theme toggle -->
+  <a id="admin-link" href="/admin" title="Admin panel" style="display:none;">Admin</a>
   <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="display:none;">&#9684;</button>
 
   <!-- Command bar backdrop -->
@@ -904,6 +919,7 @@
       splash.classList.add('fade-out');
       setTimeout(() => { splash.style.display = 'none'; }, 600);
       themeToggle.style.display = '';
+      document.getElementById('admin-link').style.display = '';
       // Show empty state hint if no agents yet
       if (agentCards.size === 0) {
         document.getElementById('empty-hint').style.display = '';
@@ -1221,8 +1237,9 @@
       // Scroll to bottom
       body.scrollTop = body.scrollHeight;
 
-      // Hide theme toggle to avoid overlap with send button
+      // Hide theme toggle and admin link to avoid overlap with send button
       document.getElementById('theme-toggle').style.display = 'none';
+      document.getElementById('admin-link').style.display = 'none';
 
       // Focus the input
       panel.querySelector('.agent-input-row input').focus();
@@ -1239,8 +1256,9 @@
         if (card) card.classList.remove('active');
       }
 
-      // Show theme toggle again
+      // Show theme toggle and admin link again
       document.getElementById('theme-toggle').style.display = '';
+      document.getElementById('admin-link').style.display = '';
 
       panel.classList.add('dismissing');
       setTimeout(() => {
