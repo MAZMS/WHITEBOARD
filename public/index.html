@@ -382,6 +382,24 @@
       </template>
     </div>
 
+    <!-- Recent Activity -->
+    <section x-show="!loading && activities.length > 0" x-cloak class="pb-12 fade-up">
+      <p class="text-xs text-white/30 uppercase tracking-widest font-medium mb-6">Recent Activity</p>
+      <div class="relative pl-6 border-l border-white/10 space-y-6">
+        <template x-for="act in activities" :key="act.blueprint.id">
+          <div class="relative">
+            <div class="absolute -left-[9px] w-3 h-3 rounded-full bg-white/10 border-2 border-white/20"></div>
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span class="text-xs text-white/20" x-text="timeAgo(act.createdAt)"></span>
+              <span class="text-sm text-white/40">New blueprint published</span>
+            </div>
+            <a :href="'/blueprint.html?slug=' + act.blueprint.slug" class="text-sm text-[#c8b88a] hover:text-[#d4c494] transition-colors mt-1 inline-block" x-text="act.blueprint.name"></a>
+            <span x-show="act.blueprint.creator?.username" class="text-xs text-white/20 ml-2" x-text="'by @' + act.blueprint.creator?.username"></span>
+          </div>
+        </template>
+      </div>
+    </section>
+
     <!-- Empty State -->
     <div x-show="bps.length === 0 && !loading" class="text-center py-24">
       <div class="w-16 h-16 rounded-2xl bg-white/5 mx-auto flex items-center justify-center mb-6">
@@ -693,6 +711,7 @@
         tags: [],
         showFavoritesOnly: false,
         favCount: getFavorites().length,
+        activities: [],
         // Autocomplete state
         acOpen: false,
         acResults: [],
@@ -703,6 +722,9 @@
             this.bps = await (await fetch('/api/blueprints')).json();
           } catch { this.bps = []; }
           this.buildTags();
+          try {
+            this.activities = await (await fetch('/api/activity')).json();
+          } catch { this.activities = []; }
           this.loading = false;
           this.favCount = getFavorites().length;
           window.addEventListener('favorites-changed', () => {
@@ -831,6 +853,20 @@
           } else if (this.compareSlugs.length < 3) {
             this.compareSlugs.push(slug);
           }
+        },
+        timeAgo(dateStr) {
+          const now = Date.now();
+          const then = new Date(dateStr).getTime();
+          const secs = Math.floor((now - then) / 1000);
+          if (secs < 60) return 'just now';
+          const mins = Math.floor(secs / 60);
+          if (mins < 60) return mins + (mins === 1 ? ' minute ago' : ' minutes ago');
+          const hrs = Math.floor(mins / 60);
+          if (hrs < 24) return hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+          const days = Math.floor(hrs / 24);
+          if (days < 30) return days + (days === 1 ? ' day ago' : ' days ago');
+          const months = Math.floor(days / 30);
+          return months + (months === 1 ? ' month ago' : ' months ago');
         },
       };
     }

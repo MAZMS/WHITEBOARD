@@ -105,6 +105,27 @@
       </div>
     </section>
 
+    <!-- Recent Deployments -->
+    <section x-show="deployments.length > 0" x-cloak class="mb-16 fade-up">
+      <h2 class="text-lg font-semibold text-white mb-4" style="font-family: 'Inter', sans-serif;">Recent Deployments</h2>
+      <div class="space-y-2">
+        <template x-for="dep in deployments" :key="dep.blueprint.id">
+          <div class="flex justify-between items-center bg-white/[0.03] border border-white/5 rounded-xl p-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#c8b88a]/20 to-[#c8b88a]/5 flex items-center justify-center shrink-0">
+                <span class="text-[#c8b88a] text-sm font-semibold" x-text="dep.blueprint.name.charAt(0)"></span>
+              </div>
+              <div class="min-w-0">
+                <a :href="'/blueprint.html?slug=' + dep.blueprint.slug" class="text-sm text-white/70 hover:text-[#c8b88a] transition-colors truncate block" x-text="dep.blueprint.name"></a>
+                <span x-show="dep.blueprint.creator?.username" class="text-xs text-white/30" x-text="'by @' + dep.blueprint.creator?.username"></span>
+              </div>
+            </div>
+            <span class="text-xs text-white/20 whitespace-nowrap ml-3" x-text="timeAgo(dep.createdAt)"></span>
+          </div>
+        </template>
+      </div>
+    </section>
+
     <!-- Changelog -->
     <section class="fade-up">
       <h2 class="text-lg font-semibold text-white mb-6" style="font-family: 'Inter', sans-serif;">Changelog</h2>
@@ -176,6 +197,7 @@
     function statusPage() {
       return {
         uptime: '—',
+        deployments: [],
         async init() {
           try {
             const res = await fetch('/health');
@@ -189,6 +211,26 @@
           } catch {
             this.uptime = 'Unknown';
           }
+          try {
+            const all = await (await fetch('/api/activity')).json();
+            this.deployments = (Array.isArray(all) ? all : []).slice(0, 5);
+          } catch {
+            this.deployments = [];
+          }
+        },
+        timeAgo(dateStr) {
+          const now = Date.now();
+          const then = new Date(dateStr).getTime();
+          const secs = Math.floor((now - then) / 1000);
+          if (secs < 60) return 'just now';
+          const mins = Math.floor(secs / 60);
+          if (mins < 60) return mins + (mins === 1 ? ' minute ago' : ' minutes ago');
+          const hrs = Math.floor(mins / 60);
+          if (hrs < 24) return hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+          const days = Math.floor(hrs / 24);
+          if (days < 30) return days + (days === 1 ? ' day ago' : ' days ago');
+          const months = Math.floor(days / 30);
+          return months + (months === 1 ? ' month ago' : ' months ago');
         },
       };
     }

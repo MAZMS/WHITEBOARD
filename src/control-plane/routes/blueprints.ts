@@ -91,6 +91,26 @@ blueprintRouter.get('/blueprints/:slug', async (req, res) => {
   }
 });
 
+// ── Activity feed ──
+blueprintRouter.get('/activity', async (_req, res) => {
+  try {
+    const blueprints = await admin.blueprint.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: { creator: { select: { username: true } } },
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const feed = blueprints.map((bp: any) => ({
+      type: 'blueprint_created' as const,
+      blueprint: bp,
+      createdAt: bp.createdAt,
+    }));
+    res.json(feed);
+  } catch {
+    res.json([]);
+  }
+});
+
 // ── Badge SVG endpoint ──
 blueprintRouter.get('/badge/:slug', async (req, res) => {
   try {
