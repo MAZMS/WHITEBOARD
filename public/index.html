@@ -24,9 +24,6 @@
       --surface: #f0f0f0;
       --grid-dot: #ddd;
     }
-    [data-theme="light"] .agent-card .agent-input-row input:focus {
-      box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
-    }
 
     body {
       background: var(--bg);
@@ -107,8 +104,89 @@
       white-space: nowrap;
     }
 
-    /* ── Agent chat panel ── */
-    .agent-card {
+    /* ── Agent contact cards on canvas ── */
+    .agent-contact-card {
+      position: absolute;
+      z-index: 40;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      min-width: 160px;
+      text-align: center;
+      cursor: grab;
+      user-select: none;
+      animation: agentAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transition: border-color 0.3s ease, opacity 0.3s ease;
+    }
+    .agent-contact-card:active { cursor: grabbing; }
+    .agent-contact-card.active {
+      border-color: var(--fg);
+    }
+    .agent-contact-card .card-avatar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .agent-contact-card .card-avatar .avatar-head {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--fg);
+      margin-bottom: 2px;
+    }
+    .agent-contact-card .card-avatar .avatar-body {
+      width: 32px;
+      height: 14px;
+      border-radius: 16px 16px 0 0;
+      border: 2px solid var(--fg);
+      border-bottom: none;
+    }
+    .agent-contact-card .card-name {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .agent-contact-card .card-status {
+      font-size: 11px;
+      color: var(--dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .agent-contact-card .card-status .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--fg);
+      animation: pulse 2s infinite ease-in-out;
+    }
+    .agent-contact-card .card-status .dot.streaming {
+      animation: pulseFast 0.5s infinite ease-in-out;
+    }
+    .agent-contact-card .message-btn {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: none;
+      color: var(--fg);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .agent-contact-card .message-btn:hover {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    /* ── Agent chat panel (right side) ── */
+    .agent-chat-panel {
       position: fixed;
       right: 0;
       top: 0;
@@ -127,14 +205,8 @@
       animation: panelSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       box-shadow: -4px 0 30px rgba(0,0,0,0.15);
     }
-    .agent-card.dismissing {
+    .agent-chat-panel.dismissing {
       animation: panelSlideOut 0.35s cubic-bezier(0.4, 0, 1, 1) forwards;
-    }
-    .agent-card .close-btn-top {
-      /* now lives inside the header flex row */
-      position: static;
-      margin-left: auto;
-      flex-shrink: 0;
     }
     .agent-header {
       display: flex;
@@ -170,7 +242,7 @@
       gap: 2px;
       min-width: 0;
     }
-    .agent-card .agent-name {
+    .agent-chat-panel .agent-name {
       text-align: left;
       font-size: 14px;
       font-weight: 600;
@@ -180,7 +252,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .agent-card .agent-status {
+    .agent-chat-panel .agent-status {
       text-align: left;
       justify-content: flex-start;
       font-size: 11px;
@@ -189,17 +261,17 @@
       align-items: center;
       gap: 6px;
     }
-    .agent-card .agent-status .dot {
+    .agent-chat-panel .agent-status .dot {
       width: 7px;
       height: 7px;
       border-radius: 50%;
       background: var(--fg);
       animation: pulse 2s infinite ease-in-out;
     }
-    .agent-card .agent-status .dot.streaming {
+    .agent-chat-panel .agent-status .dot.streaming {
       animation: pulseFast 0.5s infinite ease-in-out;
     }
-    .agent-card .agent-body {
+    .agent-chat-panel .agent-body {
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -212,7 +284,7 @@
       scrollbar-width: none;
       padding: 20px;
     }
-    .agent-card .agent-body::-webkit-scrollbar { display: none; }
+    .agent-chat-panel .agent-body::-webkit-scrollbar { display: none; }
 
     /* ── Chat bubbles ── */
     .msg {
@@ -261,12 +333,12 @@
       padding: 16px 20px;
       border-top: 1px solid var(--border);
     }
-    .agent-card .agent-input-row {
+    .agent-chat-panel .agent-input-row {
       display: flex;
       gap: 8px;
       align-items: center;
     }
-    .agent-card .agent-input-row input {
+    .agent-chat-panel .agent-input-row input {
       flex: 1;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -278,12 +350,15 @@
       outline: none;
       transition: border-color 0.3s ease, box-shadow 0.3s ease;
     }
-    .agent-card .agent-input-row input:focus {
+    .agent-chat-panel .agent-input-row input:focus {
       border-color: var(--fg);
       box-shadow: 0 0 0 2px rgba(255,255,255,0.08);
     }
-    .agent-card .agent-input-row input::placeholder { color: var(--dim); }
-    .agent-card .agent-input-row button {
+    [data-theme="light"] .agent-chat-panel .agent-input-row input:focus {
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
+    }
+    .agent-chat-panel .agent-input-row input::placeholder { color: var(--dim); }
+    .agent-chat-panel .agent-input-row button {
       background: var(--fg);
       border: none;
       color: var(--bg);
@@ -300,19 +375,19 @@
       flex-shrink: 0;
       transition: opacity 0.2s, transform 0.1s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .agent-card .agent-input-row button:hover { opacity: 0.8; }
-    .agent-card .agent-input-row button:active { transform: scale(0.95); }
-    .agent-card .agent-input-row button:disabled {
+    .agent-chat-panel .agent-input-row button:hover { opacity: 0.8; }
+    .agent-chat-panel .agent-input-row button:active { transform: scale(0.95); }
+    .agent-chat-panel .agent-input-row button:disabled {
       opacity: 0.3;
       cursor: not-allowed;
     }
-    .agent-card .agent-model {
+    .agent-chat-panel .agent-model {
       font-size: 10px;
       color: var(--border);
       margin-top: 8px;
       text-align: center;
     }
-    .agent-card .close-btn {
+    .agent-chat-panel .close-btn {
       background: none;
       border: none;
       color: var(--dim);
@@ -321,7 +396,12 @@
       line-height: 1;
       transition: color 0.2s;
     }
-    .agent-card .close-btn:hover { color: var(--fg); }
+    .agent-chat-panel .close-btn:hover { color: var(--fg); }
+    .agent-chat-panel .close-btn-top {
+      position: static;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
 
     /* ── Drawing lines ── */
     .draw-line {
@@ -566,7 +646,7 @@
   <svg id="canvas"></svg>
 
   <!-- Theme toggle -->
-  <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="display:none;">◐</button>
+  <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="display:none;">&#9684;</button>
 
   <!-- Command bar -->
   <div id="command-bar">
@@ -734,12 +814,9 @@
           break;
         case 'Escape':
           helpPanel.classList.remove('visible');
-          // Dismiss active agent panel on Escape
-          if (activeAgentId) {
-            const panel = document.getElementById(activeAgentId);
-            if (panel) {
-              dismissAgent(panel.querySelector('.close-btn-top'));
-            }
+          // Close active chat panel on Escape
+          if (openPanelId) {
+            closeChatPanel();
           }
           break;
       }
@@ -812,56 +889,121 @@
       note.querySelector('textarea').focus();
     }
 
-    // ── Conversation memory per agent card ──
+    // ── Conversation memory per agent ──
     const conversationMap = new Map(); // agentId -> [{ role, content }, ...]
-    let activeAgentId = null; // only one chat panel open at a time
+    const agentCards = new Map();      // agentId -> { name, displayName, element }
+    let openPanelId = null;            // which agent's chat panel is open (or null)
+    let cardCounter = 0;               // for staggered placement
 
-    // ── Agent summoning ──
+    // ── Card placement (staggered grid with randomness) ──
+    function getCardPosition() {
+      const cols = 3;
+      const baseX = 120;
+      const baseY = 100;
+      const spacingX = 200;
+      const spacingY = 220;
+      const col = cardCounter % cols;
+      const row = Math.floor(cardCounter / cols);
+      const randX = (Math.random() - 0.5) * 40;
+      const randY = (Math.random() - 0.5) * 30;
+      cardCounter++;
+      return {
+        x: baseX + col * spacingX + randX,
+        y: baseY + row * spacingY + randY,
+      };
+    }
+
+    // ── Agent summoning — creates a contact card on canvas ──
     function summonAgent(name, opts = {}) {
       const agent = agents[name] || { icon: '●', desc: `Custom agent "${name}" is ready. Ask me anything.` };
       const displayName = opts.displayName || (name.charAt(0).toUpperCase() + name.slice(1));
       const greeting = opts.greeting || agent.desc;
       const agentId = 'agent-' + Date.now();
 
-      // Close any existing agent panel first (one-at-a-time)
-      if (activeAgentId) {
-        const prev = document.getElementById(activeAgentId);
-        if (prev) {
-          conversationMap.delete(activeAgentId);
-          prev.remove();
-        }
-        activeAgentId = null;
-      }
-
       // Initialize conversation history with the greeting
       conversationMap.set(agentId, [
         { role: 'assistant', content: greeting },
       ]);
-      activeAgentId = agentId;
 
+      // Get staggered position
+      const pos = getCardPosition();
+
+      // Create the contact card
       const card = document.createElement('div');
-      card.className = 'agent-card';
+      card.className = 'agent-contact-card';
       card.id = agentId;
       card.dataset.agentName = name;
+      card.style.left = pos.x + 'px';
+      card.style.top = pos.y + 'px';
 
       card.innerHTML = `
+        <div class="card-avatar">
+          <div class="avatar-head"></div>
+          <div class="avatar-body"></div>
+        </div>
+        <div class="card-name">${displayName}</div>
+        <div class="card-status"><span class="dot"></span> Online</div>
+        <button class="message-btn" onclick="openChat('${agentId}')">Message</button>
+      `;
+
+      document.body.appendChild(card);
+      makeDraggable(card);
+
+      // Track the card
+      agentCards.set(agentId, { name, displayName, element: card });
+
+      toast(`${displayName} is online`);
+    }
+
+    // ── Open chat panel for an agent ──
+    function openChat(agentId) {
+      // If same panel is already open, just focus input
+      if (openPanelId === agentId) {
+        const existing = document.getElementById('chat-panel');
+        if (existing) {
+          existing.querySelector('.agent-input-row input').focus();
+        }
+        return;
+      }
+
+      // Close existing panel instantly (no animation) if switching
+      if (openPanelId) {
+        const oldPanel = document.getElementById('chat-panel');
+        if (oldPanel) oldPanel.remove();
+        // Remove active highlight from old card
+        const oldCard = document.getElementById(openPanelId);
+        if (oldCard) oldCard.classList.remove('active');
+      }
+
+      openPanelId = agentId;
+      const info = agentCards.get(agentId);
+      if (!info) return;
+
+      // Highlight the active card
+      info.element.classList.add('active');
+
+      // Build the chat panel
+      const panel = document.createElement('div');
+      panel.className = 'agent-chat-panel';
+      panel.id = 'chat-panel';
+      panel.dataset.agentId = agentId;
+
+      panel.innerHTML = `
         <div class="agent-header">
           <div class="agent-avatar">
             <div class="avatar-head"></div>
             <div class="avatar-body"></div>
           </div>
           <div class="agent-header-info">
-            <div class="agent-name">${displayName}</div>
+            <div class="agent-name">${info.displayName}</div>
             <div class="agent-status">
               <span class="dot"></span>
               <span>Online</span>
             </div>
           </div>
-          <button class="close-btn close-btn-top" onclick="dismissAgent(this)">&times;</button>
+          <button class="close-btn close-btn-top" onclick="closeChatPanel()">&times;</button>
         </div>
-        <div class="agent-body">
-          <div class="msg msg-agent">${greeting}</div>
-        </div>
+        <div class="agent-body"></div>
         <div class="agent-input-area">
           <div class="agent-input-row">
             <input type="text" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
@@ -871,35 +1013,64 @@
         </div>
       `;
 
-      document.body.appendChild(card);
-      card.querySelector('.agent-input-row input').focus();
-      toast(`${displayName} is online`);
+      document.body.appendChild(panel);
+
+      // Render existing conversation history into the panel
+      const body = panel.querySelector('.agent-body');
+      const history = conversationMap.get(agentId) || [];
+      history.forEach(msg => {
+        const bubble = document.createElement('div');
+        bubble.className = msg.role === 'user' ? 'msg msg-user' : 'msg msg-agent';
+        bubble.textContent = msg.content;
+        body.appendChild(bubble);
+      });
+
+      // Scroll to bottom
+      body.scrollTop = body.scrollHeight;
+
+      // Focus the input
+      panel.querySelector('.agent-input-row input').focus();
     }
 
-    function dismissAgent(btn) {
-      const card = btn.closest('.agent-card');
-      conversationMap.delete(card.id);
-      if (activeAgentId === card.id) activeAgentId = null;
-      card.classList.add('dismissing');
-      setTimeout(() => card.remove(), 350);
+    // ── Close chat panel ──
+    function closeChatPanel() {
+      const panel = document.getElementById('chat-panel');
+      if (!panel) return;
+
+      // Remove active highlight from card
+      if (openPanelId) {
+        const card = document.getElementById(openPanelId);
+        if (card) card.classList.remove('active');
+      }
+
+      panel.classList.add('dismissing');
+      setTimeout(() => {
+        panel.remove();
+      }, 350);
+      openPanelId = null;
     }
 
+    // ── Send message to agent ──
     async function sendToAgent(agentId) {
-      const card = document.getElementById(agentId);
-      if (!card) return;
+      const panel = document.getElementById('chat-panel');
+      if (!panel || panel.dataset.agentId !== agentId) return;
 
-      const input = card.querySelector('.agent-input-row input');
-      const btn = card.querySelector('.agent-input-row button');
-      const body = card.querySelector('.agent-body');
-      const statusEl = card.querySelector('.agent-status span:last-child');
-      const dotEl = card.querySelector('.dot');
-      const modelEl = card.querySelector('.agent-model');
+      const input = panel.querySelector('.agent-input-row input');
+      const btn = panel.querySelector('.agent-input-row button');
+      const body = panel.querySelector('.agent-body');
+      const statusEl = panel.querySelector('.agent-status span:last-child');
+      const dotEl = panel.querySelector('.dot');
+      const modelEl = panel.querySelector('.agent-model');
       const message = input.value.trim();
       if (!message) return;
 
+      const info = agentCards.get(agentId);
       const history = conversationMap.get(agentId) || [];
 
-      // 1. Immediately show user bubble
+      // Also update the card's status dot to streaming
+      const cardDot = info ? info.element.querySelector('.dot') : null;
+
+      // 1. Show user bubble
       const userBubble = document.createElement('div');
       userBubble.className = 'msg msg-user';
       userBubble.textContent = message;
@@ -922,15 +1093,18 @@
       btn.disabled = true;
       statusEl.textContent = 'Thinking...';
       dotEl.classList.add('streaming');
+      if (cardDot) cardDot.classList.add('streaming');
 
       let replyText = '';
 
       try {
+        const agentName = info ? info.name : (document.getElementById(agentId)?.dataset.agentName || 'unknown');
+
         const res = await fetch('/api/agent/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            agent: card.dataset.agentName,
+            agent: agentName,
             messages: history,
           }),
         });
@@ -940,6 +1114,7 @@
           agentBubble.textContent = err.error || 'Something went wrong.';
           statusEl.textContent = 'Error';
           dotEl.classList.remove('streaming');
+          if (cardDot) cardDot.classList.remove('streaming');
           btn.disabled = false;
           return;
         }
@@ -984,10 +1159,12 @@
 
         statusEl.textContent = 'Online';
         dotEl.classList.remove('streaming');
+        if (cardDot) cardDot.classList.remove('streaming');
       } catch (err) {
         agentBubble.textContent = 'Connection error: ' + err.message;
         statusEl.textContent = 'Error';
         dotEl.classList.remove('streaming');
+        if (cardDot) cardDot.classList.remove('streaming');
       }
 
       btn.disabled = false;
@@ -1021,9 +1198,15 @@
     // ── Clear board ──
     function clearBoard() {
       canvas.innerHTML = '';
-      document.querySelectorAll('.agent-card, .sticky-note').forEach(el => el.remove());
-      activeAgentId = null;
+      // Close chat panel if open
+      const panel = document.getElementById('chat-panel');
+      if (panel) panel.remove();
+      openPanelId = null;
+      // Remove all contact cards and sticky notes
+      document.querySelectorAll('.agent-contact-card, .sticky-note').forEach(el => el.remove());
+      agentCards.clear();
       conversationMap.clear();
+      cardCounter = 0;
       toast('Board cleared');
     }
   </script>
