@@ -347,27 +347,40 @@
     .agent-chat-panel .agent-body::-webkit-scrollbar { display: none; }
 
     /* ── Chat bubbles ── */
+    .msg-wrap {
+      display: flex;
+      flex-direction: column;
+      max-width: 80%;
+      animation: bubbleFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .msg-wrap-agent { align-self: flex-start; }
+    .msg-wrap-user { align-self: flex-end; }
     .msg {
       padding: 10px 16px;
-      max-width: 80%;
       white-space: pre-wrap;
       word-break: break-word;
       line-height: 1.5;
       font-size: 14px;
-      animation: bubbleFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     .msg-agent {
       background: var(--surface);
       color: var(--dim);
       border-radius: 18px 18px 18px 4px;
-      align-self: flex-start;
     }
     .msg-user {
       background: var(--fg);
       color: var(--bg);
       border-radius: 18px 18px 4px 18px;
-      align-self: flex-end;
     }
+    .msg-time {
+      font-size: 10px;
+      color: var(--border);
+      margin-top: 3px;
+      padding: 0 4px;
+      user-select: none;
+    }
+    .msg-wrap-agent .msg-time { text-align: left; }
+    .msg-wrap-user .msg-time { text-align: right; }
 
     /* ── Typing indicator ── */
     .typing-indicator {
@@ -800,6 +813,31 @@
       outline: none;
     }
 
+    /* ── Scroll-to-bottom pill ── */
+    .new-msg-pill {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: var(--fg);
+      color: var(--bg);
+      font-size: 11px;
+      padding: 5px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      user-select: none;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 2;
+    }
+    .new-msg-pill.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
     /* ── Smooth theme transition on surfaces ── */
     .agent-chat-panel,
     .sticky-note,
@@ -965,6 +1003,8 @@
       setTimeout(() => { splash.style.display = 'none'; }, 600);
       themeToggle.style.display = '';
       document.getElementById('admin-link').style.display = '';
+      // Restore any saved conversations from localStorage
+      loadConversations();
       // Show empty state hint if no agents yet
       if (agentCards.size === 0) {
         document.getElementById('empty-hint').style.display = '';
@@ -1152,6 +1192,76 @@
     let openPanelId = null;            // which agent's chat panel is open (or null)
     let cardCounter = 0;               // for staggered placement
 
+    // ── Persist conversations in localStorage ──
+    function saveConversations() {
+      const data = {};
+      conversationMap.forEach((msgs, id) => {
+        const card = agentCards.get(id);
+        if (card) {
+          data[id] = {
+            agentName: card.name,
+            displayName: card.displayName,
+            messages: msgs,
+          };
+        }
+      });
+      localStorage.setItem('wb-conversations', JSON.stringify(data));
+    }
+
+    function loadConversations() {
+      try {
+        const raw = localStorage.getItem('wb-conversations');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        Object.entries(data).forEach(([agentId, entry]) => {
+          // Restore conversation history
+          conversationMap.set(agentId, entry.messages || []);
+
+          // Get staggered position for the card
+          const pos = getCardPosition();
+
+          // Recreate the contact card on the canvas
+          const card = document.createElement('div');
+          card.className = 'agent-contact-card';
+          card.id = agentId;
+          card.dataset.agentName = entry.agentName;
+          card.dataset.displayName = entry.displayName;
+          card.style.left = pos.x + 'px';
+          card.style.top = pos.y + 'px';
+
+          card.innerHTML = `
+            <button class="card-close-btn" onclick="dismissAgent('${agentId}')">&times;</button>
+            <div class="card-avatar">
+              <div class="avatar-head"></div>
+              <div class="avatar-body"></div>
+            </div>
+            <div class="card-name">${entry.displayName}</div>
+            <div class="card-status"><span class="dot"></span> Online</div>
+            <button class="message-btn" onclick="openChat('${agentId}')">Message</button>
+          `;
+
+          document.body.appendChild(card);
+          makeDraggable(card);
+
+          // Track the card
+          agentCards.set(agentId, {
+            name: entry.agentName,
+            displayName: entry.displayName,
+            element: card,
+          });
+        });
+
+        // Hide empty hint if we restored any agents
+        if (agentCards.size > 0) {
+          const hint = document.getElementById('empty-hint');
+          if (hint) hint.classList.add('hidden');
+        }
+      } catch (e) {
+        // Corrupted data — clear it and move on
+        localStorage.removeItem('wb-conversations');
+      }
+    }
+
     // ── Card placement (staggered grid with randomness) ──
     function getCardPosition() {
       const cols = 3;
@@ -1190,6 +1300,7 @@
       card.className = 'agent-contact-card';
       card.id = agentId;
       card.dataset.agentName = name;
+      card.dataset.displayName = displayName;
       card.style.left = pos.x + 'px';
       card.style.top = pos.y + 'px';
 
@@ -1215,6 +1326,7 @@
       if (hint) hint.classList.add('hidden');
 
       toast(`${displayName} is online`);
+      saveConversations();
     }
 
     // ── Open chat panel for an agent ──
@@ -1338,6 +1450,7 @@
       // Clean up conversation memory and card tracking
       conversationMap.delete(agentId);
       agentCards.delete(agentId);
+      saveConversations();
 
       // Show empty hint again if no agents remain
       if (agentCards.size === 0) {
@@ -1377,6 +1490,7 @@
 
       // Add to conversation history
       history.push({ role: 'user', content: message });
+      saveConversations();
 
       // 2. Append agent bubble with typing indicator
       const agentBubble = document.createElement('div');
@@ -1455,6 +1569,7 @@
         // Save assistant reply to conversation history
         history.push({ role: 'assistant', content: replyText });
         conversationMap.set(agentId, history);
+        saveConversations();
 
         statusEl.textContent = 'Online';
         dotEl.classList.remove('streaming');
@@ -1505,6 +1620,7 @@
       document.querySelectorAll('.agent-contact-card, .sticky-note').forEach(el => el.remove());
       agentCards.clear();
       conversationMap.clear();
+      localStorage.removeItem('wb-conversations');
       cardCounter = 0;
       toast('Board cleared');
     }
