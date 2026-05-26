@@ -9,14 +9,18 @@
     :root { --bg: #000; --fg: #fff; --dim: #555; --border: #222; --surface: #0a0a0a; --surface-dim: #111; }
     [data-theme="light"] { --bg: #fff; --fg: #000; --dim: #777; --border: #ccc; --surface: #f5f5f5; --surface-dim: #eee; }
 
+    /* ── Hide scrollbars globally (match main app) ── */
+    * { scrollbar-width: none; }
+    *::-webkit-scrollbar { display: none; }
+
     /* ── Page fade-in ── */
     @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
     .page-wrapper {
       opacity: 0;
-      animation: fadeIn 0.5s ease forwards;
+      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     body {
@@ -25,7 +29,7 @@
       font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
       min-height: 100vh;
       padding: 40px;
-      transition: background 0.3s ease, color 0.3s ease;
+      transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     h1 {
@@ -50,10 +54,12 @@
       margin-bottom: 40px;
     }
 
-    /* ── Card entrance stagger ── */
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
+    /* ── Card entrance stagger (bouncy like main app) ── */
+    @keyframes cardBounceIn {
+      0%  { opacity: 0; transform: scale(0.92) translateY(18px); }
+      50% { opacity: 1; transform: scale(1.03) translateY(-3px); }
+      75% { transform: scale(0.99) translateY(1px); }
+      100%{ opacity: 1; transform: scale(1) translateY(0); }
     }
 
     .card {
@@ -62,19 +68,31 @@
       border-radius: 12px;
       padding: 24px;
       opacity: 0;
-      animation: fadeUp 0.5s ease forwards;
+      animation: cardBounceIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
                   box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                  background 0.3s ease, border-color 0.3s ease;
+                  border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 20px rgba(255,255,255,0.02);
+    }
+    [data-theme="light"] .card {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
     }
     .card:nth-child(1) { animation-delay: 0s; }
-    .card:nth-child(2) { animation-delay: 0.1s; }
-    .card:nth-child(3) { animation-delay: 0.2s; }
-    .card:nth-child(4) { animation-delay: 0.3s; }
+    .card:nth-child(2) { animation-delay: 0.08s; }
+    .card:nth-child(3) { animation-delay: 0.16s; }
+    .card:nth-child(4) { animation-delay: 0.24s; }
 
     .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 20px rgba(255,255,255,0.05);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 28px rgba(255,255,255,0.06);
+      border-color: var(--dim);
+    }
+    [data-theme="light"] .card:hover {
+      box-shadow: 0 6px 28px rgba(0,0,0,0.08);
+    }
+    .card:active {
+      transform: translateY(-1px) scale(0.99);
     }
     .card h2 {
       font-size: 12px;
@@ -125,18 +143,61 @@
     /* ── Bar grow animation ── */
     @keyframes barGrow { from { width: 0; } }
 
+    /* ── Bar shimmer sweep ── */
+    @keyframes barShimmer {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+
     .bar-fill {
       height: 100%;
       background: var(--fg);
       border-radius: 4px;
       transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
       animation: barGrow 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      position: relative;
+      overflow: hidden;
+    }
+    .bar-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+      animation: barShimmer 1.2s 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 0;
+      animation-fill-mode: forwards;
+    }
+    [data-theme="light"] .bar-fill::after {
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+    }
+    .bar-fill.shimmer-done::after {
+      display: none;
     }
     .bar-fill.warning { background: #888; }
-    .bar-fill.danger { background: #fff; animation: barPulse 1s infinite; }
-    @keyframes barPulse {
+    .bar-fill.danger { background: #fff; }
+    [data-theme="light"] .bar-fill.danger { background: #000; }
+
+    /* ── Warning pulse (>80%) ── */
+    @keyframes warningPulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+      50% { opacity: 0.65; }
+    }
+    .bar-fill.near-limit {
+      animation: barGrow 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+                 warningPulse 2s 1.2s ease-in-out infinite;
+    }
+
+    /* ── Danger pulse (>90%) ── */
+    @keyframes dangerPulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 rgba(255,255,255,0); }
+      50% { opacity: 0.5; box-shadow: 0 0 8px rgba(255,255,255,0.15); }
+    }
+    .bar-fill.danger {
+      animation: barGrow 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+                 dangerPulse 1.2s 1s ease-in-out infinite;
     }
 
     .remaining {
@@ -170,10 +231,25 @@
       color: var(--dim);
       margin-bottom: 16px;
     }
+    .model-group-label {
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--border);
+      margin-bottom: 10px;
+      padding-left: 2px;
+    }
+    .model-group-label:not(:first-child) {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--surface-dim);
+    }
     .model-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 8px;
+      margin-bottom: 4px;
     }
     .model-btn {
       background: var(--surface);
@@ -184,27 +260,52 @@
       padding: 12px 16px;
       border-radius: 8px;
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       text-align: left;
+      position: relative;
+      overflow: hidden;
     }
     .model-btn:hover {
       border-color: var(--dim);
       color: var(--fg);
       transform: scale(1.02);
+      box-shadow: 0 2px 12px rgba(255,255,255,0.04);
+    }
+    [data-theme="light"] .model-btn:hover {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
     }
     .model-btn:active {
-      transform: scale(0.98);
+      transform: scale(0.97);
       transition-duration: 0.1s;
     }
     .model-btn.active {
       border-color: var(--fg);
       color: var(--fg);
       background: var(--surface-dim);
-      box-shadow: 0 0 12px rgba(255,255,255,0.1);
+      box-shadow: 0 0 16px rgba(255,255,255,0.1);
     }
     [data-theme="light"] .model-btn.active {
-      box-shadow: 0 0 12px rgba(0,0,0,0.08);
+      box-shadow: 0 0 16px rgba(0,0,0,0.08);
     }
+
+    /* ── Model select flash animation ── */
+    @keyframes modelFlash {
+      0%   { opacity: 0.6; transform: scale(1); }
+      30%  { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1); }
+    }
+    .model-btn .flash-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 7px;
+      background: var(--fg);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .model-btn .flash-overlay.flash {
+      animation: modelFlash 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
     .model-btn .tier-tag {
       font-size: 9px;
       text-transform: uppercase;
@@ -227,9 +328,15 @@
       color: var(--dim);
       margin-bottom: 16px;
     }
+    .table-scroll-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 8px;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
+      min-width: 600px;
     }
     th {
       text-align: left;
@@ -248,7 +355,8 @@
       color: var(--dim);
     }
     tr {
-      transition: background 0.2s ease;
+      transition: background 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                  color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     tr:hover td {
       color: var(--fg);
@@ -284,7 +392,7 @@
     }
     tbody tr.row-enter {
       opacity: 0;
-      animation: rowFadeIn 0.35s ease forwards;
+      animation: rowFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     /* ── Auto-refresh indicator ── */
@@ -303,7 +411,7 @@
       pointer-events: none;
     }
     .auto-refresh-label.visible {
-      animation: fadeInOut 2s ease forwards;
+      animation: fadeInOut 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     /* ── Top bar ── */
@@ -313,16 +421,72 @@
       align-items: center;
       margin-bottom: 40px;
     }
-    .top-bar a {
+    .top-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .top-bar-left .nav-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--dim);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      margin-top: -2px;
+    }
+    .top-bar-left .nav-indicator .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--fg);
+      animation: pulse 2s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .nav-link {
       color: var(--dim);
       text-decoration: none;
       font-size: 12px;
+      font-family: inherit;
       border: 1px solid var(--border);
       padding: 8px 16px;
       border-radius: 8px;
-      transition: all 0.2s;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      background: none;
     }
-    .top-bar a:hover { color: var(--fg); border-color: var(--dim); }
+    .nav-link:hover {
+      color: var(--fg);
+      border-color: var(--dim);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 12px rgba(255,255,255,0.04);
+    }
+    [data-theme="light"] .nav-link:hover {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .nav-link:active {
+      transform: scale(0.97);
+      transition-duration: 0.1s;
+    }
+    .nav-link .nav-arrow {
+      font-size: 10px;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .nav-link:hover .nav-arrow {
+      transform: translateX(-2px);
+    }
 
     /* ── Refresh button spin ── */
     @keyframes spinOnce {
@@ -339,18 +503,40 @@
       padding: 8px 16px;
       border-radius: 8px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .refresh-btn:hover { color: var(--fg); border-color: var(--dim); }
+    .refresh-btn:hover {
+      color: var(--fg);
+      border-color: var(--dim);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 12px rgba(255,255,255,0.04);
+    }
+    [data-theme="light"] .refresh-btn:hover {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .refresh-btn:active {
+      transform: scale(0.97);
+      transition-duration: 0.1s;
+    }
     .refresh-btn.spinning {
       animation: spinOnce 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     /* ── Responsive ── */
     @media (max-width: 700px) {
-      body { padding: 20px; }
+      body { padding: 16px; }
       .grid { grid-template-columns: 1fr; }
-      .model-grid { grid-template-columns: repeat(2, 1fr); }
+      .model-grid { grid-template-columns: 1fr 1fr; }
+      .top-bar { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .top-bar-left { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .top-bar-right { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+      h1 { font-size: 16px; letter-spacing: 3px; }
+      .usage-pct { font-size: 22px; min-width: 48px; }
+      .big-number { font-size: 28px; }
+      .history-section { margin: 0 -16px; padding: 0 16px; }
+    }
+    @media (max-width: 420px) {
+      .model-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -358,15 +544,18 @@
 <div class="page-wrapper">
 
   <div class="top-bar">
-    <div>
-      <h1>Token Tracker</h1>
-      <div class="subtitle" id="date-label">Loading...</div>
+    <div class="top-bar-left">
+      <div>
+        <h1>Token Tracker</h1>
+        <div class="subtitle" id="date-label">Loading...</div>
+      </div>
+      <span class="nav-indicator"><span class="dot"></span> Admin</span>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
+    <div class="top-bar-right" style="display:flex;gap:8px;align-items:center;">
       <span class="auto-refresh-label" id="auto-refresh-label">Auto-refreshing...</span>
-      <button class="refresh-btn" id="theme-toggle" onclick="toggleTheme()">◐</button>
+      <button class="refresh-btn" id="theme-toggle" onclick="toggleTheme()">&#9684;</button>
       <button class="refresh-btn" id="refresh-btn" onclick="refreshWithSpin()">Refresh</button>
-      <a href="/">Whiteboard</a>
+      <a href="/" class="nav-link"><span class="nav-arrow">&larr;</span> Whiteboard</a>
     </div>
   </div>
 
@@ -428,28 +617,30 @@
   <!-- Model selector -->
   <div class="model-section">
     <h2>Default Model (click to switch)</h2>
-    <div class="model-grid" id="model-grid"></div>
+    <div id="model-container"></div>
   </div>
 
   <!-- History -->
   <div class="history-section">
     <h2>Recent Requests</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Agent</th>
-          <th>Model</th>
-          <th>Tier</th>
-          <th>Prompt</th>
-          <th>Completion</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody id="history-body">
-        <tr><td colspan="7" class="empty-state">No requests yet. Summon an agent on the whiteboard.</td></tr>
-      </tbody>
-    </table>
+    <div class="table-scroll-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Agent</th>
+            <th>Model</th>
+            <th>Tier</th>
+            <th>Prompt</th>
+            <th>Completion</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <tr><td colspan="7" class="empty-state">No requests yet. Summon an agent on the whiteboard.</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </div><!-- /.page-wrapper -->
@@ -497,7 +688,7 @@
         const data = await res.json();
 
         // Date — human-friendly format
-        const dateObj = new Date(data.date + 'T00:00:00');
+        const dateObj = new Date(data.date + 'T12:00:00');
         const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
         const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
         const friendlyDate = dayNames[dateObj.getDay()] + ', ' + monthNames[dateObj.getMonth()] + ' ' + dateObj.getDate();
@@ -510,8 +701,8 @@
         document.getElementById('premium-pct').textContent = data.premium.percent + '%';
         const premBar = document.getElementById('premium-bar');
         premBar.style.width = data.premium.percent + '%';
-        premBar.className = 'bar-fill' +
-          (data.premium.percent > 90 ? ' danger' : data.premium.percent > 70 ? ' warning' : '');
+        premBar.className = 'bar-fill' + getBarClasses(data.premium.percent);
+        scheduleShimmerCleanup(premBar);
 
         // Mini
         document.getElementById('mini-used').textContent = data.mini.used.toLocaleString();
@@ -520,8 +711,8 @@
         document.getElementById('mini-pct').textContent = data.mini.percent + '%';
         const miniBar = document.getElementById('mini-bar');
         miniBar.style.width = data.mini.percent + '%';
-        miniBar.className = 'bar-fill' +
-          (data.mini.percent > 90 ? ' danger' : data.mini.percent > 70 ? ' warning' : '');
+        miniBar.className = 'bar-fill' + getBarClasses(data.mini.percent);
+        scheduleShimmerCleanup(miniBar);
 
         // Totals — count up from 0
         animateNumber(document.getElementById('total-requests'), data.history.length);
@@ -531,19 +722,32 @@
         // Current model
         currentModel = data.settings.defaultModel;
 
-        // Model grid
-        const grid = document.getElementById('model-grid');
-        grid.innerHTML = '';
-        const allModels = [
-          ...data.models.premium.map(m => ({ name: m, tier: 'premium' })),
-          ...data.models.mini.map(m => ({ name: m, tier: 'mini' })),
+        // Model grid — grouped by tier
+        const container = document.getElementById('model-container');
+        container.innerHTML = '';
+
+        const groups = [
+          { label: 'Premium', models: data.models.premium, tier: 'premium' },
+          { label: 'Mini', models: data.models.mini, tier: 'mini' },
         ];
-        allModels.forEach(m => {
-          const btn = document.createElement('button');
-          btn.className = 'model-btn' + (m.name === currentModel ? ' active' : '');
-          btn.innerHTML = `${m.name}<span class="tier-tag">${m.tier}</span>`;
-          btn.onclick = () => selectModel(m.name);
-          grid.appendChild(btn);
+
+        groups.forEach(group => {
+          if (!group.models.length) return;
+          const label = document.createElement('div');
+          label.className = 'model-group-label';
+          label.textContent = group.label;
+          container.appendChild(label);
+
+          const grid = document.createElement('div');
+          grid.className = 'model-grid';
+          group.models.forEach(m => {
+            const btn = document.createElement('button');
+            btn.className = 'model-btn' + (m === currentModel ? ' active' : '');
+            btn.innerHTML = `<span class="flash-overlay"></span>${m}<span class="tier-tag">${group.tier}</span>`;
+            btn.onclick = () => selectModelWithFlash(btn, m);
+            grid.appendChild(btn);
+          });
+          container.appendChild(grid);
         });
 
         // History

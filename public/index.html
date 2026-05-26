@@ -1133,6 +1133,9 @@
       // Scroll to bottom
       body.scrollTop = body.scrollHeight;
 
+      // Hide theme toggle to avoid overlap with send button
+      document.getElementById('theme-toggle').style.display = 'none';
+
       // Focus the input
       panel.querySelector('.agent-input-row input').focus();
     }
@@ -1147,6 +1150,9 @@
         const card = document.getElementById(openPanelId);
         if (card) card.classList.remove('active');
       }
+
+      // Show theme toggle again
+      document.getElementById('theme-toggle').style.display = '';
 
       panel.classList.add('dismissing');
       setTimeout(() => {
