@@ -420,8 +420,8 @@
     <div><kbd>C</kbd> &mdash; clear board</div>
     <h3 style="margin-top:12px;">AGENTS</h3>
     <div>Type any name to summon</div>
-    <div>e.g. "coder", "writer", "designer"</div>
-    <div>Drag cards to reposition</div>
+    <div id="agent-list-help" style="margin-top:4px;color:#444;font-size:11px;line-height:1.8;"></div>
+    <div style="margin-top:4px;">Or type anything for a custom agent</div>
   </div>
 
   <!-- Toast -->
@@ -445,17 +445,25 @@
     const splash = document.getElementById('splash');
     const helpPanel = document.getElementById('help-panel');
 
-    // ── Agent definitions ──
-    const agents = {
-      coder:    { icon: '{}',  desc: 'Writes and refactors code. Handles implementation tasks.' },
-      writer:   { icon: 'Aa',  desc: 'Drafts text, copy, and documentation.' },
-      designer: { icon: '◐',   desc: 'Creates layouts, mockups, and visual ideas.' },
-      thinker:  { icon: '◇',   desc: 'Breaks down problems and plans solutions.' },
-      reviewer: { icon: '✓',   desc: 'Reviews work, finds issues, suggests fixes.' },
-      researcher:{ icon: '⊕',  desc: 'Finds information and gathers context.' },
-      debugger: { icon: '⚡',   desc: 'Hunts down bugs and traces errors.' },
-      planner:  { icon: '▤',   desc: 'Creates roadmaps, tasks, and timelines.' },
-    };
+    // ── Agent definitions (loaded from server) ──
+    let agents = {};
+    async function loadAgents() {
+      try {
+        const res = await fetch('/api/agents');
+        const list = await res.json();
+        list.forEach(a => {
+          agents[a.key] = { icon: a.icon, desc: a.description, tier: a.tier };
+        });
+        // Populate help panel
+        const helpList = document.getElementById('agent-list-help');
+        if (helpList) {
+          helpList.innerHTML = list.map(a =>
+            `<div>${a.icon} <strong>${a.key}</strong> — ${a.description}</div>`
+          ).join('');
+        }
+      } catch {}
+    }
+    loadAgents();
 
     // ── Splash ──
     document.addEventListener('keydown', (e) => {

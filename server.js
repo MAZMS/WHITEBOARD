@@ -1,6 +1,7 @@
 const express = require('express');
 const OpenAI = require('openai');
 const path = require('path');
+const { getSystemPrompt, getAllAgents } = require('./agents');
 
 const app = express();
 app.use(express.json());
@@ -57,17 +58,7 @@ function getModelTier(model) {
   return 'premium'; // default to premium for unknown models
 }
 
-// ── Agent system prompts ──
-const AGENT_PROMPTS = {
-  coder: 'You are a senior software engineer. Write clean, efficient code. Be concise.',
-  writer: 'You are a skilled writer. Draft clear, compelling text. Be concise.',
-  designer: 'You are a UI/UX designer. Describe layouts and visual ideas clearly. Be concise.',
-  thinker: 'You are a strategic thinker. Break down problems step by step. Be concise.',
-  reviewer: 'You are a code reviewer. Find issues and suggest improvements. Be concise.',
-  researcher: 'You are a researcher. Find and summarize information. Be concise.',
-  debugger: 'You are a debugging expert. Trace errors and find root causes. Be concise.',
-  planner: 'You are a project planner. Create clear plans and timelines. Be concise.',
-};
+// ── Agent system prompts (loaded from agents/index.js) ──
 
 // ── API: Chat with agent ──
 app.post('/api/agent', async (req, res) => {
@@ -86,7 +77,7 @@ app.post('/api/agent', async (req, res) => {
       });
     }
 
-    const systemPrompt = AGENT_PROMPTS[agent] || `You are a helpful AI agent called "${agent}". Be concise and direct.`;
+    const systemPrompt = getSystemPrompt(agent);
 
     const completion = await openai.chat.completions.create({
       model,
@@ -142,7 +133,7 @@ app.post('/api/agent/stream', async (req, res) => {
       });
     }
 
-    const systemPrompt = AGENT_PROMPTS[agent] || `You are a helpful AI agent called "${agent}". Be concise and direct.`;
+    const systemPrompt = getSystemPrompt(agent);
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -219,6 +210,11 @@ app.post('/api/admin/settings', (req, res) => {
     tokenUsage.settings.defaultModel = defaultModel;
   }
   res.json({ settings: tokenUsage.settings });
+});
+
+// ── API: List available agents ──
+app.get('/api/agents', (req, res) => {
+  res.json(getAllAgents());
 });
 
 // ── Serve pages ──
