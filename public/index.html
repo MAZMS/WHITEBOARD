@@ -481,9 +481,20 @@
     .agent-chat-panel .close-btn:active { transform: scale(0.9); }
     .agent-chat-panel .close-btn-top {
       position: static;
-      margin-left: auto;
       flex-shrink: 0;
     }
+    .clear-chat-btn {
+      margin-left: auto;
+      font-family: inherit;
+      font-size: 11px;
+      color: var(--dim);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .clear-chat-btn:hover { color: var(--fg); }
 
     /* ── Drawing lines ── */
     .draw-line {
@@ -1371,6 +1382,24 @@
       body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' });
     }
 
+    // ── Clear chat for an agent ──
+    function clearChat(agentId) {
+      const panel = document.getElementById('chat-panel');
+      if (!panel) return;
+      const body = panel.querySelector('.agent-body');
+
+      // Reset conversation to a single fresh-start greeting
+      const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const greeting = { role: 'assistant', content: 'Fresh start. What do you need?', time: now };
+      conversationMap.set(agentId, [greeting]);
+      saveConversations();
+
+      // Clear DOM and render the new greeting
+      body.innerHTML = '';
+      const { wrap } = createMsgWrap('assistant', greeting.content, { delay: 0.15, time: now });
+      body.appendChild(wrap);
+    }
+
     // ── Open chat panel for an agent ──
     function openChat(agentId) {
       // If same panel is already open, just focus input
@@ -1417,6 +1446,7 @@
               <span class="status-text">Online</span>
             </div>
           </div>
+          <button class="clear-chat-btn" onclick="clearChat('${agentId}')">Clear</button>
           <button class="close-btn close-btn-top" onclick="closeChatPanel()">&times;</button>
         </div>
         <div class="agent-body-wrap" style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
