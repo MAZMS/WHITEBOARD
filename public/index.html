@@ -492,27 +492,15 @@
             <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">Esc</kbd>
           </div>
           <div class="border-t border-white/5 pt-3 mt-3">
-            <p class="text-[10px] text-white/20 uppercase tracking-wider font-medium mb-2">Category Tabs</p>
+            <p class="text-[10px] text-white/20 uppercase tracking-wider font-medium mb-2">Tag Filters</p>
             <div class="space-y-2">
               <div class="flex items-center justify-between">
                 <span class="text-sm text-white/60">All</span>
                 <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">1</kbd>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-sm text-white/60">Code Quality</span>
-                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">2</kbd>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-white/60">DevOps</span>
-                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">3</kbd>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-white/60">Security</span>
-                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">4</kbd>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-white/60">Docs</span>
-                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">5</kbd>
+                <span class="text-sm text-white/60">Tag 2-9</span>
+                <kbd class="bg-white/5 border border-white/10 text-white/50 text-xs px-2 py-0.5 rounded font-mono">2-9</kbd>
               </div>
             </div>
           </div>
@@ -587,11 +575,12 @@
         searchTimer: null,
         compareMode: false,
         compareSlugs: [],
-        tags: ['Code Quality', 'DevOps', 'Security', 'Docs'],
+        tags: [],
         async init() {
           try {
             this.bps = await (await fetch('/api/blueprints')).json();
           } catch { this.bps = []; }
+          this.buildTags();
           this.loading = false;
           this.$watch('q', () => {
             clearTimeout(this.searchTimer);
@@ -601,11 +590,24 @@
         async search() {
           if (!this.q.trim()) {
             try { this.bps = await (await fetch('/api/blueprints')).json(); } catch {}
-            return;
+          } else {
+            try {
+              this.bps = await (await fetch('/api/blueprints/search?q=' + encodeURIComponent(this.q))).json();
+            } catch {}
           }
-          try {
-            this.bps = await (await fetch('/api/blueprints/search?q=' + encodeURIComponent(this.q))).json();
-          } catch {}
+          this.buildTags();
+        },
+        buildTags() {
+          const counts = {};
+          for (const bp of this.bps) {
+            for (const t of (bp.tags || [])) {
+              counts[t] = (counts[t] || 0) + 1;
+            }
+          }
+          this.tags = Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8)
+            .map(e => e[0]);
         },
         trending() {
           return [...this.bps].sort((a, b) => b.activeRuns - a.activeRuns).slice(0, 3);
@@ -617,14 +619,7 @@
         filtered() {
           let items = this.bps;
           if (this.tag) {
-            const tagMap = {
-              'Code Quality': ['code-reviewer', 'refactor-agent', 'test-writer'],
-              'DevOps': ['deployment-pipeline', 'migration-assistant'],
-              'Security': ['security-scanner'],
-              'Docs': ['docs-generator', 'bug-triager'],
-            };
-            const slugs = tagMap[this.tag] || [];
-            items = items.filter(b => slugs.includes(b.slug));
+            items = items.filter(b => (b.tags || []).includes(this.tag));
           }
           items = [...items];
           switch (this.sort) {
@@ -733,14 +728,15 @@
         return;
       }
 
-      // 1-5 — switch category tabs
+      // 1-9 — switch tag filters (1 = All, 2+ = tag by position)
       const num = parseInt(e.key, 10);
-      if (num >= 1 && num <= 5) {
+      if (num >= 1 && num <= 9) {
         const storeData = Alpine.$data(document.querySelector('[x-data*="store()"]'));
         if (!storeData) return;
-        const cats = ['', 'Code Quality', 'DevOps', 'Security', 'Docs'];
-        if (num <= cats.length) {
-          storeData.tag = cats[num - 1];
+        if (num === 1) {
+          storeData.tag = '';
+        } else if (num - 2 < storeData.tags.length) {
+          storeData.tag = storeData.tags[num - 2];
         }
       }
     });

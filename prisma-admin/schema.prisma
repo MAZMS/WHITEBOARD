@@ -36,6 +36,7 @@ model Blueprint {
   stability            Float    @default(100)
   requiredPermissions  String[] @default([])
   estimatedMonthlyCost Float    @default(0)
+  tags                 String[] @default([])
   createdAt            DateTime @default(now())
 }
 

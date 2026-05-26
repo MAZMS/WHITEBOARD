@@ -14,6 +14,7 @@ const BLUEPRINTS = [
     stability: 98.5,
     requiredPermissions: ['Read', 'Bash(npm test)', 'Grep'],
     estimatedMonthlyCost: 12,
+    tags: ['code-quality', 'pr-review', 'ci'],
     creatorIdx: 0,
   },
   {
@@ -25,6 +26,7 @@ const BLUEPRINTS = [
     stability: 95.2,
     requiredPermissions: ['Read', 'Bash(git log*)', 'Grep', 'Glob'],
     estimatedMonthlyCost: 8,
+    tags: ['bugs', 'github', 'triage'],
     creatorIdx: 0,
   },
   {
@@ -36,6 +38,7 @@ const BLUEPRINTS = [
     stability: 99.1,
     requiredPermissions: ['Read', 'Write', 'Glob', 'Grep'],
     estimatedMonthlyCost: 5,
+    tags: ['documentation', 'api-docs', 'readme'],
     creatorIdx: 1,
   },
   {
@@ -47,6 +50,7 @@ const BLUEPRINTS = [
     stability: 92.8,
     requiredPermissions: ['Read', 'Edit', 'Bash(npm install)', 'Bash(npm test)'],
     estimatedMonthlyCost: 15,
+    tags: ['dependencies', 'upgrades', 'codemods'],
     creatorIdx: 1,
   },
   {
@@ -58,6 +62,7 @@ const BLUEPRINTS = [
     stability: 97.6,
     requiredPermissions: ['Read', 'Grep', 'Glob', 'Bash(npm audit)'],
     estimatedMonthlyCost: 10,
+    tags: ['security', 'owasp', 'audit'],
     creatorIdx: 2,
   },
   {
@@ -69,6 +74,7 @@ const BLUEPRINTS = [
     stability: 94.3,
     requiredPermissions: ['Read', 'Write', 'Bash(npm test)', 'Grep'],
     estimatedMonthlyCost: 9,
+    tags: ['testing', 'jest', 'coverage'],
     creatorIdx: 2,
   },
   {
@@ -80,6 +86,7 @@ const BLUEPRINTS = [
     stability: 99.7,
     requiredPermissions: ['Read', 'Bash(npm run build)', 'Bash(npm test)'],
     estimatedMonthlyCost: 20,
+    tags: ['ci-cd', 'deploy', 'docker'],
     creatorIdx: 2,
   },
   {
@@ -91,6 +98,7 @@ const BLUEPRINTS = [
     stability: 96.1,
     requiredPermissions: ['Read', 'Edit', 'Grep', 'Bash(npm test)'],
     estimatedMonthlyCost: 11,
+    tags: ['refactoring', 'code-quality', 'cleanup'],
     creatorIdx: 0,
   },
 ];
