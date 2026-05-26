@@ -27,6 +27,7 @@ CONVERSATION FLOW:
 
 const agents = {
   architect: {
+    humanName: 'Nora',
     icon: '△',
     description: 'Designs system architecture, APIs, and data models.',
     tier: 'premium',
@@ -38,6 +39,7 @@ Keep it focused and actionable. No fluff.` + HUMAN_VOICE,
   },
 
   coder: {
+    humanName: 'Dev',
     icon: '{}',
     description: 'Writes clean, production-ready code. Ships fast.',
     tier: 'premium',
@@ -49,6 +51,7 @@ Code first, explain only if needed. When you do explain, keep it casual.` + HUMA
   },
 
   writer: {
+    humanName: 'Iris',
     icon: 'Aa',
     description: 'Writes copy, content, and documentation.',
     tier: 'mini',
@@ -60,6 +63,7 @@ Output clean text ready to use. No meta-commentary about the writing process.` +
   },
 
   designer: {
+    humanName: 'Mika',
     icon: '◐',
     description: 'Creates UI layouts, mockups, and visual concepts.',
     tier: 'premium',
@@ -71,6 +75,7 @@ Think Dieter Rams. Less but better.` + HUMAN_VOICE,
   },
 
   thinker: {
+    humanName: 'Sage',
     icon: '◇',
     description: 'Breaks down problems, thinks step by step.',
     tier: 'premium',
@@ -82,6 +87,7 @@ If the problem is simple, just say so — don't overcomplicate it for the sake o
   },
 
   debugger: {
+    humanName: 'Kai',
     icon: '!',
     description: 'Hunts bugs, reads errors, traces root causes.',
     tier: 'premium',
@@ -93,6 +99,7 @@ Never say "it could be many things." Narrow it down. Be decisive. If you need mo
   },
 
   reviewer: {
+    humanName: 'Zara',
     icon: '~',
     description: 'Reviews code for bugs, security, and quality.',
     tier: 'premium',
@@ -104,6 +111,7 @@ When you spot an issue, explain what's wrong, point to where it is, and suggest 
   },
 
   researcher: {
+    humanName: 'Atlas',
     icon: '?',
     description: 'Gathers information, summarizes findings.',
     tier: 'mini',
@@ -115,6 +123,7 @@ Be thorough but concise. The user wants the signal, not the noise.` + HUMAN_VOIC
   },
 
   planner: {
+    humanName: 'Maya',
     icon: '=',
     description: 'Creates roadmaps, task lists, and timelines.',
     tier: 'mini',
@@ -126,6 +135,7 @@ If asked for a timeline, be honest about the uncertainty.` + HUMAN_VOICE,
   },
 
   ops: {
+    humanName: 'Rio',
     icon: '>_',
     description: 'DevOps, deployment, infrastructure, and monitoring.',
     tier: 'mini',
@@ -150,6 +160,7 @@ function getSystemPrompt(name) {
 function getAllAgents() {
   return Object.entries(agents).map(([key, val]) => ({
     key,
+    humanName: val.humanName,
     icon: val.icon,
     description: val.description,
     tier: val.tier,

@@ -316,7 +316,8 @@ The greeting must sound like a real friend texting back. Rules:
 
     res.json({
       agent: agentKey,
-      displayName: agentKey.charAt(0).toUpperCase() + agentKey.slice(1),
+      displayName: matched ? matched.humanName : agentKey,
+      role: agentKey.charAt(0).toUpperCase() + agentKey.slice(1),
       icon: matched ? matched.icon : '●',
       greeting: parsed.greeting || 'oh nice, tell me more about what you\'re working on',
     });

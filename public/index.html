@@ -191,10 +191,17 @@
       border-bottom: none;
     }
     .agent-contact-card .card-name {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       letter-spacing: 0.5px;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
+    }
+    .agent-contact-card .card-role {
+      font-size: 11px;
+      color: var(--dim);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
     }
     .agent-contact-card .card-status {
       font-size: 11px;
@@ -329,6 +336,16 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .agent-chat-panel .agent-name .agent-role {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--dim);
+      letter-spacing: 1px;
+      text-transform: uppercase;
     }
     .agent-chat-panel .agent-status {
       text-align: left;
@@ -1001,6 +1018,46 @@
                   border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
+    /* ── Suggestion bar ── */
+    #suggestion-bar {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: var(--dim);
+      z-index: 90;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      text-align: center;
+      white-space: nowrap;
+    }
+    #suggestion-bar.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #suggestion-bar .suggestion-text {
+      opacity: 0;
+      transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #suggestion-bar .suggestion-text.show {
+      opacity: 1;
+    }
+    #suggestion-bar kbd {
+      display: inline-block;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-family: inherit;
+      font-size: 10px;
+      color: var(--fg);
+      letter-spacing: 0.3px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
     /* ── Mobile responsive ── */
     @media (max-width: 640px) {
       /* Chat panel — full-screen on phone */
@@ -1092,6 +1149,9 @@
     <div id="agent-list-help" style="color:var(--dim);font-size:11px;line-height:1.8;"></div>
   </div>
 
+  <!-- Suggestion bar -->
+  <div id="suggestion-bar"><span class="suggestion-text"></span></div>
+
   <!-- Toast -->
   <div id="toast"></div>
 
@@ -1154,7 +1214,7 @@
         const res = await fetch('/api/agents');
         const list = await res.json();
         list.forEach(a => {
-          agents[a.key] = { icon: a.icon, desc: a.description, tier: a.tier };
+          agents[a.key] = { humanName: a.humanName, icon: a.icon, desc: a.description, tier: a.tier };
         });
         // Populate help panel
         const helpList = document.getElementById('agent-list-help');
@@ -1257,6 +1317,7 @@
           const data = await res.json();
           summonAgent(data.agent, {
             displayName: data.displayName,
+            role: data.role,
             greeting: data.greeting,
           });
         } catch (err) {
@@ -1349,6 +1410,7 @@
           data[id] = {
             agentName: card.name,
             displayName: card.displayName,
+            role: card.role,
             messages: msgs,
           };
         }
@@ -1373,6 +1435,9 @@
           // Restore conversation history
           conversationMap.set(agentId, entry.messages || []);
 
+          // Derive role from stored data or fall back to capitalized agent name
+          const role = entry.role || (entry.agentName.charAt(0).toUpperCase() + entry.agentName.slice(1));
+
           // Get staggered position for the card
           const pos = getCardPosition();
 
@@ -1382,6 +1447,7 @@
           card.id = agentId;
           card.dataset.agentName = entry.agentName;
           card.dataset.displayName = entry.displayName;
+          card.dataset.role = role;
           card.style.left = pos.x + 'px';
           card.style.top = pos.y + 'px';
 
@@ -1392,6 +1458,7 @@
               <div class="avatar-body"></div>
             </div>
             <div class="card-name">${entry.displayName}</div>
+            <div class="card-role">${role}</div>
             <div class="card-status"><span class="dot"></span> Online</div>
             <button class="message-btn" onclick="openChat('${agentId}')">Message</button>
           `;
@@ -1403,6 +1470,7 @@
           agentCards.set(agentId, {
             name: entry.agentName,
             displayName: entry.displayName,
+            role: role,
             element: card,
           });
         });
@@ -1439,7 +1507,8 @@
     // ── Agent summoning — creates a contact card on canvas ──
     function summonAgent(name, opts = {}) {
       const agent = agents[name] || { icon: '●', desc: `Custom agent "${name}" is ready. Ask me anything.` };
-      const displayName = opts.displayName || (name.charAt(0).toUpperCase() + name.slice(1));
+      const displayName = opts.displayName || (agent.humanName || name.charAt(0).toUpperCase() + name.slice(1));
+      const role = opts.role || (name.charAt(0).toUpperCase() + name.slice(1));
       const greeting = opts.greeting || agent.desc;
       const agentId = 'agent-' + Date.now();
 
@@ -1457,6 +1526,7 @@
       card.id = agentId;
       card.dataset.agentName = name;
       card.dataset.displayName = displayName;
+      card.dataset.role = role;
       card.style.left = pos.x + 'px';
       card.style.top = pos.y + 'px';
 
@@ -1467,6 +1537,7 @@
           <div class="avatar-body"></div>
         </div>
         <div class="card-name">${displayName}</div>
+        <div class="card-role">${role}</div>
         <div class="card-status"><span class="dot"></span> Online</div>
         <button class="message-btn" onclick="openChat('${agentId}')">Message</button>
       `;
@@ -1475,7 +1546,7 @@
       makeDraggable(card);
 
       // Track the card
-      agentCards.set(agentId, { name, displayName, element: card });
+      agentCards.set(agentId, { name, displayName, role, element: card });
 
       // Hide empty state hint on first agent
       const hint = document.getElementById('empty-hint');
@@ -1483,6 +1554,9 @@
 
       toast(`${displayName} is online`);
       saveConversations();
+
+      // Show suggestion bar
+      showSuggestionBar();
     }
 
     // ── Input placeholder rotation ──
@@ -1580,6 +1654,7 @@
       panel.id = 'chat-panel';
       panel.dataset.agentId = agentId;
 
+      const headerRole = info.role || info.name.charAt(0).toUpperCase() + info.name.slice(1);
       panel.innerHTML = `
         <div class="agent-header">
           <div class="agent-avatar">
@@ -1587,7 +1662,7 @@
             <div class="avatar-body"></div>
           </div>
           <div class="agent-header-info">
-            <div class="agent-name">${info.displayName}</div>
+            <div class="agent-name">${info.displayName} <span class="agent-role">${headerRole}</span></div>
             <div class="agent-status">
               <span class="dot"></span>
               <span class="status-text">Online</span>
@@ -1866,6 +1941,94 @@
         dragTarget.style.zIndex = '';
         dragTarget = null;
       }
+    });
+
+    // ── Suggestion bar ──
+    const suggestionBarEl = document.getElementById('suggestion-bar');
+    const suggestionTextEl = suggestionBarEl.querySelector('.suggestion-text');
+    let suggestionTimer = null;
+    let suggestionCycle = 0;
+    let currentSuggestion = '';
+    const suggestions = [
+      'Tell me more about my goal',
+      'What should I do first?',
+      'Give me a step-by-step plan',
+    ];
+
+    function showSuggestionBar() {
+      // Clear any existing cycle
+      clearTimeout(suggestionTimer);
+      suggestionCycle = 0;
+
+      suggestionBarEl.classList.add('visible');
+      cycleSuggestion();
+    }
+
+    function cycleSuggestion() {
+      if (suggestionCycle >= suggestions.length) {
+        // Done cycling — fade out the bar
+        suggestionBarEl.classList.remove('visible');
+        currentSuggestion = '';
+        return;
+      }
+
+      currentSuggestion = suggestions[suggestionCycle];
+      suggestionTextEl.classList.remove('show');
+
+      // Small gap for fade-out, then show new text
+      setTimeout(() => {
+        suggestionTextEl.innerHTML = '<kbd>tab</kbd> ' + currentSuggestion;
+        suggestionTextEl.classList.add('show');
+      }, 150);
+
+      suggestionCycle++;
+      suggestionTimer = setTimeout(cycleSuggestion, 1500);
+    }
+
+    function hideSuggestionBar() {
+      clearTimeout(suggestionTimer);
+      suggestionBarEl.classList.remove('visible');
+      currentSuggestion = '';
+    }
+
+    // Tab key handler — auto-fill the current suggestion into the active chat input
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      if (!currentSuggestion || !suggestionBarEl.classList.contains('visible')) return;
+
+      e.preventDefault();
+
+      // If a chat panel is open, fill its input
+      const panel = document.getElementById('chat-panel');
+      if (panel) {
+        const chatInput = panel.querySelector('.agent-input-row input');
+        if (chatInput) {
+          chatInput.value = currentSuggestion;
+          chatInput.focus();
+        }
+      } else if (openPanelId) {
+        // Panel reference stale, skip
+      } else {
+        // No panel open — find the most recent agent card and open its chat, then fill
+        const lastAgentId = Array.from(agentCards.keys()).pop();
+        if (lastAgentId) {
+          openChat(lastAgentId);
+          // Fill after the panel renders
+          requestAnimationFrame(() => {
+            const newPanel = document.getElementById('chat-panel');
+            if (newPanel) {
+              const chatInput = newPanel.querySelector('.agent-input-row input');
+              if (chatInput) {
+                chatInput.value = currentSuggestion;
+                chatInput.focus();
+              }
+            }
+          });
+        }
+      }
+
+      // Hide the suggestion bar after use
+      hideSuggestionBar();
     });
 
     // ── Clear board ──
