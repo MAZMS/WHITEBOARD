@@ -85,7 +85,7 @@ app.post('/api/agent', async (req, res) => {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: message },
       ],
-      max_tokens: 2048,
+      max_completion_tokens: 2048,
     });
 
     const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
@@ -145,7 +145,7 @@ app.post('/api/agent/stream', async (req, res) => {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: message },
       ],
-      max_tokens: 2048,
+      max_completion_tokens: 2048,
       stream: true,
       stream_options: { include_usage: true },
     });
