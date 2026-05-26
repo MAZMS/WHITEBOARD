@@ -25,7 +25,16 @@ app.get('/health', (_req, res) => {
 app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRouter);
 app.use('/webhooks', express.raw({ type: 'application/json' }), githubAppWebhookRouter);
 
-// 2. JSON parser for everything else
+// 2. CORS for public API + badge endpoints
+app.use('/api', (_req, res, next) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (_req.method === 'OPTIONS') { res.status(204).end(); return; }
+  next();
+});
+
+// 3. JSON parser for everything else
 app.use(express.json());
 
 // 3. Request logger (API routes only)

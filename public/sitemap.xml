@@ -30,4 +30,19 @@
     <lastmod>2026-05-26</lastmod>
     <priority>0.5</priority>
   </url>
+  <url>
+    <loc>https://greatlibrary.ai/explore.html</loc>
+    <lastmod>2026-05-26</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://greatlibrary.ai/api.html</loc>
+    <lastmod>2026-05-26</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://greatlibrary.ai/compare.html</loc>
+    <lastmod>2026-05-26</lastmod>
+    <priority>0.5</priority>
+  </url>
 </urlset>
