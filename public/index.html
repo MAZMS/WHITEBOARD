@@ -1514,11 +1514,10 @@
       const panel = document.getElementById('chat-panel');
       if (!panel) return;
 
-      // Remove active highlight from card
-      if (openPanelId) {
-        const card = document.getElementById(openPanelId);
-        if (card) card.classList.remove('active');
-      }
+      // Remove active/inactive states from all cards
+      document.querySelectorAll('.agent-contact-card').forEach(c => {
+        c.classList.remove('active', 'inactive');
+      });
 
       // Show theme toggle and admin link again
       document.getElementById('theme-toggle').style.display = '';
