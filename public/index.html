@@ -1289,7 +1289,7 @@
 
       // Initialize conversation history with the greeting
       conversationMap.set(agentId, [
-        { role: 'assistant', content: greeting },
+        { role: 'assistant', content: greeting, time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) },
       ]);
 
       // Get staggered position
@@ -1327,6 +1327,48 @@
 
       toast(`${displayName} is online`);
       saveConversations();
+    }
+
+    // ── Input placeholder rotation ──
+    const chatPlaceholders = [
+      'Type a message...',
+      'Say something...',
+      "What's on your mind?",
+      'Ask me anything...',
+    ];
+    function randomPlaceholder() {
+      return chatPlaceholders[Math.floor(Math.random() * chatPlaceholders.length)];
+    }
+
+    // ── Helper: create a message wrap with bubble + timestamp ──
+    function createMsgWrap(role, content, opts = {}) {
+      const wrap = document.createElement('div');
+      wrap.className = role === 'user' ? 'msg-wrap msg-wrap-user' : 'msg-wrap msg-wrap-agent';
+      if (opts.delay != null) {
+        wrap.style.animationDelay = opts.delay + 's';
+        wrap.style.opacity = '0';
+      }
+      const bubble = document.createElement('div');
+      bubble.className = role === 'user' ? 'msg msg-user' : 'msg msg-agent';
+      if (typeof content === 'string') {
+        bubble.textContent = content;
+      } else {
+        bubble.appendChild(content);
+      }
+      wrap.appendChild(bubble);
+      const ts = document.createElement('div');
+      ts.className = 'msg-time';
+      ts.textContent = opts.time || new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      wrap.appendChild(ts);
+      return { wrap, bubble };
+    }
+
+    // ── Scroll chat body to bottom ──
+    function scrollChatToBottom() {
+      const panel = document.getElementById('chat-panel');
+      if (!panel) return;
+      const body = panel.querySelector('.agent-body');
+      body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' });
     }
 
     // ── Open chat panel for an agent ──
@@ -1372,15 +1414,18 @@
             <div class="agent-name">${info.displayName}</div>
             <div class="agent-status">
               <span class="dot"></span>
-              <span>Online</span>
+              <span class="status-text">Online</span>
             </div>
           </div>
           <button class="close-btn close-btn-top" onclick="closeChatPanel()">&times;</button>
         </div>
-        <div class="agent-body"></div>
+        <div class="agent-body-wrap" style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div class="agent-body"></div>
+          <div class="new-msg-pill" onclick="scrollChatToBottom()">&#8595; New message</div>
+        </div>
         <div class="agent-input-area">
           <div class="agent-input-row">
-            <input type="text" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
+            <input type="text" placeholder="${randomPlaceholder()}" onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
             <button onclick="sendToAgent('${agentId}')">&#9654;</button>
           </div>
           <div class="agent-model"></div>
@@ -1389,20 +1434,32 @@
 
       document.body.appendChild(panel);
 
-      // Render existing conversation history into the panel with staggered fade-in
-      const body = panel.querySelector('.agent-body');
+      // ── Scroll-to-bottom pill logic ──
+      const bodyEl = panel.querySelector('.agent-body');
+      const pill = panel.querySelector('.new-msg-pill');
+      bodyEl.addEventListener('scroll', () => {
+        const distFromBottom = bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight;
+        if (distFromBottom > 100) {
+          pill.classList.add('visible');
+        } else {
+          pill.classList.remove('visible');
+        }
+      });
+
+      // Render existing conversation history into the panel
+      // First message (greeting) gets a 0.3s entrance delay; rest stagger from there
       const history = conversationMap.get(agentId) || [];
       history.forEach((msg, idx) => {
-        const bubble = document.createElement('div');
-        bubble.className = msg.role === 'user' ? 'msg msg-user' : 'msg msg-agent';
-        bubble.textContent = msg.content;
-        bubble.style.animationDelay = (idx * 0.06) + 's';
-        bubble.style.opacity = '0';
-        body.appendChild(bubble);
+        const baseDelay = idx === 0 ? 0.3 : 0.3 + idx * 0.06;
+        const { wrap } = createMsgWrap(msg.role, msg.content, {
+          delay: baseDelay,
+          time: msg.time,
+        });
+        bodyEl.appendChild(wrap);
       });
 
       // Scroll to bottom
-      body.scrollTop = body.scrollHeight;
+      bodyEl.scrollTop = bodyEl.scrollHeight;
 
       // Hide theme toggle and admin link to avoid overlap with send button
       document.getElementById('theme-toggle').style.display = 'none';
@@ -1470,8 +1527,8 @@
       const input = panel.querySelector('.agent-input-row input');
       const btn = panel.querySelector('.agent-input-row button');
       const body = panel.querySelector('.agent-body');
-      const statusEl = panel.querySelector('.agent-status span:last-child');
-      const dotEl = panel.querySelector('.dot');
+      const statusEl = panel.querySelector('.status-text');
+      const dotEl = panel.querySelector('.agent-header .dot');
       const modelEl = panel.querySelector('.agent-model');
       const message = input.value.trim();
       if (!message) return;
@@ -1482,29 +1539,31 @@
       // Also update the card's status dot to streaming
       const cardDot = info ? info.element.querySelector('.dot') : null;
 
-      // 1. Show user bubble
-      const userBubble = document.createElement('div');
-      userBubble.className = 'msg msg-user';
-      userBubble.textContent = message;
-      body.appendChild(userBubble);
+      // 1. Show user bubble with timestamp
+      const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const { wrap: userWrap } = createMsgWrap('user', message, { time: now });
+      body.appendChild(userWrap);
 
-      // Add to conversation history
-      history.push({ role: 'user', content: message });
+      // Add to conversation history (with time for re-render)
+      history.push({ role: 'user', content: message, time: now });
       saveConversations();
 
-      // 2. Append agent bubble with typing indicator
-      const agentBubble = document.createElement('div');
-      agentBubble.className = 'msg msg-agent';
-      agentBubble.innerHTML = '<span class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>';
-      body.appendChild(agentBubble);
+      // 2. Append agent bubble with typing indicator inside a wrap
+      const typingEl = document.createElement('span');
+      typingEl.className = 'typing-indicator';
+      typingEl.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+      const { wrap: agentWrap, bubble: agentBubble } = createMsgWrap('assistant', typingEl);
+      // Hide the timestamp until real content arrives
+      agentWrap.querySelector('.msg-time').style.visibility = 'hidden';
+      body.appendChild(agentWrap);
 
       // Auto-scroll smoothly
-      agentBubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      agentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
-      // Set running state
+      // Set running state — show "typing..." in header
       input.value = '';
       btn.disabled = true;
-      statusEl.textContent = 'Thinking...';
+      statusEl.textContent = 'typing...';
       dotEl.classList.add('streaming');
       if (cardDot) cardDot.classList.add('streaming');
 
@@ -1532,7 +1591,7 @@
           return;
         }
 
-        statusEl.textContent = 'Streaming...';
+        statusEl.textContent = 'typing...';
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -1557,7 +1616,7 @@
                 }
                 replyText += data.text;
                 agentBubble.textContent = replyText;
-                agentBubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                agentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
               }
               if (data.done) {
                 modelEl.textContent = data.total_tokens ? `${data.total_tokens} tokens` : '';
@@ -1566,8 +1625,13 @@
           }
         }
 
+        // Show the timestamp now that streaming is done
+        const replyTime = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        agentWrap.querySelector('.msg-time').textContent = replyTime;
+        agentWrap.querySelector('.msg-time').style.visibility = '';
+
         // Save assistant reply to conversation history
-        history.push({ role: 'assistant', content: replyText });
+        history.push({ role: 'assistant', content: replyText, time: replyTime });
         conversationMap.set(agentId, history);
         saveConversations();
 
@@ -1576,6 +1640,7 @@
         if (cardDot) cardDot.classList.remove('streaming');
       } catch (err) {
         agentBubble.textContent = 'Connection error: ' + err.message;
+        agentWrap.querySelector('.msg-time').style.visibility = '';
         statusEl.textContent = 'Error';
         dotEl.classList.remove('streaming');
         if (cardDot) cardDot.classList.remove('streaming');
