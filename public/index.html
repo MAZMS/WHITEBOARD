@@ -680,21 +680,6 @@
           e.preventDefault();
           openCommand();
           break;
-        case 'KeyD':
-          setTool('draw');
-          break;
-        case 'KeyN':
-          createNote(window.innerWidth / 2 - 90, window.innerHeight / 2 - 50);
-          break;
-        case 'KeyM':
-          setTool('move');
-          break;
-        case 'KeyE':
-          setTool('erase');
-          break;
-        case 'KeyC':
-          if (!e.metaKey && !e.ctrlKey) clearBoard();
-          break;
         case 'Escape':
           helpPanel.classList.remove('visible');
           break;
@@ -709,7 +694,6 @@
         tool === 'move' ? 'grab' :
         tool === 'erase' ? 'pointer' :
         'default';
-      toast(tool.charAt(0).toUpperCase() + tool.slice(1) + ' mode');
     }
 
     // ── Drawing ──
@@ -767,7 +751,6 @@
       document.body.appendChild(note);
       makeDraggable(note);
       note.querySelector('textarea').focus();
-      toast('Note created');
     }
 
     // ── Agent summoning ──
