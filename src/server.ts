@@ -132,8 +132,8 @@ async function seedIfEmpty(): Promise<void> {
   try {
     const { admin } = await import('./db/adminClient');
     const count = await admin.blueprint.count();
-    if (count > 0) {
-      logInfo('Seed skipped — database already populated', { count });
+    if (count >= 16) {
+      logInfo('Seed skipped — all blueprints present', { count });
       return;
     }
     logInfo('Database empty — seeding blueprints');
