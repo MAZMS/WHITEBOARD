@@ -756,6 +756,68 @@ app.post('/api/agent/group', async (req, res) => {
   }
 });
 
+// ── API: Auto-reply (Agent Mode — AI answers on behalf of the user) ──
+app.post('/api/agent/auto-reply', async (req, res) => {
+  try {
+    resetIfNewDay();
+
+    const { goal, agentName, agentRole, messages } = req.body;
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'Messages are required.' });
+    }
+
+    const model = 'gpt-4o-mini';
+    const tier = 'mini';
+
+    if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
+      return res.status(429).json({
+        error: 'Daily mini token limit reached.',
+        usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
+      });
+    }
+
+    const prompt = `You are the USER (not an AI assistant). You are a person who wants to "${goal || 'get help'}".
+An agent named ${agentName || 'Agent'} (${agentRole || 'Assistant'}) is helping you. They just asked you a question or gave you options.
+
+Reply as the user would — make decisions, state preferences, give clear answers. Be decisive.
+Keep it short (1-2 sentences) like a real person texting back.
+Don't ask questions back — just answer what was asked.
+Be specific — pick options, state numbers, make choices.`;
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: prompt },
+        ...messages.slice(-10),
+      ],
+      max_completion_tokens: 256,
+    });
+
+    const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    const reply = completion.choices[0]?.message?.content || '';
+
+    // Track usage
+    tokenUsage[tier] += usage.total_tokens;
+    tokenUsage.history.push({
+      timestamp: new Date().toISOString(),
+      model,
+      tier,
+      agent: 'auto-reply',
+      prompt_tokens: usage.prompt_tokens || 0,
+      completion_tokens: usage.completion_tokens || 0,
+      total: usage.total_tokens || 0,
+    });
+
+    persistUsage(tier, usage.total_tokens, model, 'auto-reply', usage);
+    logRequest({ agent: 'auto-reply', model, tier, tokens: usage.total_tokens });
+
+    res.json({ reply });
+  } catch (err) {
+    console.error('Auto-reply error:', err.message);
+    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
+  }
+});
+
 // ── API: List available agents ──
 app.get('/api/agents', (req, res) => {
   res.json(getAllAgents());

@@ -636,7 +636,7 @@
     #admin-link {
       position: fixed;
       top: 26px;
-      left: 124px;
+      left: 228px;
       z-index: 100;
       color: var(--border);
       text-decoration: none;
@@ -1022,6 +1022,67 @@
     #help-btn:hover { color: var(--fg); border-color: var(--fg); }
     #help-btn:active { transform: scale(0.92); }
 
+    /* ── Agent Mode toggle ── */
+    #agent-mode-toggle {
+      position: fixed;
+      top: 20px;
+      left: 124px;
+      z-index: 100;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 22px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      white-space: nowrap;
+    }
+    #agent-mode-toggle:hover { color: var(--fg); border-color: var(--fg); }
+    #agent-mode-toggle:active { transform: scale(0.95); }
+    #agent-mode-toggle.active {
+      border-color: #4ade80;
+      color: #4ade80;
+      box-shadow: 0 0 12px rgba(74, 222, 128, 0.2), inset 0 0 12px rgba(74, 222, 128, 0.05);
+    }
+    #agent-mode-toggle .agent-mode-icon {
+      font-size: 15px;
+      line-height: 1;
+    }
+    #agent-mode-toggle .agent-mode-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--dim);
+      transition: background 0.3s;
+    }
+    #agent-mode-toggle.active .agent-mode-dot {
+      background: #4ade80;
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+
+    /* Auto-replying indicator above chat input */
+    .auto-reply-indicator {
+      text-align: center;
+      font-size: 11px;
+      color: #4ade80;
+      letter-spacing: 0.5px;
+      padding: 4px 0;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .auto-reply-indicator.visible {
+      opacity: 1;
+    }
+
     /* ── Focus-visible states for keyboard navigation ── */
     button:focus-visible,
     input:focus-visible,
@@ -1294,10 +1355,14 @@
   <!-- Drawing canvas -->
   <svg id="canvas"></svg>
 
-  <!-- Theme toggle + help button -->
+  <!-- Theme toggle + help button + agent mode -->
   <a id="admin-link" href="/admin" title="Admin panel" style="display:none;">Admin</a>
   <button id="help-btn" onclick="toggleHelp()" title="Help &amp; shortcuts (?)" style="display:none;">?</button>
   <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="display:none;">&#9684;</button>
+  <button id="agent-mode-toggle" onclick="toggleAgentMode()" title="Toggle Agent Mode — AI answers for you" style="display:none;">
+    <span class="agent-mode-dot"></span>
+    <span class="agent-mode-label">Auto</span>
+  </button>
 
   <!-- Command bar backdrop -->
   <div id="command-backdrop" onclick="closeCommand()"></div>
@@ -1412,6 +1477,12 @@
       themeToggle.style.display = '';
       helpBtn.style.display = '';
       document.getElementById('admin-link').style.display = '';
+      document.getElementById('agent-mode-toggle').style.display = '';
+      // Restore agent mode state from localStorage
+      if (localStorage.getItem('wb-agent-mode') === 'on') {
+        agentModeOn = true;
+        document.getElementById('agent-mode-toggle').classList.add('active');
+      }
       // Restore any saved conversations from localStorage
       loadConversations();
       // Show empty state hint if no agents yet
@@ -1728,6 +1799,12 @@
           // Auto-open the agent's chat after a brief pause
           await new Promise(r => setTimeout(r, 500));
           openChat(agentId);
+
+          // Trigger Agent Mode auto-reply on the greeting if enabled
+          if (agentModeOn) {
+            autoReplyRounds.set(agentId, 0);
+            setTimeout(() => autoReplyLoop(agentId), 300);
+          }
         } catch (err) {
           toast('Connection error: ' + err.message);
         }
@@ -1906,6 +1983,7 @@
             displayName: card.displayName,
             role: card.role,
             outputType: card.outputType || 'Document',
+            goal: card.goal || '',
             messages: msgs,
           };
         }
@@ -1933,6 +2011,7 @@
           // Derive role from stored data or fall back to capitalized agent name
           const role = entry.role || (entry.agentName.charAt(0).toUpperCase() + entry.agentName.slice(1));
           const outputType = entry.outputType || 'Document';
+          const goal = entry.goal || '';
 
           // Get staggered position for the card
           const pos = getCardPosition();
@@ -1968,6 +2047,7 @@
             displayName: entry.displayName,
             role: role,
             outputType: outputType,
+            goal: goal,
             element: card,
           });
         });
@@ -2058,7 +2138,7 @@
       makeDraggable(card);
 
       // Track the card
-      agentCards.set(agentId, { name, displayName, role, outputType, element: card });
+      agentCards.set(agentId, { name, displayName, role, outputType, goal, element: card });
 
       // Hide empty state hint on first agent
       const hint = document.getElementById('empty-hint');
@@ -2337,6 +2417,11 @@
         statusEl.textContent = 'Online';
         dotEl.classList.remove('streaming');
         if (cardDot) cardDot.classList.remove('streaming');
+
+        // Trigger Agent Mode auto-reply if enabled
+        if (agentModeOn && replyText) {
+          setTimeout(() => autoReplyLoop(agentId), 300);
+        }
       } catch (err) {
         agentBubble.textContent = 'Connection error: ' + err.message + '\n';
         const retryBtn = document.createElement('button');
@@ -2353,6 +2438,105 @@
 
       btn.disabled = false;
       input.focus();
+    }
+
+    // ── Agent Mode: AI answers on behalf of the user ──
+    let agentModeOn = false;
+    const autoReplyRounds = new Map(); // agentId -> count of auto-replies this session
+
+    function toggleAgentMode() {
+      agentModeOn = !agentModeOn;
+      const btn = document.getElementById('agent-mode-toggle');
+      if (agentModeOn) {
+        btn.classList.add('active');
+        localStorage.setItem('wb-agent-mode', 'on');
+        toast('Agent Mode ON — AI will reply for you');
+      } else {
+        btn.classList.remove('active');
+        localStorage.setItem('wb-agent-mode', 'off');
+        // Hide indicator if visible
+        const indicator = document.getElementById('auto-reply-indicator');
+        if (indicator) indicator.classList.remove('visible');
+        toast('Agent Mode OFF');
+      }
+    }
+
+    async function autoReplyLoop(agentId) {
+      if (!agentModeOn) return;
+
+      const info = agentCards.get(agentId);
+      if (!info) return;
+
+      const history = conversationMap.get(agentId) || [];
+      const lastMsg = history[history.length - 1];
+
+      // Only auto-reply if the last message is from the agent (not user)
+      if (!lastMsg || lastMsg.role !== 'assistant') return;
+
+      // Max 5 auto-rounds per agent to prevent infinite loops
+      const rounds = autoReplyRounds.get(agentId) || 0;
+      if (rounds >= 5) {
+        autoReplyRounds.set(agentId, 0);
+        const indicator = document.getElementById('auto-reply-indicator');
+        if (indicator) indicator.classList.remove('visible');
+        toast('Agent Mode paused — review the conversation');
+        return;
+      }
+
+      // Show indicator
+      const indicator = document.getElementById('auto-reply-indicator');
+      if (indicator) indicator.classList.add('visible');
+
+      // Wait 1.5s to feel natural
+      await new Promise(r => setTimeout(r, 1500));
+      if (!agentModeOn) {
+        if (indicator) indicator.classList.remove('visible');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/agent/auto-reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            goal: info.goal || lastGoalText || '',
+            agentName: info.displayName,
+            agentRole: info.role,
+            messages: history,
+          }),
+        });
+
+        if (!res.ok || !agentModeOn) {
+          if (indicator) indicator.classList.remove('visible');
+          return;
+        }
+
+        const data = await res.json();
+        if (!data.reply || !agentModeOn) {
+          if (indicator) indicator.classList.remove('visible');
+          return;
+        }
+
+        // Inject the auto-reply as if the user typed it
+        const panel = document.getElementById('chat-panel');
+        if (!panel || panel.dataset.agentId !== agentId) {
+          if (indicator) indicator.classList.remove('visible');
+          return;
+        }
+
+        const input = panel.querySelector('.agent-input-row input');
+        if (input) {
+          input.value = data.reply;
+          autoReplyRounds.set(agentId, rounds + 1);
+          if (indicator) indicator.classList.remove('visible');
+          sendToAgent(agentId);
+        } else {
+          if (indicator) indicator.classList.remove('visible');
+        }
+      } catch (err) {
+        console.error('Auto-reply error:', err.message);
+        if (indicator) indicator.classList.remove('visible');
+      }
     }
 
     // ── Text node system (user goals on canvas) ──
@@ -2596,6 +2780,7 @@
           <div class="new-msg-pill" onclick="scrollChatToBottom()">&#8595; New message</div>
         </div>
         <div class="agent-input-area">
+          <div class="auto-reply-indicator" id="auto-reply-indicator">AI replying...</div>
           <div class="agent-input-row">
             <input type="text" placeholder="${randomPlaceholder()}" onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
             <button onclick="sendToAgent('${agentId}')">&#9654;</button>
@@ -2648,6 +2833,7 @@
       textNodeLinesAnimated.clear();
       agentCards.clear();
       conversationMap.clear();
+      autoReplyRounds.clear();
       localStorage.removeItem('wb-conversations');
       cardCounter = 0;
       toast('Board cleared');
