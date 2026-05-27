@@ -1500,6 +1500,13 @@
     document.addEventListener('keydown', (e) => {
       if (!started) return;
       if (commandOpen) return;
+      // Let Escape through even when input is focused (to close chat panel)
+      if (e.key === 'Escape' && openPanelId) {
+        e.preventDefault();
+        closeChatPanel();
+        return;
+      }
+
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
 
       // Ctrl+Shift+C — clear board
