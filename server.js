@@ -190,6 +190,8 @@ app.post('/api/agent', async (req, res) => {
     if (outputType) {
       systemPrompt += `\nYour primary output is: ${outputType}. Produce this output directly when asked — don't just describe it or ask questions.`;
     }
+    // Chat-mode: keep replies conversational, output is generated separately
+    systemPrompt += `\n\nIMPORTANT: You are in CHAT MODE. Only respond with short conversational messages. NEVER include code blocks, documents, plans, or any substantial output in your chat. If the user asks you to create something, just acknowledge it casually like "on it, working on that now" or "sure, let me put that together for you". The actual output will be generated separately.`;
 
     // Build messages: system prompt + conversation history (trimmed to last 20 to limit token usage)
     const chatMessages = [{ role: 'system', content: systemPrompt }];
@@ -264,6 +266,8 @@ app.post('/api/agent/stream', async (req, res) => {
     if (outputType) {
       systemPrompt += `\nYour primary output is: ${outputType}. Produce this output directly when asked — don't just describe it or ask questions.`;
     }
+    // Chat-mode: keep replies conversational, output is generated separately
+    systemPrompt += `\n\nIMPORTANT: You are in CHAT MODE. Only respond with short conversational messages. NEVER include code blocks, documents, plans, or any substantial output in your chat. If the user asks you to create something, just acknowledge it casually like "on it, working on that now" or "sure, let me put that together for you". The actual output will be generated separately.`;
 
     // Build messages: system prompt + conversation history (trimmed to last 20 to limit token usage)
     const chatMessages = [{ role: 'system', content: systemPrompt }];
@@ -330,6 +334,78 @@ app.post('/api/agent/stream', async (req, res) => {
     if (!res.headersSent) {
       res.status(err.status || 500).json({ error: safeErrorMessage(err) });
     }
+  }
+});
+
+// ── API: Generate output separately (no chat, just the deliverable) ──
+app.post('/api/agent/output', async (req, res) => {
+  try {
+    resetIfNewDay();
+
+    const { agent, message, outputType, displayName, role, messages: history, model: requestedModel } = req.body;
+    const model = requestedModel || tokenUsage.settings.defaultModel;
+    const tier = getModelTier(model);
+
+    if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
+      return res.status(429).json({
+        error: `Daily ${tier} token limit reached.`,
+        usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
+      });
+    }
+
+    const outputPrompt = `You are ${displayName || 'Agent'}, a ${role || 'Assistant'}.
+Your job is to produce ${outputType || 'Document'} based on the user's request.
+ONLY output the deliverable — no chat, no explanations, no greetings, no "here you go", no "sure thing".
+If the output type is Code, produce complete runnable HTML/CSS/JS in a single file.
+If it's a Business Plan, produce a structured plan.
+If it's a Document, produce the document text.
+If it's a Strategy or Report, produce the full content.
+Just the raw output, nothing else.`;
+
+    // Use conversation history for context but generate ONLY the output
+    const chatMessages = [{ role: 'system', content: outputPrompt }];
+    if (history && Array.isArray(history)) {
+      const trimmed = history.length > 10 ? history.slice(-10) : history;
+      chatMessages.push(...trimmed);
+    }
+    chatMessages.push({ role: 'user', content: `Produce ${outputType || 'Document'} for: ${message}` });
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: chatMessages,
+      max_completion_tokens: 4096,
+    });
+
+    const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    const output = completion.choices[0]?.message?.content || '';
+
+    // Track usage
+    tokenUsage[tier] += usage.total_tokens;
+    tokenUsage.history.push({
+      timestamp: new Date().toISOString(),
+      model,
+      tier,
+      agent: agent || 'custom',
+      prompt_tokens: usage.prompt_tokens || 0,
+      completion_tokens: usage.completion_tokens || 0,
+      total: usage.total_tokens || 0,
+    });
+
+    persistUsage(tier, usage.total_tokens, model, agent || 'custom', usage);
+    logRequest({ agent: agent || 'custom', model, tier, tokens: usage.total_tokens });
+
+    res.json({
+      output,
+      model,
+      usage: {
+        prompt_tokens: usage.prompt_tokens,
+        completion_tokens: usage.completion_tokens,
+        total: usage.total_tokens,
+      },
+    });
+  } catch (err) {
+    console.error('Output generation error:', err.message);
+    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
   }
 });
 

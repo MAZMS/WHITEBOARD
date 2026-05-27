@@ -1170,6 +1170,29 @@
       transform: scale(0.95);
     }
 
+    /* ── Output node loading spinner ── */
+    .output-node .output-spinner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--dim);
+      margin-bottom: 12px;
+    }
+    .output-node .output-spinner .spin-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--dim);
+      animation: pulseFast 0.6s infinite ease-in-out;
+    }
+    .output-node .output-spinner .spin-dot:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+    .output-node .output-spinner .spin-dot:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
     /* ── SVG overlay for output connection lines ── */
     #link-lines {
       position: fixed;
@@ -2229,7 +2252,7 @@
       }
     }
 
-    // ── Send message to agent ──
+    // ── Send message to agent (chat + separate output generation) ──
     async function sendToAgent(agentId) {
       const panel = document.getElementById('chat-panel');
       if (!panel || panel.dataset.agentId !== agentId) return;
@@ -2283,6 +2306,8 @@
         const agentName = info ? info.name : (document.getElementById(agentId)?.dataset.agentName || 'unknown');
 
         const card = document.getElementById(agentId);
+
+        // ── STEP 1: Stream the chat response (conversational only) ──
         const res = await fetch('/api/agent/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2341,15 +2366,7 @@
                   firstChunk = false;
                 }
                 replyText += data.text;
-                // Show only the conversational part — hide code blocks in real-time
-                const visibleText = replyText.replace(/```[\s\S]*?```/g, '').replace(/```[\s\S]*$/, '').trim();
-                if (visibleText) {
-                  agentBubble.textContent = visibleText;
-                } else if (replyText.includes('```')) {
-                  agentBubble.textContent = 'generating output...';
-                } else {
-                  agentBubble.textContent = replyText;
-                }
+                agentBubble.textContent = replyText;
                 agentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
               }
               if (data.done) {
@@ -2373,19 +2390,21 @@
         dotEl.classList.remove('streaming');
         if (cardDot) cardDot.classList.remove('streaming');
 
-        // Create/update output node on the canvas — only for actual deliverables
+        // ── STEP 2: Fire the output call in the background ──
         const agentOutputType = info ? info.outputType : 'Document';
-        if (replyText && isOutputContent(replyText, agentOutputType)) {
-          const outputContent = extractOutputContent(replyText);
-          createOrUpdateOutputNode(agentId, outputContent);
+        if (info && agentOutputType) {
+          // Show a loading output node immediately
+          createLoadingOutputNode(agentId);
 
-          // Clean the chat bubble — show only the conversational part, not the code
-          const chatOnly = replyText.replace(/```[\s\S]*?```/g, '').trim();
-          if (chatOnly) {
-            agentBubble.textContent = chatOnly;
-          } else {
-            agentBubble.textContent = 'done — check the output.';
-          }
+          // Fire the output generation in the background (don't await)
+          generateOutput(agentId, {
+            agent: agentName,
+            message: message,
+            outputType: agentOutputType,
+            displayName: card?.dataset.displayName,
+            role: card?.dataset.role,
+            messages: history.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({ role: m.role, content: m.content })),
+          });
         }
       } catch (err) {
         agentBubble.textContent = 'Connection error: ' + err.message + '\n';
@@ -2403,6 +2422,50 @@
 
       btn.disabled = false;
       input.focus();
+    }
+
+    // ── Background output generation ──
+    async function generateOutput(agentId, params) {
+      const info = agentCards.get(agentId);
+      const cardDot = info ? info.element.querySelector('.dot') : null;
+
+      // Show "working..." status on card
+      if (cardDot) cardDot.classList.add('streaming');
+      const statusEl = document.querySelector(`#chat-panel[data-agent-id="${agentId}"] .status-text`);
+      if (statusEl) statusEl.textContent = 'working...';
+
+      try {
+        const res = await fetch('/api/agent/output', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          removeLoadingOutputNode(agentId);
+          toast(err.error || 'Output generation failed');
+          return;
+        }
+
+        const data = await res.json();
+        if (data.output) {
+          const outputContent = extractOutputContent(data.output);
+          createOrUpdateOutputNode(agentId, outputContent);
+          toast('Output ready');
+        } else {
+          removeLoadingOutputNode(agentId);
+        }
+      } catch (err) {
+        removeLoadingOutputNode(agentId);
+        toast('Output generation failed: ' + err.message);
+      } finally {
+        if (cardDot) cardDot.classList.remove('streaming');
+        const currentStatusEl = document.querySelector(`#chat-panel[data-agent-id="${agentId}"] .status-text`);
+        if (currentStatusEl && currentStatusEl.textContent === 'working...') {
+          currentStatusEl.textContent = 'Online';
+        }
+      }
     }
 
     // ── Drag system ──
@@ -2524,21 +2587,91 @@
       return '.txt';
     }
 
+    function createLoadingOutputNode(agentId) {
+      const info = agentCards.get(agentId);
+      if (!info) return;
+
+      const outputType = info.outputType || 'Document';
+
+      // Don't create a new loading node if output node already exists — it will be updated
+      let node = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
+      if (node) {
+        // Replace preview with spinner
+        const preview = node.querySelector('.output-preview');
+        if (preview) {
+          preview.innerHTML = '<div class="output-spinner"><span class="spin-dot"></span><span class="spin-dot"></span><span class="spin-dot"></span> working...</div>';
+        }
+        // Hide action buttons while loading
+        const actions = node.querySelector('.output-actions');
+        if (actions) actions.style.display = 'none';
+        return;
+      }
+
+      // Calculate position: to the right of agent card
+      const cardEl = info.element;
+      const cardRect = cardEl.getBoundingClientRect();
+      const nodeX = cardEl.offsetLeft + cardRect.width + 40;
+      const nodeY = cardEl.offsetTop + (cardRect.height / 2) - 50;
+
+      const icon = getOutputTypeIcon(outputType);
+
+      node = document.createElement('div');
+      node.className = 'output-node';
+      node.dataset.agentId = agentId;
+      node.dataset.outputId = 'output-' + agentId;
+      node.style.left = nodeX + 'px';
+      node.style.top = nodeY + 'px';
+
+      node.innerHTML = `
+        <div class="output-type"><span class="output-type-icon">${icon}</span> ${outputType.toUpperCase()}</div>
+        <div class="output-preview"><div class="output-spinner"><span class="spin-dot"></span><span class="spin-dot"></span><span class="spin-dot"></span> working...</div></div>
+        <div class="output-actions" style="display:none;"></div>
+      `;
+
+      document.body.appendChild(node);
+      requestAnimationFrame(() => drawOutputLines());
+    }
+
+    function removeLoadingOutputNode(agentId) {
+      // Only remove if it's still in loading state (no real content)
+      const node = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
+      if (!node) return;
+      const spinner = node.querySelector('.output-spinner');
+      if (spinner) {
+        node.style.animation = 'cardDismiss 0.3s cubic-bezier(0.4, 0, 1, 1) forwards';
+        setTimeout(() => node.remove(), 300);
+        outputData.delete(agentId);
+        requestAnimationFrame(() => drawOutputLines());
+      }
+    }
+
     function createOrUpdateOutputNode(agentId, content) {
       const info = agentCards.get(agentId);
       if (!info) return;
 
       const outputType = info.outputType || 'Document';
       const outputId = 'output-' + agentId;
+      const isCode = outputType.toLowerCase().includes('code');
 
       // Store the output data
       outputData.set(agentId, { content, outputId });
 
-      // Check if an output node already exists
+      // Check if an output node already exists (could be a loading placeholder)
       let node = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
       if (node) {
-        // Update existing node content
-        node.querySelector('.output-preview').textContent = content.slice(0, 100) + (content.length > 100 ? '...' : '');
+        // Update existing node — replace spinner/preview with real content
+        const preview = node.querySelector('.output-preview');
+        if (preview) preview.textContent = content.slice(0, 100) + (content.length > 100 ? '...' : '');
+        // Rebuild action buttons (they may have been hidden during loading)
+        let actions = node.querySelector('.output-actions');
+        if (actions) {
+          actions.style.display = '';
+          actions.innerHTML = `
+            <button onclick="viewOutput('${agentId}')">View</button>
+            <button onclick="downloadOutput('${agentId}')">Download</button>
+            ${isCode ? `<button onclick="runOutput('${agentId}')">Run</button>` : ''}
+          `;
+        }
         drawOutputLines();
         return;
       }
