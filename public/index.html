@@ -1072,20 +1072,6 @@
                   border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* ── LEAD badge on team leader card ── */
-    .agent-contact-card .lead-badge {
-      display: inline-block;
-      font-size: 9px;
-      font-weight: 600;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--bg);
-      background: var(--fg);
-      padding: 2px 8px;
-      border-radius: 4px;
-      margin-bottom: 8px;
-    }
-
     /* ── Link button on agent cards ── */
     .agent-contact-card .card-link-btn {
       position: absolute;
@@ -1146,6 +1132,13 @@
       inset: 0;
       z-index: 35;
       pointer-events: none;
+    }
+    #link-lines .link-hit {
+      pointer-events: stroke;
+      cursor: pointer;
+    }
+    #link-lines .link-hit:hover + .link-visible {
+      opacity: 0.3 !important;
     }
     @keyframes linkLineDrawOn {
       to { stroke-dashoffset: 0; }
@@ -1377,6 +1370,7 @@
       // Restore any saved conversations from localStorage
       loadConversations();
       loadGroupConversations();
+      loadLinkConversations();
       // Show empty state hint if no agents yet
       if (agentCards.size === 0) {
         document.getElementById('empty-hint').style.display = '';
@@ -1945,8 +1939,10 @@
         { role: 'assistant', content: greeting, time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) },
       ]);
 
-      // Get staggered position
-      const pos = getCardPosition();
+      // Get position: use explicit x/y if provided, else staggered grid
+      const pos = (opts.x != null && opts.y != null)
+        ? { x: opts.x, y: opts.y }
+        : getCardPosition();
 
       // Create the contact card
       const card = document.createElement('div');
@@ -1958,9 +1954,6 @@
       card.style.left = pos.x + 'px';
       card.style.top = pos.y + 'px';
 
-      const isLead = opts.isLead || false;
-      const leadBadgeHtml = isLead ? '<div class="lead-badge">LEAD</div>' : '';
-
       card.innerHTML = `
         <button class="card-link-btn" onclick="toggleLink('${agentId}')" title="Link agents">+</button>
         <button class="card-close-btn" onclick="dismissAgent('${agentId}')">&times;</button>
@@ -1968,7 +1961,6 @@
           <div class="avatar-head"></div>
           <div class="avatar-body"></div>
         </div>
-        ${leadBadgeHtml}
         <div class="card-name">${displayName}</div>
         <div class="card-role">${role}</div>
         <div class="card-status"><span class="dot"></span> Online</div>
@@ -1979,7 +1971,7 @@
       makeDraggable(card);
 
       // Track the card
-      agentCards.set(agentId, { name, displayName, role, isLead, element: card });
+      agentCards.set(agentId, { name, displayName, role, element: card });
 
       // Hide empty state hint on first agent
       const hint = document.getElementById('empty-hint');
@@ -1998,11 +1990,36 @@
       if (!team || !Array.isArray(team) || team.length < 2) return;
 
       const spawnedIds = [];
+      const subCount = team.length - 1;
+
+      // Hierarchical left-to-right layout
+      // Lead at far left, sub-agents stacked vertically to the right
+      const canvasCenterY = window.innerHeight / 2;
+      const leadX = 80;
+      const leadY = canvasCenterY - 60; // offset up slightly so card center is at canvas center
+      const hGap = 300;
+      const vGap = 200;
+
+      // Sub-agents: centered vertically as a group to the right of the lead
+      const subX = leadX + hGap;
+      const totalSubHeight = (subCount - 1) * vGap;
+      const subStartY = canvasCenterY - totalSubHeight / 2 - 60;
 
       // Spawn each agent with a stagger
       for (let i = 0; i < team.length; i++) {
         const member = team[i];
-        const isLead = i === 0;
+
+        // Calculate position
+        let posX, posY;
+        if (i === 0) {
+          // Lead agent: far left center
+          posX = leadX;
+          posY = leadY;
+        } else {
+          // Sub-agents: stacked vertically to the right
+          posX = subX;
+          posY = subStartY + (i - 1) * vGap;
+        }
 
         // Wait between spawns for staggered effect
         if (i > 0) await new Promise(r => setTimeout(r, 300));
@@ -2012,7 +2029,8 @@
           role: member.role,
           greeting: member.greeting,
           goal: goal,
-          isLead: isLead,
+          x: posX,
+          y: posY,
         });
 
         spawnedIds.push(agentId);
@@ -2146,8 +2164,11 @@
 
     // ── Dismiss agent card from canvas ──
     function dismissAgent(agentId) {
-      // Close chat panel if this agent's panel is open
+      // Close chat panel if this agent's panel is open (individual, shared, or link chat)
       if (openPanelId === agentId || (openPanelId === 'shared-chat' && linkedAgents.has(agentId))) {
+        closeChatPanel();
+      }
+      if (openPanelId && openPanelId.startsWith('link-chat-') && openPanelId.includes(agentId)) {
         closeChatPanel();
       }
 
@@ -2506,25 +2527,45 @@
           const cx = mx + (-dy / dist) * curveAmount;
           const cy = my + (dx / dist) * curveAmount;
 
-          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
           const d = `M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}`;
-          path.setAttribute('d', d);
-          path.setAttribute('stroke', fg);
-          path.setAttribute('stroke-width', '1.5');
-          path.setAttribute('fill', 'none');
-          path.setAttribute('opacity', '0.08');
-          path.setAttribute('stroke-linecap', 'round');
+          const sortedPair = [ids[i], ids[j]].sort();
 
-          svg.appendChild(path);
+          // Invisible wide hit area for clicking (rendered first, behind visible line)
+          const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          hitPath.setAttribute('d', d);
+          hitPath.setAttribute('stroke', 'transparent');
+          hitPath.setAttribute('stroke-width', '20');
+          hitPath.setAttribute('fill', 'none');
+          hitPath.setAttribute('stroke-linecap', 'round');
+          hitPath.classList.add('link-hit');
+          hitPath.dataset.id1 = sortedPair[0];
+          hitPath.dataset.id2 = sortedPair[1];
+          hitPath.addEventListener('click', () => openLinkChat(sortedPair[0], sortedPair[1]));
+          hitPath.addEventListener('mouseenter', () => { visPath.setAttribute('opacity', '0.3'); });
+          hitPath.addEventListener('mouseleave', () => { visPath.setAttribute('opacity', '0.08'); });
+          svg.appendChild(hitPath);
+
+          // Visible line
+          const visPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          visPath.setAttribute('d', d);
+          visPath.setAttribute('stroke', fg);
+          visPath.setAttribute('stroke-width', '1.5');
+          visPath.setAttribute('fill', 'none');
+          visPath.setAttribute('opacity', '0.08');
+          visPath.setAttribute('stroke-linecap', 'round');
+          visPath.classList.add('link-visible');
+          visPath.style.pointerEvents = 'none';
+          visPath.style.transition = 'opacity 0.2s ease';
+          svg.appendChild(visPath);
 
           // Draw-on animation for new lines
-          const lineKey = [ids[i], ids[j]].sort().join(':');
+          const lineKey = sortedPair.join(':');
           if (!linkLineAnimations.has(lineKey)) {
             linkLineAnimations.set(lineKey, true);
-            const len = path.getTotalLength ? path.getTotalLength() : 500;
-            path.style.strokeDasharray = len;
-            path.style.strokeDashoffset = len;
-            path.style.animation = `linkLineDrawOn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards`;
+            const len = visPath.getTotalLength ? visPath.getTotalLength() : 500;
+            visPath.style.strokeDasharray = len;
+            visPath.style.strokeDashoffset = len;
+            visPath.style.animation = `linkLineDrawOn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards`;
           }
         }
       }
@@ -3052,6 +3093,341 @@
       }
     }
 
+    // ── Link conversations: per-pair chat between two agents ──
+    const linkConversations = new Map(); // 'id1|id2' -> [{ role, content, agent?, time }]
+
+    function loadLinkConversations() {
+      try {
+        const raw = localStorage.getItem('wb-link-conversations');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        Object.entries(data).forEach(([key, msgs]) => {
+          linkConversations.set(key, msgs);
+        });
+      } catch {
+        localStorage.removeItem('wb-link-conversations');
+      }
+    }
+
+    function saveLinkConversations() {
+      const data = {};
+      linkConversations.forEach((msgs, key) => {
+        data[key] = msgs;
+      });
+      localStorage.setItem('wb-link-conversations', JSON.stringify(data));
+    }
+
+    function getLinkKey(id1, id2) {
+      return [id1, id2].sort().join('|');
+    }
+
+    function openLinkChat(id1, id2) {
+      const linkKey = getLinkKey(id1, id2);
+      const a = agentCards.get(id1);
+      const b = agentCards.get(id2);
+      if (!a || !b) return;
+
+      // Close existing panel instantly if switching
+      if (openPanelId) {
+        const oldPanel = document.getElementById('chat-panel');
+        if (oldPanel) oldPanel.remove();
+      }
+
+      openPanelId = 'link-chat-' + linkKey;
+
+      // Highlight the two linked cards
+      document.querySelectorAll('.agent-contact-card').forEach(c => {
+        if (c.id === id1 || c.id === id2) {
+          c.classList.remove('inactive');
+          c.classList.add('active');
+        } else {
+          c.classList.remove('active');
+          c.classList.add('inactive');
+        }
+      });
+
+      // Initialize conversation if needed
+      if (!linkConversations.has(linkKey)) {
+        const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        linkConversations.set(linkKey, [
+          { role: 'system-info', content: `${a.displayName} & ${b.displayName} connected`, time: now },
+        ]);
+        saveLinkConversations();
+      }
+
+      const namesStr = `${a.displayName} & ${b.displayName}`;
+      const avatarsHtml = [a, b].map(() =>
+        `<div class="shared-avatar-mini"><div class="avatar-head"></div><div class="avatar-body"></div></div>`
+      ).join('');
+
+      const panel = document.createElement('div');
+      panel.className = 'agent-chat-panel';
+      panel.id = 'chat-panel';
+      panel.dataset.agentId = openPanelId;
+      panel.dataset.linkKey = linkKey;
+      panel.dataset.linkId1 = id1;
+      panel.dataset.linkId2 = id2;
+
+      panel.innerHTML = `
+        <div class="agent-header">
+          <div class="shared-avatars">${avatarsHtml}</div>
+          <div class="agent-header-info">
+            <div class="agent-name">${namesStr}</div>
+            <div class="agent-status">
+              <span class="dot"></span>
+              <span class="status-text">Both online</span>
+            </div>
+          </div>
+          <button class="close-btn close-btn-top" onclick="closeChatPanel()">&times;</button>
+        </div>
+        <div class="agent-body-wrap" style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div class="agent-body"></div>
+          <div class="new-msg-pill" onclick="scrollChatToBottom()">&#8595; New message</div>
+        </div>
+        <div class="agent-input-area">
+          <div class="agent-input-row">
+            <input type="text" placeholder="Message ${namesStr}..." onkeydown="if(event.key==='Enter')sendToLinkChat()">
+            <button onclick="sendToLinkChat()">&#9654;</button>
+          </div>
+          <div class="agent-model"></div>
+        </div>
+      `;
+
+      document.body.appendChild(panel);
+
+      const bodyEl = panel.querySelector('.agent-body');
+      const pill = panel.querySelector('.new-msg-pill');
+      bodyEl.addEventListener('scroll', () => {
+        const distFromBottom = bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight;
+        if (distFromBottom > 100) {
+          pill.classList.add('visible');
+        } else {
+          pill.classList.remove('visible');
+        }
+      });
+
+      // Render existing history
+      const history = linkConversations.get(linkKey) || [];
+      history.forEach((msg, idx) => {
+        if (msg.role === 'system-info') {
+          const info = document.createElement('div');
+          info.style.cssText = 'text-align:center;font-size:11px;color:var(--dim);padding:8px 0;opacity:0.6;';
+          info.textContent = msg.content;
+          bodyEl.appendChild(info);
+        } else if (msg.role === 'user') {
+          const { wrap } = createMsgWrap('user', msg.content, { time: msg.time, delay: 0.3 + idx * 0.04 });
+          bodyEl.appendChild(wrap);
+        } else if (msg.role === 'assistant') {
+          const wrap = createSharedAgentWrap(msg.agent, msg.content, { time: msg.time, delay: 0.3 + idx * 0.04 });
+          bodyEl.appendChild(wrap);
+        }
+      });
+
+      bodyEl.scrollTop = bodyEl.scrollHeight;
+      panel.querySelector('.agent-input-row input').focus();
+    }
+
+    async function sendToLinkChat() {
+      const panel = document.getElementById('chat-panel');
+      if (!panel || !panel.dataset.linkKey) return;
+
+      const linkKey = panel.dataset.linkKey;
+      const id1 = panel.dataset.linkId1;
+      const id2 = panel.dataset.linkId2;
+      const input = panel.querySelector('.agent-input-row input');
+      const btn = panel.querySelector('.agent-input-row button');
+      const body = panel.querySelector('.agent-body');
+      const statusEl = panel.querySelector('.status-text');
+      const dotEl = panel.querySelector('.agent-header .dot');
+      const modelEl = panel.querySelector('.agent-model');
+      const message = input.value.trim();
+      if (!message) return;
+
+      const history = linkConversations.get(linkKey) || [];
+
+      // Show user bubble
+      const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const { wrap: userWrap } = createMsgWrap('user', message, { time: now });
+      body.appendChild(userWrap);
+      history.push({ role: 'user', content: message, time: now });
+      saveLinkConversations();
+
+      input.value = '';
+      btn.disabled = true;
+
+      // Build agents array for the API (just the two agents)
+      const agentList = [];
+      for (const id of [id1, id2]) {
+        const info = agentCards.get(id);
+        if (info) {
+          agentList.push({
+            name: info.displayName,
+            role: info.role,
+            key: info.name,
+          });
+        }
+      }
+
+      // Build messages for API
+      const apiMessages = [];
+      for (const msg of history) {
+        if (msg.role === 'user') {
+          apiMessages.push({ role: 'user', content: msg.content });
+        } else if (msg.role === 'assistant') {
+          apiMessages.push({ role: 'assistant', content: `[${msg.agent}]: ${msg.content}` });
+        }
+      }
+
+      statusEl.textContent = 'thinking...';
+      dotEl.classList.add('streaming');
+
+      // Pulse dots on both cards
+      for (const id of [id1, id2]) {
+        const info = agentCards.get(id);
+        if (info) {
+          const cardDot = info.element.querySelector('.dot');
+          if (cardDot) cardDot.classList.add('streaming');
+        }
+      }
+
+      try {
+        const res = await fetch('/api/agent/group', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agents: agentList,
+            message,
+            messages: apiMessages,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          toast(err.error || 'Something went wrong');
+          statusEl.textContent = 'Error';
+          dotEl.classList.remove('streaming');
+          for (const id of [id1, id2]) {
+            const info = agentCards.get(id);
+            if (info) {
+              const cardDot = info.element.querySelector('.dot');
+              if (cardDot) cardDot.classList.remove('streaming');
+            }
+          }
+          btn.disabled = false;
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        let currentAgent = null;
+        let currentWrap = null;
+        let currentBubble = null;
+        let currentText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.allDone) {
+                modelEl.textContent = data.total_tokens ? `${data.total_tokens} tokens` : '';
+                continue;
+              }
+
+              if (data.agent && data.text) {
+                if (currentAgent !== data.agent) {
+                  // Save previous agent's message
+                  if (currentAgent && currentText) {
+                    const replyTime = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                    if (currentWrap) {
+                      const tsEl = currentWrap.querySelector('.msg-time');
+                      if (tsEl) { tsEl.textContent = replyTime; tsEl.style.visibility = ''; }
+                    }
+                    history.push({ role: 'assistant', content: currentText, agent: currentAgent, time: replyTime });
+                  }
+
+                  // New agent bubble
+                  currentAgent = data.agent;
+                  currentText = '';
+                  statusEl.textContent = `${data.agent} is typing...`;
+
+                  const typingEl = document.createElement('span');
+                  typingEl.className = 'typing-indicator';
+                  typingEl.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+
+                  currentWrap = createSharedAgentWrap(data.agent, typingEl);
+                  currentWrap.querySelector('.msg-time').style.visibility = 'hidden';
+                  currentBubble = currentWrap.querySelector('.msg-agent');
+                  body.appendChild(currentWrap);
+                  currentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+
+                if (currentBubble) {
+                  if (currentText === '') {
+                    currentBubble.textContent = '';
+                  }
+                  currentText += data.text;
+                  currentBubble.textContent = currentText;
+                  currentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+              }
+
+              if (data.done && data.agent) {
+                if (currentAgent === data.agent && currentText) {
+                  const replyTime = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                  if (currentWrap) {
+                    const tsEl = currentWrap.querySelector('.msg-time');
+                    if (tsEl) { tsEl.textContent = replyTime; tsEl.style.visibility = ''; }
+                  }
+                  history.push({ role: 'assistant', content: currentText, agent: currentAgent, time: replyTime });
+                  currentAgent = null;
+                  currentText = '';
+                  currentWrap = null;
+                  currentBubble = null;
+                }
+              }
+
+              if (data.error) {
+                toast(`${data.agent}: ${data.error}`);
+              }
+            } catch {}
+          }
+        }
+
+        linkConversations.set(linkKey, history);
+        saveLinkConversations();
+
+        statusEl.textContent = 'Both online';
+        dotEl.classList.remove('streaming');
+      } catch (err) {
+        toast('Connection error: ' + err.message);
+        statusEl.textContent = 'Error';
+        dotEl.classList.remove('streaming');
+      }
+
+      // Reset card dots
+      for (const id of [id1, id2]) {
+        const info = agentCards.get(id);
+        if (info) {
+          const cardDot = info.element.querySelector('.dot');
+          if (cardDot) cardDot.classList.remove('streaming');
+        }
+      }
+
+      btn.disabled = false;
+      input.focus();
+    }
+
     // ── Clear board ──
     function clearBoard() {
       canvas.innerHTML = '';
@@ -3064,7 +3440,9 @@
       linkedAgents.clear();
       linkLineAnimations.clear();
       groupConversationMap.clear();
+      linkConversations.clear();
       localStorage.removeItem('wb-group-conversations');
+      localStorage.removeItem('wb-link-conversations');
       document.getElementById('link-lines').innerHTML = '';
       // Remove all contact cards and sticky notes
       document.querySelectorAll('.agent-contact-card, .sticky-note').forEach(el => el.remove());
