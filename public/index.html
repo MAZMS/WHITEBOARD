@@ -1072,50 +1072,6 @@
                   border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* ── Suggestion bar ── */
-    #suggestion-bar {
-      position: fixed;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 12px;
-      color: var(--dim);
-      z-index: 90;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      text-align: center;
-      white-space: nowrap;
-    }
-    #suggestion-bar.visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    #suggestion-bar .suggestion-text {
-      opacity: 0;
-      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    #suggestion-bar .suggestion-text.show {
-      opacity: 1;
-    }
-    #suggestion-bar .suggestion-text.fade-out {
-      opacity: 0;
-      transition: opacity 0.4s ease-out;
-    }
-    #suggestion-bar kbd {
-      display: inline-block;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 2px 7px;
-      border-radius: 5px;
-      font-family: inherit;
-      font-size: 10px;
-      color: var(--ghost-text);
-      letter-spacing: 0.3px;
-      margin-right: 6px;
-      vertical-align: middle;
-    }
-
     /* ── Mobile responsive ── */
     @media (max-width: 640px) {
       /* Chat panel — full-screen on phone */
@@ -1210,9 +1166,6 @@
     <h3>AGENTS</h3>
     <div style="color:var(--dim);font-size:11px;line-height:1.8;">Agents are AI-generated with unique names and roles based on your goal. No two are the same.</div>
   </div>
-
-  <!-- Suggestion bar -->
-  <div id="suggestion-bar"><span class="suggestion-text"></span></div>
 
   <!-- Toast -->
   <div id="toast"></div>
@@ -1649,7 +1602,6 @@
       // Tab / ArrowRight / ArrowDown — cycle forward between agent chats
       // ArrowLeft / ArrowUp — cycle backward between agent chats
       if (e.key === 'Tab' || e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        if (e.key === 'Tab' && currentSuggestion && suggestionBarEl.classList.contains('visible')) return;
         const ids = Array.from(agentCards.keys());
         if (ids.length === 0) return;
         e.preventDefault();
@@ -1895,9 +1847,7 @@
       toast(`${displayName} is online`);
       saveConversations();
 
-      // Show suggestion bar with role-specific suggestions
       lastGoalText = goal;
-      showSuggestionBar(role, goal);
     }
 
     // ── Input placeholder rotation ──
@@ -1962,9 +1912,6 @@
 
     // ── Open chat panel for an agent ──
     function openChat(agentId) {
-      // Hide suggestion bar when opening any chat
-      hideSuggestionBar();
-
       // If same panel is already open, just focus input
       if (openPanelId === agentId) {
         const existing = document.getElementById('chat-panel');
@@ -2057,8 +2004,9 @@
       // Scroll to bottom
       bodyEl.scrollTop = bodyEl.scrollHeight;
 
-      // Focus the input
+      // Focus the input and start placeholder rotation
       panel.querySelector('.agent-input-row input').focus();
+      startPlaceholderRotation(info.role, lastGoalText);
     }
 
     // ── Close chat panel ──
@@ -2071,6 +2019,7 @@
         c.classList.remove('active', 'inactive');
       });
 
+      stopPlaceholderRotation();
       panel.classList.add('dismissing');
       setTimeout(() => {
         panel.remove();
@@ -2282,24 +2231,15 @@
       }
     });
 
-    // ── Suggestion bar ──
-    const suggestionBarEl = document.getElementById('suggestion-bar');
-    const suggestionTextEl = suggestionBarEl.querySelector('.suggestion-text');
-    let suggestionTimer = null;
-    let suggestionTypeTimer = null;
-    let suggestionCycle = 0;
-    let currentSuggestion = '';
-    let activeSuggestions = [];
+    // ── Contextual suggestions (used as chat input placeholder text) ──
     let lastGoalText = '';
-    let suggestionStopped = false;
 
-    // Generate contextual suggestions based on the agent's role and the user's goal
     function getSuggestions(role, goal) {
       if (!goal) {
         return [
-          `Tell me more about what you need`,
-          `What should I focus on first?`,
-          `Give me a quick plan`,
+          'Tell me more about what you need',
+          'What should I focus on first?',
+          'Give me a quick plan',
         ];
       }
       return [
@@ -2309,134 +2249,36 @@
       ];
     }
 
-    function typewriterSuggestion(text, onDone) {
-      let i = 0;
-      suggestionTextEl.innerHTML = '<kbd>tab</kbd> ';
-      suggestionTextEl.classList.add('show');
-      suggestionTextEl.classList.remove('fade-out');
+    // ── Placeholder rotation inside chat input ──
+    let placeholderTimer = null;
+    let placeholderIdx = 0;
 
-      function typeNext() {
-        if (suggestionStopped) return;
-        if (i < text.length) {
-          suggestionTextEl.innerHTML = '<kbd>tab</kbd> ' + text.slice(0, i + 1);
-          i++;
-          suggestionTypeTimer = setTimeout(typeNext, 30);
-        } else {
-          suggestionTypeTimer = null;
-          // Hold for 3s then call onDone
-          if (onDone) {
-            suggestionTimer = setTimeout(onDone, 3000);
-          }
-        }
-      }
-      typeNext();
-    }
+    function startPlaceholderRotation(role, goal) {
+      stopPlaceholderRotation();
+      const suggestions = getSuggestions(role, goal);
+      placeholderIdx = 0;
 
-    function showSuggestionBar(role, goal) {
-      // Clear any existing cycle
-      hideSuggestionBar();
-      suggestionStopped = false;
-      suggestionCycle = 0;
-      const gen = ++suggestionGeneration;
-
-      // Generate suggestions tailored to this role and goal
-      activeSuggestions = getSuggestions(role, goal);
-
-      suggestionBarEl.classList.add('visible');
-      cycleSuggestion(gen);
-    }
-
-    function cycleSuggestion(gen) {
-      if (suggestionStopped || gen !== suggestionGeneration) return;
-      if (suggestionCycle >= activeSuggestions.length) {
-        // Done cycling — fade out the bar
-        suggestionTextEl.classList.add('fade-out');
-        suggestionTimer = setTimeout(() => {
-          if (gen !== suggestionGeneration) return;
-          suggestionBarEl.classList.remove('visible');
-          suggestionTextEl.classList.remove('show', 'fade-out');
-          currentSuggestion = '';
-        }, 400);
-        return;
+      function rotate() {
+        const input = document.querySelector('.agent-chat-panel .agent-input-row input');
+        if (!input || placeholderIdx >= suggestions.length) return;
+        input.placeholder = suggestions[placeholderIdx];
+        placeholderIdx++;
+        placeholderTimer = setTimeout(rotate, 5000);
       }
 
-      currentSuggestion = activeSuggestions[suggestionCycle];
-      suggestionCycle++;
-
-      // Typewriter in, hold 3s, fade out 0.4s, then next
-      typewriterSuggestion(currentSuggestion, () => {
-        if (suggestionStopped || gen !== suggestionGeneration) return;
-        // Fade out
-        suggestionTextEl.classList.add('fade-out');
-        suggestionTimer = setTimeout(() => {
-          if (suggestionStopped || gen !== suggestionGeneration) return;
-          suggestionTextEl.classList.remove('show', 'fade-out');
-          suggestionTextEl.innerHTML = '';
-          // Small gap before next
-          suggestionTimer = setTimeout(() => cycleSuggestion(gen), 100);
-        }, 400);
-      });
+      // Start after 5s — keep the default placeholder first
+      placeholderTimer = setTimeout(rotate, 5000);
     }
 
-    let suggestionGeneration = 0; // generation counter to kill stale cycles
-
-    function hideSuggestionBar() {
-      suggestionStopped = true;
-      suggestionGeneration++;
-      clearTimeout(suggestionTimer);
-      clearTimeout(suggestionTypeTimer);
-      suggestionTimer = null;
-      suggestionTypeTimer = null;
-      suggestionBarEl.classList.remove('visible');
-      suggestionTextEl.classList.remove('show', 'fade-out');
-      suggestionTextEl.innerHTML = '';
-      currentSuggestion = '';
+    function stopPlaceholderRotation() {
+      clearTimeout(placeholderTimer);
+      placeholderTimer = null;
     }
-
-    // Tab key handler — auto-fill the current suggestion into the active chat input
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Tab') return;
-      if (!currentSuggestion || !suggestionBarEl.classList.contains('visible')) return;
-
-      e.preventDefault();
-
-      // If a chat panel is open, fill its input
-      const panel = document.getElementById('chat-panel');
-      if (panel) {
-        const chatInput = panel.querySelector('.agent-input-row input');
-        if (chatInput) {
-          chatInput.value = currentSuggestion;
-          chatInput.focus();
-        }
-      } else if (openPanelId) {
-        // Panel reference stale, skip
-      } else {
-        // No panel open — find the most recent agent card and open its chat, then fill
-        const lastAgentId = Array.from(agentCards.keys()).pop();
-        if (lastAgentId) {
-          openChat(lastAgentId);
-          // Fill after the panel renders
-          requestAnimationFrame(() => {
-            const newPanel = document.getElementById('chat-panel');
-            if (newPanel) {
-              const chatInput = newPanel.querySelector('.agent-input-row input');
-              if (chatInput) {
-                chatInput.value = currentSuggestion;
-                chatInput.focus();
-              }
-            }
-          });
-        }
-      }
-
-      // Hide the suggestion bar after use
-      hideSuggestionBar();
-    });
 
     // ── Clear board ──
     function clearBoard() {
       canvas.innerHTML = '';
-      hideSuggestionBar();
+      stopPlaceholderRotation();
       // Close chat panel if open
       const panel = document.getElementById('chat-panel');
       if (panel) panel.remove();
