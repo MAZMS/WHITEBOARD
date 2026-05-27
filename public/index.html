@@ -1387,7 +1387,11 @@
       hideGhost();
       cmdGhostStopped = false;
       cmdGhostCurrent = '';
-      cmdGhostOrder = shuffleArray(getActiveSuggestions());
+      // Lead with context-aware prompt, then cycle through goal suggestions
+      const leadIn = agentCards.size > 0
+        ? 'what else do you need help with?'
+        : 'what are you trying to achieve?';
+      cmdGhostOrder = [leadIn, ...shuffleArray(getActiveSuggestions())];
       cmdGhostIndex = 0;
       showNextGhost();
     }
@@ -1502,10 +1506,7 @@
       commandBar.classList.add('visible');
       commandBackdrop.classList.add('visible');
       commandInput.value = '';
-      // Context-aware placeholder based on canvas state
-      commandInput.placeholder = agentCards.size > 0
-        ? 'What else do you need help with?'
-        : 'What are you trying to achieve?';
+      commandInput.placeholder = '';
       startGhostIdleTimer();
       // Immediate auto-focus with a microtask to ensure DOM is ready
       requestAnimationFrame(() => commandInput.focus());
