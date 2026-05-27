@@ -2693,7 +2693,6 @@
       const icon = getOutputTypeIcon(outputType);
       const preview = content.slice(0, 100) + (content.length > 100 ? '...' : '');
 
-      const isCode = outputType.toLowerCase().includes('code');
       node.innerHTML = `
         <div class="output-type"><span class="output-type-icon">${icon}</span> ${outputType.toUpperCase()}</div>
         <div class="output-preview">${preview}</div>
