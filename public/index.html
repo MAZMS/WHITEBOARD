@@ -1187,6 +1187,7 @@
     <button class="help-close-btn" onclick="closeHelp()" title="Close">&times;</button>
     <h3>SHORTCUTS</h3>
     <div class="help-row"><span>Open command bar</span> <kbd>Space</kbd></div>
+    <div class="help-row"><span>Cycle between agent chats</span> <kbd>Tab</kbd></div>
     <div class="help-row"><span>Close panel / bar</span> <kbd>Esc</kbd></div>
     <div class="help-row"><span>Clear board</span> <kbd>Ctrl+Shift+C</kbd></div>
     <h3>HOW IT WORKS</h3>
@@ -1196,7 +1197,7 @@
     <div class="help-feature">Clear chat with the button in chat header</div>
     <div class="help-feature">Toggle dark / light mode (bottom-right)</div>
     <h3>AGENTS</h3>
-    <div id="agent-list-help" style="color:var(--dim);font-size:11px;line-height:1.8;"></div>
+    <div style="color:var(--dim);font-size:11px;line-height:1.8;">Agents are AI-generated with unique names and roles based on your goal. No two are the same.</div>
   </div>
 
   <!-- Suggestion bar -->
@@ -1266,13 +1267,6 @@
         list.forEach(a => {
           agents[a.key] = { humanName: a.humanName, icon: a.icon, desc: a.description, tier: a.tier };
         });
-        // Populate help panel
-        const helpList = document.getElementById('agent-list-help');
-        if (helpList) {
-          helpList.innerHTML = list.map(a =>
-            `<div>${a.icon} <strong>${a.key}</strong> — ${a.description}</div>`
-          ).join('');
-        }
       } catch {}
     }
     loadAgents();
@@ -1519,6 +1513,25 @@
       if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
         e.preventDefault();
         toggleHelp();
+        return;
+      }
+
+      // Tab — cycle between agent chats (skip when suggestion bar is active)
+      if (e.key === 'Tab') {
+        if (currentSuggestion && suggestionBarEl.classList.contains('visible')) return;
+        const ids = Array.from(agentCards.keys());
+        if (ids.length === 0) return;
+        e.preventDefault();
+
+        if (!openPanelId) {
+          // No chat open — open the first agent
+          openChat(ids[0]);
+        } else {
+          // Find current index, advance to next (wrap around)
+          const curIdx = ids.indexOf(openPanelId);
+          const nextIdx = (curIdx + 1) % ids.length;
+          openChat(ids[nextIdx]);
+        }
         return;
       }
 
