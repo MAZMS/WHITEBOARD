@@ -13,6 +13,7 @@
       --dim: #555;
       --border: #333;
       --surface: #111;
+      --ghost-text: #444;
       --grid-dot: #1a1a1a;
     }
 
@@ -22,6 +23,7 @@
       --dim: #555;
       --border: #d4d4d4;
       --surface: #f0f0f0;
+      --ghost-text: #bbb;
       --grid-dot: #e8e8e8;
     }
 
@@ -145,13 +147,17 @@
       gap: 8px;
       white-space: nowrap;
       opacity: 0;
-      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       font-family: inherit;
       font-size: 16px;
-      color: var(--border);
+      color: var(--ghost-text);
     }
     #cmd-ghost.visible {
       opacity: 1;
+    }
+    #cmd-ghost.fade-out {
+      opacity: 0;
+      transition: opacity 0.4s ease-out;
     }
     #cmd-ghost kbd {
       background: var(--surface);
@@ -160,7 +166,7 @@
       border-radius: 5px;
       font-family: inherit;
       font-size: 10px;
-      color: var(--dim);
+      color: var(--ghost-text);
       letter-spacing: 0.3px;
       flex-shrink: 0;
     }
@@ -1076,10 +1082,14 @@
     }
     #suggestion-bar .suggestion-text {
       opacity: 0;
-      transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
     #suggestion-bar .suggestion-text.show {
       opacity: 1;
+    }
+    #suggestion-bar .suggestion-text.fade-out {
+      opacity: 0;
+      transition: opacity 0.4s ease-out;
     }
     #suggestion-bar kbd {
       display: inline-block;
@@ -1089,7 +1099,7 @@
       border-radius: 5px;
       font-family: inherit;
       font-size: 10px;
-      color: var(--fg);
+      color: var(--ghost-text);
       letter-spacing: 0.3px;
       margin-right: 6px;
       vertical-align: middle;
@@ -1334,6 +1344,8 @@
     let cmdGhostTimer = null;
     let cmdGhostIndex = 0;
     let cmdGhostCurrent = '';
+    let cmdGhostTypeTimer = null;
+    let cmdGhostStopped = false;
 
     function shuffleArray(arr) {
       const a = [...arr];
@@ -1348,40 +1360,74 @@
 
     function startCmdGhost() {
       stopCmdGhost();
+      cmdGhostStopped = false;
       cmdGhostOrder = shuffleArray(goalSuggestions);
       cmdGhostIndex = 0;
       showNextGhost();
     }
 
+    function typewriterGhost(text, onDone) {
+      let i = 0;
+      cmdGhostText.textContent = '';
+      cmdGhost.classList.add('visible');
+      cmdGhost.classList.remove('fade-out');
+
+      function typeNext() {
+        if (cmdGhostStopped) return;
+        if (i < text.length) {
+          cmdGhostText.textContent = text.slice(0, i + 1);
+          i++;
+          cmdGhostTypeTimer = setTimeout(typeNext, 30);
+        } else {
+          // Typing done -- hold for 3s then call onDone
+          cmdGhostTypeTimer = null;
+          if (onDone) {
+            cmdGhostTimer = setTimeout(onDone, 3000);
+          }
+        }
+      }
+      typeNext();
+    }
+
     function showNextGhost() {
+      if (cmdGhostStopped) return;
       if (cmdGhostIndex >= cmdGhostOrder.length) {
         cmdGhostOrder = shuffleArray(goalSuggestions);
         cmdGhostIndex = 0;
       }
-      // Fade out, swap text, fade in
-      cmdGhost.classList.remove('visible');
-      setTimeout(() => {
-        cmdGhostCurrent = cmdGhostOrder[cmdGhostIndex];
-        cmdGhostText.textContent = cmdGhostCurrent;
-        cmdGhost.classList.add('visible');
-        cmdGhostIndex++;
-      }, 200);
-      cmdGhostTimer = setTimeout(showNextGhost, 2000);
+      cmdGhostCurrent = cmdGhostOrder[cmdGhostIndex];
+      cmdGhostIndex++;
+
+      // Typewriter in, hold 3s, fade out 0.4s, then next
+      typewriterGhost(cmdGhostCurrent, () => {
+        if (cmdGhostStopped) return;
+        // Fade out
+        cmdGhost.classList.add('fade-out');
+        cmdGhostTimer = setTimeout(() => {
+          if (cmdGhostStopped) return;
+          cmdGhost.classList.remove('visible', 'fade-out');
+          cmdGhostText.textContent = '';
+          // Small gap before next suggestion
+          cmdGhostTimer = setTimeout(showNextGhost, 100);
+        }, 400);
+      });
     }
 
     function stopCmdGhost() {
+      cmdGhostStopped = true;
       clearTimeout(cmdGhostTimer);
+      clearTimeout(cmdGhostTypeTimer);
       cmdGhostTimer = null;
-      cmdGhost.classList.remove('visible');
+      cmdGhostTypeTimer = null;
+      cmdGhost.classList.remove('visible', 'fade-out');
+      cmdGhostText.textContent = '';
       cmdGhostCurrent = '';
     }
 
     function updateCmdGhostVisibility() {
       if (commandInput.value.length > 0) {
-        cmdGhost.classList.remove('visible');
-        clearTimeout(cmdGhostTimer);
-        cmdGhostTimer = null;
-      } else if (commandOpen && !cmdGhostTimer) {
+        stopCmdGhost();
+      } else if (commandOpen && cmdGhostStopped) {
         startCmdGhost();
       }
     }
@@ -2079,10 +2125,12 @@
     const suggestionBarEl = document.getElementById('suggestion-bar');
     const suggestionTextEl = suggestionBarEl.querySelector('.suggestion-text');
     let suggestionTimer = null;
+    let suggestionTypeTimer = null;
     let suggestionCycle = 0;
     let currentSuggestion = '';
     let activeSuggestions = [];
     let lastGoalText = '';
+    let suggestionStopped = false;
 
     // Generate contextual suggestions based on the agent's role and the user's goal
     function getSuggestions(role, goal) {
@@ -2100,9 +2148,33 @@
       ];
     }
 
+    function typewriterSuggestion(text, onDone) {
+      let i = 0;
+      suggestionTextEl.innerHTML = '<kbd>tab</kbd> ';
+      suggestionTextEl.classList.add('show');
+      suggestionTextEl.classList.remove('fade-out');
+
+      function typeNext() {
+        if (suggestionStopped) return;
+        if (i < text.length) {
+          suggestionTextEl.innerHTML = '<kbd>tab</kbd> ' + text.slice(0, i + 1);
+          i++;
+          suggestionTypeTimer = setTimeout(typeNext, 30);
+        } else {
+          suggestionTypeTimer = null;
+          // Hold for 3s then call onDone
+          if (onDone) {
+            suggestionTimer = setTimeout(onDone, 3000);
+          }
+        }
+      }
+      typeNext();
+    }
+
     function showSuggestionBar(role, goal) {
       // Clear any existing cycle
-      clearTimeout(suggestionTimer);
+      hideSuggestionBar();
+      suggestionStopped = false;
       suggestionCycle = 0;
 
       // Generate suggestions tailored to this role and goal
@@ -2113,29 +2185,45 @@
     }
 
     function cycleSuggestion() {
+      if (suggestionStopped) return;
       if (suggestionCycle >= activeSuggestions.length) {
         // Done cycling — fade out the bar
-        suggestionBarEl.classList.remove('visible');
-        currentSuggestion = '';
+        suggestionTextEl.classList.add('fade-out');
+        suggestionTimer = setTimeout(() => {
+          suggestionBarEl.classList.remove('visible');
+          suggestionTextEl.classList.remove('show', 'fade-out');
+          currentSuggestion = '';
+        }, 400);
         return;
       }
 
       currentSuggestion = activeSuggestions[suggestionCycle];
-      suggestionTextEl.classList.remove('show');
-
-      // Small gap for fade-out, then show new text
-      setTimeout(() => {
-        suggestionTextEl.innerHTML = '<kbd>tab</kbd> ' + currentSuggestion;
-        suggestionTextEl.classList.add('show');
-      }, 150);
-
       suggestionCycle++;
-      suggestionTimer = setTimeout(cycleSuggestion, 1500);
+
+      // Typewriter in, hold 3s, fade out 0.4s, then next
+      typewriterSuggestion(currentSuggestion, () => {
+        if (suggestionStopped) return;
+        // Fade out
+        suggestionTextEl.classList.add('fade-out');
+        suggestionTimer = setTimeout(() => {
+          if (suggestionStopped) return;
+          suggestionTextEl.classList.remove('show', 'fade-out');
+          suggestionTextEl.innerHTML = '';
+          // Small gap before next
+          suggestionTimer = setTimeout(cycleSuggestion, 100);
+        }, 400);
+      });
     }
 
     function hideSuggestionBar() {
+      suggestionStopped = true;
       clearTimeout(suggestionTimer);
+      clearTimeout(suggestionTypeTimer);
+      suggestionTimer = null;
+      suggestionTypeTimer = null;
       suggestionBarEl.classList.remove('visible');
+      suggestionTextEl.classList.remove('show', 'fade-out');
+      suggestionTextEl.innerHTML = '';
       currentSuggestion = '';
     }
 
