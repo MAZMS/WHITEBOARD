@@ -1072,40 +1072,58 @@
                   border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* ── Link button on agent cards (group chat) ── */
+    /* ── Link button on agent cards ── */
     .agent-contact-card .card-link-btn {
       position: absolute;
       top: 2px;
       right: 40px;
       background: none;
-      border: none;
+      border: 1.5px solid var(--border);
       color: var(--border);
-      font-size: 14px;
+      font-size: 16px;
+      font-weight: 300;
       cursor: pointer;
       line-height: 1;
       opacity: 0;
-      transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       z-index: 1;
-      width: 44px;
-      height: 44px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
+      margin-top: 10px;
+      margin-right: 6px;
     }
     .agent-contact-card:hover .card-link-btn { opacity: 1; }
-    .agent-contact-card .card-link-btn:hover { color: var(--fg); }
+    .agent-contact-card .card-link-btn:hover {
+      color: var(--fg);
+      border-color: var(--fg);
+      transform: scale(1.1);
+    }
+    .agent-contact-card .card-link-btn:active {
+      transform: scale(0.9);
+    }
     .agent-contact-card .card-link-btn.linked {
       opacity: 1;
-      color: var(--fg);
+      color: var(--bg);
+      background: var(--fg);
+      border-color: var(--fg);
+      transform: rotate(45deg);
+    }
+    .agent-contact-card .card-link-btn.linked:hover {
+      opacity: 0.85;
+      transform: rotate(45deg) scale(1.1);
     }
 
     /* ── Linked card highlight ── */
     .agent-contact-card.linked {
-      border-color: var(--fg);
-      box-shadow: 0 0 12px rgba(255,255,255,0.06);
+      box-shadow: 0 0 0 1px var(--fg), 0 0 20px rgba(255,255,255,0.06);
+      border-color: transparent;
     }
     [data-theme="light"] .agent-contact-card.linked {
-      box-shadow: 0 0 12px rgba(0,0,0,0.06);
+      box-shadow: 0 0 0 1px var(--fg), 0 0 20px rgba(0,0,0,0.06);
     }
 
     /* ── SVG overlay for connection lines ── */
@@ -1115,222 +1133,51 @@
       z-index: 35;
       pointer-events: none;
     }
-
-    /* ── Group chat prompt (floating between linked cards) ── */
-    #group-chat-prompt {
-      position: fixed;
-      z-index: 45;
-      background: var(--bg);
-      border: 1px solid var(--fg);
-      border-radius: 12px;
-      padding: 10px 20px;
-      font-size: 13px;
-      color: var(--fg);
-      cursor: pointer;
-      user-select: none;
-      display: none;
-      animation: bubbleFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      transition: background 0.25s, color 0.25s, box-shadow 0.25s;
-      box-shadow: 0 0 20px rgba(255,255,255,0.05);
+    @keyframes linkLineDrawOn {
+      to { stroke-dashoffset: 0; }
     }
-    #group-chat-prompt:hover {
-      background: var(--fg);
-      color: var(--bg);
-    }
-    [data-theme="light"] #group-chat-prompt {
-      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    @keyframes linkPulse {
+      0% { opacity: 0; }
+      30% { opacity: 0.4; }
+      100% { opacity: 0; stroke-dashoffset: -60; }
     }
 
-    /* ── Group chat panel ── */
-    .group-chat-panel {
-      position: fixed;
-      right: 0;
-      top: 0;
-      bottom: 0;
-      width: 420px;
-      max-width: 100vw;
-      z-index: 80;
-      background: var(--bg);
-      border-left: 1px solid var(--border);
+    /* ── Group agent label in shared chat ── */
+    .msg-agent-label {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--dim);
+      letter-spacing: 0.3px;
+      margin-bottom: 2px;
+      padding-left: 4px;
+      opacity: 0.7;
+    }
+
+    /* ── Mini avatars in shared chat header ── */
+    .shared-avatars {
       display: flex;
-      flex-direction: column;
-      cursor: default;
-      user-select: none;
-      animation: panelSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      box-shadow: -4px 0 30px rgba(0,0,0,0.15);
-    }
-    [data-theme="light"] .group-chat-panel {
-      border-left: 1px solid #c0c0c0;
-      box-shadow: -4px 0 24px rgba(0,0,0,0.08);
-    }
-    .group-chat-panel.dismissing {
-      animation: panelSlideOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    }
-
-    .group-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 20px;
-      border-bottom: 1px solid var(--border);
+      gap: 4px;
       flex-shrink: 0;
     }
-    .group-header .group-avatars {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-    .group-header .group-avatar-mini {
+    .shared-avatar-mini {
       display: flex;
       flex-direction: column;
       align-items: center;
     }
-    .group-header .group-avatar-mini .avatar-head {
-      width: 14px;
-      height: 14px;
+    .shared-avatar-mini .avatar-head {
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       border: 1.5px solid var(--fg);
       margin-bottom: 0;
     }
-    .group-header .group-avatar-mini .avatar-body {
-      width: 18px;
-      height: 8px;
-      border-radius: 9px 9px 0 0;
+    .shared-avatar-mini .avatar-body {
+      width: 16px;
+      height: 7px;
+      border-radius: 8px 8px 0 0;
       border: 1.5px solid var(--fg);
       border-bottom: none;
     }
-    .group-header-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .group-header-info .group-names {
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.3px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .group-header-info .group-status {
-      font-size: 11px;
-      color: var(--dim);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .group-header-info .group-status .dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--fg);
-      animation: pulse 2s infinite ease-in-out;
-    }
-    .group-header-info .group-status .dot.streaming {
-      animation: pulseFast 0.5s infinite ease-in-out;
-    }
-
-    /* Group chat bubbles — agent label */
-    .msg-agent-label {
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--dim);
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      margin-bottom: 3px;
-      padding-left: 4px;
-    }
-
-    .group-chat-panel .agent-body {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--dim);
-      line-height: 1.6;
-      flex: 1;
-      overflow-y: auto;
-      word-break: break-word;
-      scrollbar-width: none;
-      padding: 20px;
-    }
-    .group-chat-panel .agent-body::-webkit-scrollbar { display: none; }
-
-    .group-chat-panel .agent-input-area {
-      flex-shrink: 0;
-      padding: 16px 20px;
-      border-top: 1px solid var(--border);
-    }
-    .group-chat-panel .agent-input-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .group-chat-panel .agent-input-row input {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--fg);
-      font-family: inherit;
-      font-size: 14px;
-      padding: 12px 16px;
-      border-radius: 24px;
-      outline: none;
-      transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .group-chat-panel .agent-input-row input:focus {
-      border-color: var(--fg);
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.1), 0 0 16px rgba(255,255,255,0.04);
-    }
-    [data-theme="light"] .group-chat-panel .agent-input-row input:focus {
-      box-shadow: 0 0 0 3px rgba(0,0,0,0.08), 0 0 16px rgba(0,0,0,0.03);
-    }
-    .group-chat-panel .agent-input-row input::placeholder { color: var(--dim); }
-    .group-chat-panel .agent-input-row button {
-      background: var(--fg);
-      border: none;
-      color: var(--bg);
-      font-family: inherit;
-      font-size: 14px;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: opacity 0.2s, transform 0.1s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .group-chat-panel .agent-input-row button:hover { opacity: 0.85; }
-    .group-chat-panel .agent-input-row button:active { transform: scale(0.9); }
-    .group-chat-panel .agent-input-row button:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-    .group-chat-panel .agent-model {
-      font-size: 10px;
-      color: var(--border);
-      margin-top: 8px;
-      text-align: center;
-    }
-    .group-chat-panel .close-btn {
-      background: none;
-      border: none;
-      color: var(--dim);
-      font-size: 18px;
-      cursor: pointer;
-      line-height: 1;
-      width: 44px;
-      height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .group-chat-panel .close-btn:hover { color: var(--fg); }
-    .group-chat-panel .close-btn:active { transform: scale(0.9); }
 
     /* ── Mobile responsive ── */
     @media (max-width: 640px) {
@@ -1370,13 +1217,8 @@
         font-size: 16px;
       }
 
-      /* Group chat — full width on mobile */
-      .group-chat-panel {
-        width: 100vw;
-      }
-      .group-chat-panel .agent-input-row input {
-        font-size: 16px;
-      }
+      /* Link button always visible on touch */
+      .agent-contact-card .card-link-btn { opacity: 0.6; }
     }
   </style>
 </head>
@@ -1430,7 +1272,7 @@
     <div class="help-feature">Click &ldquo;Message&rdquo; on a card to chat</div>
     <div class="help-feature">Drag cards to reposition them</div>
     <div class="help-feature">Clear chat with the button in chat header</div>
-    <div class="help-feature">Link 2-3 agents for a group chat</div>
+    <div class="help-feature">Link agents with + to share a conversation</div>
     <div class="help-feature">Toggle dark / light mode (top-left)</div>
     <h3>AGENTS</h3>
     <div style="color:var(--dim);font-size:11px;line-height:1.8;">Agents are AI-generated with unique names and roles based on your goal. No two are the same.</div>
@@ -1442,8 +1284,7 @@
   <!-- SVG overlay for link lines between agents -->
   <svg id="link-lines"></svg>
 
-  <!-- Group chat prompt -->
-  <div id="group-chat-prompt" onclick="openGroupChat()">Start Group Chat</div>
+  <!-- (group chat prompt removed — linking agents shares the conversation naturally) -->
 
   <script>
     // ── Theme ──
@@ -1827,7 +1668,12 @@
         if (el.tagName === 'INPUT' && el.value.length > 0) return; // let arrow move cursor in text
         e.preventDefault();
         const ids = Array.from(agentCards.keys());
-        const curIdx = ids.indexOf(openPanelId);
+        let curIdx = ids.indexOf(openPanelId);
+        // If shared chat is open, start from first linked agent
+        if (curIdx < 0 && openPanelId === 'shared-chat') {
+          curIdx = 0;
+          for (const lid of linkedAgents) { const idx = ids.indexOf(lid); if (idx >= 0) { curIdx = idx; break; } }
+        }
         const cols = 3;
         const row = Math.floor(curIdx / cols);
         const col = curIdx % cols;
@@ -1886,7 +1732,11 @@
           const forward = e.key === 'Tab' || e.key === 'ArrowRight' || e.key === 'ArrowDown';
           openChat(forward ? ids[0] : ids[ids.length - 1]);
         } else {
-          const curIdx = ids.indexOf(openPanelId);
+          let curIdx = ids.indexOf(openPanelId);
+          if (curIdx < 0 && openPanelId === 'shared-chat') {
+            curIdx = 0;
+            for (const lid of linkedAgents) { const idx = ids.indexOf(lid); if (idx >= 0) { curIdx = idx; break; } }
+          }
           const cols = 3;
           const col = curIdx % cols;
           let nextIdx = curIdx;
@@ -2019,7 +1869,7 @@
           card.style.top = pos.y + 'px';
 
           card.innerHTML = `
-            <button class="card-link-btn" onclick="toggleLink('${agentId}')" title="Link for group chat">&#9741;</button>
+            <button class="card-link-btn" onclick="toggleLink('${agentId}')" title="Link agents">+</button>
             <button class="card-close-btn" onclick="dismissAgent('${agentId}')">&times;</button>
             <div class="card-avatar">
               <div class="avatar-head"></div>
@@ -2100,7 +1950,7 @@
       card.style.top = pos.y + 'px';
 
       card.innerHTML = `
-        <button class="card-link-btn" onclick="toggleLink('${agentId}')" title="Link for group chat">&#9741;</button>
+        <button class="card-link-btn" onclick="toggleLink('${agentId}')" title="Link agents">+</button>
         <button class="card-close-btn" onclick="dismissAgent('${agentId}')">&times;</button>
         <div class="card-avatar">
           <div class="avatar-head"></div>
@@ -2188,104 +2038,7 @@
       body.appendChild(wrap);
     }
 
-    // ── Open chat panel for an agent ──
-    function openChat(agentId) {
-      // If same panel is already open, just focus input
-      if (openPanelId === agentId) {
-        const existing = document.getElementById('chat-panel');
-        if (existing) {
-          existing.querySelector('.agent-input-row input').focus();
-        }
-        return;
-      }
-
-      // Close existing panel instantly (no animation) if switching
-      if (openPanelId) {
-        const oldPanel = document.getElementById('chat-panel');
-        if (oldPanel) oldPanel.remove();
-      }
-
-      openPanelId = agentId;
-      const info = agentCards.get(agentId);
-      if (!info) return;
-
-      // Dim all cards, then highlight the active one
-      document.querySelectorAll('.agent-contact-card').forEach(c => {
-        c.classList.remove('active');
-        c.classList.add('inactive');
-      });
-      info.element.classList.remove('inactive');
-      info.element.classList.add('active');
-
-      // Build the chat panel
-      const panel = document.createElement('div');
-      panel.className = 'agent-chat-panel';
-      panel.id = 'chat-panel';
-      panel.dataset.agentId = agentId;
-
-      const headerRole = info.role || info.name.charAt(0).toUpperCase() + info.name.slice(1);
-      panel.innerHTML = `
-        <div class="agent-header">
-          <div class="agent-avatar">
-            <div class="avatar-head"></div>
-            <div class="avatar-body"></div>
-          </div>
-          <div class="agent-header-info">
-            <div class="agent-name">${info.displayName} <span class="agent-role">${headerRole}</span></div>
-            <div class="agent-status">
-              <span class="dot"></span>
-              <span class="status-text">Online</span>
-            </div>
-          </div>
-          <button class="clear-chat-btn" onclick="clearChat('${agentId}')">Clear</button>
-          <button class="close-btn close-btn-top" onclick="closeChatPanel()">&times;</button>
-        </div>
-        <div class="agent-body-wrap" style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
-          <div class="agent-body"></div>
-          <div class="new-msg-pill" onclick="scrollChatToBottom()">&#8595; New message</div>
-        </div>
-        <div class="agent-input-area">
-          <div class="agent-input-row">
-            <input type="text" placeholder="${randomPlaceholder()}" onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
-            <button onclick="sendToAgent('${agentId}')">&#9654;</button>
-          </div>
-          <div class="agent-model"></div>
-        </div>
-      `;
-
-      document.body.appendChild(panel);
-
-      // ── Scroll-to-bottom pill logic ──
-      const bodyEl = panel.querySelector('.agent-body');
-      const pill = panel.querySelector('.new-msg-pill');
-      bodyEl.addEventListener('scroll', () => {
-        const distFromBottom = bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight;
-        if (distFromBottom > 100) {
-          pill.classList.add('visible');
-        } else {
-          pill.classList.remove('visible');
-        }
-      });
-
-      // Render existing conversation history into the panel
-      // First message (greeting) gets a 0.3s entrance delay; rest stagger from there
-      const history = conversationMap.get(agentId) || [];
-      history.forEach((msg, idx) => {
-        const baseDelay = idx === 0 ? 0.3 : 0.3 + idx * 0.06;
-        const { wrap } = createMsgWrap(msg.role, msg.content, {
-          delay: baseDelay,
-          time: msg.time,
-        });
-        bodyEl.appendChild(wrap);
-      });
-
-      // Scroll to bottom
-      bodyEl.scrollTop = bodyEl.scrollHeight;
-
-      // Focus the input and start placeholder rotation
-      panel.querySelector('.agent-input-row input').focus();
-      startPlaceholderRotation(info.role, lastGoalText);
-    }
+    // ── openChat is defined in the linking section below ──
 
     // ── Close chat panel ──
     function closeChatPanel() {
@@ -2308,15 +2061,15 @@
     // ── Dismiss agent card from canvas ──
     function dismissAgent(agentId) {
       // Close chat panel if this agent's panel is open
-      if (openPanelId === agentId) {
+      if (openPanelId === agentId || (openPanelId === 'shared-chat' && linkedAgents.has(agentId))) {
         closeChatPanel();
       }
 
       // Unlink from group if linked
       if (linkedAgents.has(agentId)) {
         linkedAgents.delete(agentId);
-        if (linkedAgents.size < 2 && groupChatOpen) {
-          closeGroupChat();
+        if (linkedAgents.size < 2 && openPanelId === 'shared-chat') {
+          closeChatPanel();
         }
         updateLinkVisuals();
       }
@@ -2562,26 +2315,58 @@
       placeholderTimer = null;
     }
 
-    // ── Group chat: link mode ──
+    // ── Linking: unified shared conversation ──
     const linkedAgents = new Set(); // agentIds currently linked
-    let groupChatOpen = false;
-    const groupConversationMap = new Map(); // groupKey -> [{ role, content, agent?, agentRole?, time }]
+    const groupConversationMap = new Map(); // groupKey -> [{ role, content, agent?, time }]
+    let linkLineAnimations = new Map(); // track which lines have been animated
 
     function getGroupKey() {
       return Array.from(linkedAgents).sort().join('+');
     }
 
+    function getLinkedGroupFor(agentId) {
+      // Returns the set of linked agents if agentId is in a link group, else null
+      if (linkedAgents.has(agentId) && linkedAgents.size >= 2) {
+        return new Set(linkedAgents);
+      }
+      return null;
+    }
+
     function toggleLink(agentId) {
-      if (linkedAgents.has(agentId)) {
+      const wasLinked = linkedAgents.has(agentId);
+      if (wasLinked) {
         linkedAgents.delete(agentId);
-      } else {
-        if (linkedAgents.size >= 3) {
-          toast('Max 3 agents in a group');
-          return;
+        // If panel is showing the shared chat for this group, and group breaks, close it
+        if (linkedAgents.size < 2 && openPanelId === 'shared-chat') {
+          closeChatPanel();
         }
+      } else {
         linkedAgents.add(agentId);
+        // Satisfying connect feedback
+        if (linkedAgents.size >= 2) {
+          triggerLinkPulse();
+        }
       }
       updateLinkVisuals();
+      // If shared chat is open and agent composition changed, refresh the header
+      if (openPanelId === 'shared-chat') {
+        refreshSharedChatHeader();
+      }
+    }
+
+    function triggerLinkPulse() {
+      // Brief glow on all linked cards — satisfying connection feel
+      linkedAgents.forEach(id => {
+        const info = agentCards.get(id);
+        if (!info) return;
+        const el = info.element;
+        el.style.transition = 'box-shadow 0.15s ease-out';
+        el.style.boxShadow = '0 0 0 2px var(--fg), 0 0 30px rgba(255,255,255,0.12)';
+        setTimeout(() => {
+          el.style.transition = 'box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
+          el.style.boxShadow = '';
+        }, 250);
+      });
     }
 
     function updateLinkVisuals() {
@@ -2598,48 +2383,19 @@
         }
       });
 
-      // Draw SVG lines between linked cards
+      // Draw connection lines
       drawLinkLines();
-
-      // Show/hide group chat prompt
-      const prompt = document.getElementById('group-chat-prompt');
-      if (linkedAgents.size >= 2 && !groupChatOpen) {
-        // Position the prompt at the centroid of linked cards
-        const positions = [];
-        linkedAgents.forEach(id => {
-          const info = agentCards.get(id);
-          if (info) {
-            const rect = info.element.getBoundingClientRect();
-            positions.push({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-          }
-        });
-        if (positions.length >= 2) {
-          const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
-          const cy = positions.reduce((s, p) => s + p.y, 0) / positions.length;
-          const names = [];
-          linkedAgents.forEach(id => {
-            const info = agentCards.get(id);
-            if (info) names.push(info.displayName);
-          });
-          prompt.textContent = `Start Group Chat (${names.join(' + ')})`;
-          prompt.style.left = (cx - prompt.offsetWidth / 2) + 'px';
-          prompt.style.top = (cy + 60) + 'px';
-          prompt.style.display = 'block';
-        }
-      } else {
-        prompt.style.display = 'none';
-      }
     }
 
-    function drawLinkLines() {
+    function drawLinkLines(animate) {
       const svg = document.getElementById('link-lines');
       svg.innerHTML = '';
       if (linkedAgents.size < 2) return;
 
       const ids = Array.from(linkedAgents);
-      const fg = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+      const fg = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim();
 
-      // Draw lines between every pair
+      // Draw elegant curved lines between every pair
       for (let i = 0; i < ids.length; i++) {
         for (let j = i + 1; j < ids.length; j++) {
           const a = agentCards.get(ids[i]);
@@ -2653,89 +2409,126 @@
           const bx = rectB.left + rectB.width / 2;
           const by = rectB.top + rectB.height / 2;
 
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          line.setAttribute('x1', ax);
-          line.setAttribute('y1', ay);
-          line.setAttribute('x2', bx);
-          line.setAttribute('y2', by);
-          line.setAttribute('stroke', fg);
-          line.setAttribute('stroke-width', '1');
-          line.setAttribute('stroke-dasharray', '6 4');
-          line.setAttribute('opacity', '0.5');
-          svg.appendChild(line);
+          // Quadratic bezier — subtle organic curve
+          const mx = (ax + bx) / 2;
+          const my = (ay + by) / 2;
+          const dx = bx - ax;
+          const dy = by - ay;
+          // Perpendicular offset for the curve
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const curveAmount = Math.min(dist * 0.12, 40);
+          const cx = mx + (-dy / dist) * curveAmount;
+          const cy = my + (dx / dist) * curveAmount;
+
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          const d = `M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}`;
+          path.setAttribute('d', d);
+          path.setAttribute('stroke', fg);
+          path.setAttribute('stroke-width', '1.5');
+          path.setAttribute('fill', 'none');
+          path.setAttribute('opacity', '0.08');
+          path.setAttribute('stroke-linecap', 'round');
+
+          svg.appendChild(path);
+
+          // Draw-on animation for new lines
+          const lineKey = [ids[i], ids[j]].sort().join(':');
+          if (!linkLineAnimations.has(lineKey)) {
+            linkLineAnimations.set(lineKey, true);
+            const len = path.getTotalLength ? path.getTotalLength() : 500;
+            path.style.strokeDasharray = len;
+            path.style.strokeDashoffset = len;
+            path.style.animation = `linkLineDrawOn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards`;
+          }
         }
       }
+
+      // Clean up animation tracking for removed pairs
+      const currentPairs = new Set();
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          currentPairs.add([ids[i], ids[j]].sort().join(':'));
+        }
+      }
+      linkLineAnimations.forEach((_, key) => {
+        if (!currentPairs.has(key)) linkLineAnimations.delete(key);
+      });
     }
 
     // Redraw lines when cards are dragged
-    const origMouseMove = document.onmousemove;
     document.addEventListener('mousemove', () => {
       if (dragTarget && linkedAgents.size >= 2) {
         drawLinkLines();
-        updateLinkVisuals();
       }
     });
 
-    // ── Group chat panel ──
-    function openGroupChat() {
-      if (linkedAgents.size < 2) return;
+    // ── Chat routing: linked agents share a conversation, others chat individually ──
+    function openChat(agentId) {
+      const group = getLinkedGroupFor(agentId);
+      if (group) {
+        openSharedChat(agentId);
+        return;
+      }
+      _openIndividualChat(agentId);
+    }
 
-      // Close individual chat if open
-      if (openPanelId) closeChatPanel();
-
-      groupChatOpen = true;
-      document.getElementById('group-chat-prompt').style.display = 'none';
-
-      const groupKey = getGroupKey();
-      if (!groupConversationMap.has(groupKey)) {
-        // Initialize with a system greeting
-        const names = [];
-        linkedAgents.forEach(id => {
-          const info = agentCards.get(id);
-          if (info) names.push(info.displayName);
-        });
-        const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        groupConversationMap.set(groupKey, [
-          { role: 'system-info', content: `Group chat started with ${names.join(', ')}`, time: now },
-        ]);
-        saveGroupConversations();
+    function _openIndividualChat(agentId) {
+      if (openPanelId === agentId) {
+        const existing = document.getElementById('chat-panel');
+        if (existing) {
+          existing.querySelector('.agent-input-row input').focus();
+        }
+        return;
       }
 
-      // Build agent avatars and names for header
-      const agentInfos = [];
-      linkedAgents.forEach(id => {
-        const info = agentCards.get(id);
-        if (info) agentInfos.push(info);
-      });
-      const namesStr = agentInfos.map(a => a.displayName).join(' + ');
+      // Close existing panel instantly if switching
+      if (openPanelId) {
+        const oldPanel = document.getElementById('chat-panel');
+        if (oldPanel) oldPanel.remove();
+      }
 
-      const avatarsHtml = agentInfos.map(() =>
-        `<div class="group-avatar-mini"><div class="avatar-head"></div><div class="avatar-body"></div></div>`
-      ).join('');
+      openPanelId = agentId;
+      const info = agentCards.get(agentId);
+      if (!info) return;
+
+      // Dim all cards, then highlight the active one
+      document.querySelectorAll('.agent-contact-card').forEach(c => {
+        c.classList.remove('active');
+        c.classList.add('inactive');
+      });
+      info.element.classList.remove('inactive');
+      info.element.classList.add('active');
 
       const panel = document.createElement('div');
-      panel.className = 'group-chat-panel';
-      panel.id = 'group-chat-panel';
+      panel.className = 'agent-chat-panel';
+      panel.id = 'chat-panel';
+      panel.dataset.agentId = agentId;
 
+      const headerRole = info.role || info.name.charAt(0).toUpperCase() + info.name.slice(1);
       panel.innerHTML = `
-        <div class="group-header">
-          <div class="group-avatars">${avatarsHtml}</div>
-          <div class="group-header-info">
-            <div class="group-names">${namesStr}</div>
-            <div class="group-status">
+        <div class="agent-header">
+          <div class="agent-avatar">
+            <div class="avatar-head"></div>
+            <div class="avatar-body"></div>
+          </div>
+          <div class="agent-header-info">
+            <div class="agent-name">${info.displayName} <span class="agent-role">${headerRole}</span></div>
+            <div class="agent-status">
               <span class="dot"></span>
-              <span class="group-status-text">All online</span>
+              <span class="status-text">Online</span>
             </div>
           </div>
-          <button class="close-btn" onclick="closeGroupChat()">&times;</button>
+          <button class="clear-chat-btn" onclick="clearChat('${agentId}')">Clear</button>
+          <button class="close-btn close-btn-top" onclick="closeChatPanel()">&times;</button>
         </div>
-        <div style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
+        <div class="agent-body-wrap" style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
           <div class="agent-body"></div>
+          <div class="new-msg-pill" onclick="scrollChatToBottom()">&#8595; New message</div>
         </div>
         <div class="agent-input-area">
           <div class="agent-input-row">
-            <input type="text" placeholder="Message the group..." onkeydown="if(event.key==='Enter')sendToGroup()">
-            <button onclick="sendToGroup()">&#9654;</button>
+            <input type="text" placeholder="${randomPlaceholder()}" onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
+            <button onclick="sendToAgent('${agentId}')">&#9654;</button>
           </div>
           <div class="agent-model"></div>
         </div>
@@ -2743,38 +2536,184 @@
 
       document.body.appendChild(panel);
 
-      // Render existing group history
-      const body = panel.querySelector('.agent-body');
+      const bodyEl = panel.querySelector('.agent-body');
+      const pill = panel.querySelector('.new-msg-pill');
+      bodyEl.addEventListener('scroll', () => {
+        const distFromBottom = bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight;
+        if (distFromBottom > 100) {
+          pill.classList.add('visible');
+        } else {
+          pill.classList.remove('visible');
+        }
+      });
+
+      const history = conversationMap.get(agentId) || [];
+      history.forEach((msg, idx) => {
+        const baseDelay = idx === 0 ? 0.3 : 0.3 + idx * 0.06;
+        const { wrap } = createMsgWrap(msg.role, msg.content, {
+          delay: baseDelay,
+          time: msg.time,
+        });
+        bodyEl.appendChild(wrap);
+      });
+
+      bodyEl.scrollTop = bodyEl.scrollHeight;
+      panel.querySelector('.agent-input-row input').focus();
+      startPlaceholderRotation(info.role, lastGoalText);
+    }
+
+    // ── Shared chat panel (for linked agents) ──
+    function openSharedChat(triggeredByAgentId) {
+      // If shared chat is already open, just focus
+      if (openPanelId === 'shared-chat') {
+        const existing = document.getElementById('chat-panel');
+        if (existing) {
+          existing.querySelector('.agent-input-row input').focus();
+        }
+        return;
+      }
+
+      // Close existing panel instantly if switching
+      if (openPanelId) {
+        const oldPanel = document.getElementById('chat-panel');
+        if (oldPanel) oldPanel.remove();
+      }
+
+      openPanelId = 'shared-chat';
+
+      // Highlight all linked cards
+      document.querySelectorAll('.agent-contact-card').forEach(c => {
+        if (linkedAgents.has(c.id)) {
+          c.classList.remove('inactive');
+          c.classList.add('active');
+        } else {
+          c.classList.remove('active');
+          c.classList.add('inactive');
+        }
+      });
+
+      const groupKey = getGroupKey();
+      if (!groupConversationMap.has(groupKey)) {
+        const names = [];
+        linkedAgents.forEach(id => {
+          const info = agentCards.get(id);
+          if (info) names.push(info.displayName);
+        });
+        const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        groupConversationMap.set(groupKey, [
+          { role: 'system-info', content: `${names.join(', ')} joined the conversation`, time: now },
+        ]);
+        saveGroupConversations();
+      }
+
+      // Build header with mini-avatars and names
+      const agentInfos = [];
+      linkedAgents.forEach(id => {
+        const info = agentCards.get(id);
+        if (info) agentInfos.push(info);
+      });
+
+      // Format names naturally: "Maya, Dev & Atlas"
+      const namesList = agentInfos.map(a => a.displayName);
+      let namesStr;
+      if (namesList.length <= 2) {
+        namesStr = namesList.join(' & ');
+      } else {
+        namesStr = namesList.slice(0, -1).join(', ') + ' & ' + namesList[namesList.length - 1];
+      }
+
+      const avatarsHtml = agentInfos.map(() =>
+        `<div class="shared-avatar-mini"><div class="avatar-head"></div><div class="avatar-body"></div></div>`
+      ).join('');
+
+      const panel = document.createElement('div');
+      panel.className = 'agent-chat-panel';
+      panel.id = 'chat-panel';
+      panel.dataset.agentId = 'shared-chat';
+
+      panel.innerHTML = `
+        <div class="agent-header">
+          <div class="shared-avatars">${avatarsHtml}</div>
+          <div class="agent-header-info">
+            <div class="agent-name" id="shared-chat-names">${namesStr}</div>
+            <div class="agent-status">
+              <span class="dot"></span>
+              <span class="status-text">All online</span>
+            </div>
+          </div>
+          <button class="close-btn close-btn-top" onclick="closeChatPanel()">&times;</button>
+        </div>
+        <div class="agent-body-wrap" style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div class="agent-body"></div>
+          <div class="new-msg-pill" onclick="scrollChatToBottom()">&#8595; New message</div>
+        </div>
+        <div class="agent-input-area">
+          <div class="agent-input-row">
+            <input type="text" placeholder="Message the group..." onkeydown="if(event.key==='Enter')sendToSharedChat()">
+            <button onclick="sendToSharedChat()">&#9654;</button>
+          </div>
+          <div class="agent-model"></div>
+        </div>
+      `;
+
+      document.body.appendChild(panel);
+
+      const bodyEl = panel.querySelector('.agent-body');
+      const pill = panel.querySelector('.new-msg-pill');
+      bodyEl.addEventListener('scroll', () => {
+        const distFromBottom = bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight;
+        if (distFromBottom > 100) {
+          pill.classList.add('visible');
+        } else {
+          pill.classList.remove('visible');
+        }
+      });
+
+      // Render existing shared history
       const history = groupConversationMap.get(groupKey) || [];
       history.forEach((msg, idx) => {
         if (msg.role === 'system-info') {
           const info = document.createElement('div');
-          info.style.cssText = 'text-align:center;font-size:11px;color:var(--dim);padding:8px 0;';
+          info.style.cssText = 'text-align:center;font-size:11px;color:var(--dim);padding:8px 0;opacity:0.6;';
           info.textContent = msg.content;
-          body.appendChild(info);
+          bodyEl.appendChild(info);
         } else if (msg.role === 'user') {
           const { wrap } = createMsgWrap('user', msg.content, { time: msg.time, delay: 0.3 + idx * 0.04 });
-          body.appendChild(wrap);
+          bodyEl.appendChild(wrap);
         } else if (msg.role === 'assistant') {
-          const wrap = createGroupAgentWrap(msg.agent, msg.content, { time: msg.time, delay: 0.3 + idx * 0.04 });
-          body.appendChild(wrap);
+          const wrap = createSharedAgentWrap(msg.agent, msg.content, { time: msg.time, delay: 0.3 + idx * 0.04 });
+          bodyEl.appendChild(wrap);
         }
       });
 
-      body.scrollTop = body.scrollHeight;
+      bodyEl.scrollTop = bodyEl.scrollHeight;
       panel.querySelector('.agent-input-row input').focus();
     }
 
-    function closeGroupChat() {
-      const panel = document.getElementById('group-chat-panel');
-      if (!panel) return;
-      panel.classList.add('dismissing');
-      setTimeout(() => panel.remove(), 350);
-      groupChatOpen = false;
-      updateLinkVisuals();
+    function refreshSharedChatHeader() {
+      const namesEl = document.getElementById('shared-chat-names');
+      if (!namesEl) return;
+      const agentInfos = [];
+      linkedAgents.forEach(id => {
+        const info = agentCards.get(id);
+        if (info) agentInfos.push(info);
+      });
+      const namesList = agentInfos.map(a => a.displayName);
+      if (namesList.length <= 2) {
+        namesEl.textContent = namesList.join(' & ');
+      } else {
+        namesEl.textContent = namesList.slice(0, -1).join(', ') + ' & ' + namesList[namesList.length - 1];
+      }
+      // Update avatars
+      const avatarsContainer = document.querySelector('#chat-panel .shared-avatars');
+      if (avatarsContainer) {
+        avatarsContainer.innerHTML = agentInfos.map(() =>
+          `<div class="shared-avatar-mini"><div class="avatar-head"></div><div class="avatar-body"></div></div>`
+        ).join('');
+      }
     }
 
-    function createGroupAgentWrap(agentName, content, opts = {}) {
+    function createSharedAgentWrap(agentName, content, opts = {}) {
       const wrap = document.createElement('div');
       wrap.className = 'msg-wrap msg-wrap-agent';
       if (opts.delay != null) {
@@ -2782,6 +2721,7 @@
         wrap.style.opacity = '0';
       }
 
+      // Subtle agent name label — like seeing who texted in a group iMessage
       const label = document.createElement('div');
       label.className = 'msg-agent-label';
       label.textContent = agentName;
@@ -2804,16 +2744,16 @@
       return wrap;
     }
 
-    // ── Send to group ──
-    async function sendToGroup() {
-      const panel = document.getElementById('group-chat-panel');
-      if (!panel) return;
+    // ── Send to shared chat ──
+    async function sendToSharedChat() {
+      const panel = document.getElementById('chat-panel');
+      if (!panel || panel.dataset.agentId !== 'shared-chat') return;
 
       const input = panel.querySelector('.agent-input-row input');
       const btn = panel.querySelector('.agent-input-row button');
       const body = panel.querySelector('.agent-body');
-      const statusEl = panel.querySelector('.group-status-text');
-      const dotEl = panel.querySelector('.group-header .dot');
+      const statusEl = panel.querySelector('.status-text');
+      const dotEl = panel.querySelector('.agent-header .dot');
       const modelEl = panel.querySelector('.agent-model');
       const message = input.value.trim();
       if (!message) return;
@@ -2844,7 +2784,7 @@
         }
       });
 
-      // Build messages for API — convert history to OpenAI format
+      // Build messages for API
       const apiMessages = [];
       for (const msg of history) {
         if (msg.role === 'user') {
@@ -2856,6 +2796,15 @@
 
       statusEl.textContent = 'thinking...';
       dotEl.classList.add('streaming');
+
+      // Also pulse linked card dots
+      linkedAgents.forEach(id => {
+        const info = agentCards.get(id);
+        if (info) {
+          const cardDot = info.element.querySelector('.dot');
+          if (cardDot) cardDot.classList.add('streaming');
+        }
+      });
 
       try {
         const res = await fetch('/api/agent/group', {
@@ -2870,9 +2819,16 @@
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          toast(err.error || 'Group chat failed');
+          toast(err.error || 'Something went wrong');
           statusEl.textContent = 'Error';
           dotEl.classList.remove('streaming');
+          linkedAgents.forEach(id => {
+            const info = agentCards.get(id);
+            if (info) {
+              const cardDot = info.element.querySelector('.dot');
+              if (cardDot) cardDot.classList.remove('streaming');
+            }
+          });
           btn.disabled = false;
           return;
         }
@@ -2881,7 +2837,6 @@
         const decoder = new TextDecoder();
         let buffer = '';
 
-        // Track current agent being streamed
         let currentAgent = null;
         let currentWrap = null;
         let currentBubble = null;
@@ -2906,7 +2861,6 @@
               }
 
               if (data.agent && data.text) {
-                // New agent started or same agent continuing
                 if (currentAgent !== data.agent) {
                   // Save previous agent's message
                   if (currentAgent && currentText) {
@@ -2918,27 +2872,24 @@
                     history.push({ role: 'assistant', content: currentText, agent: currentAgent, time: replyTime });
                   }
 
-                  // Start new agent bubble
+                  // New agent bubble
                   currentAgent = data.agent;
                   currentText = '';
                   statusEl.textContent = `${data.agent} is typing...`;
 
-                  // Create typing indicator first
                   const typingEl = document.createElement('span');
                   typingEl.className = 'typing-indicator';
                   typingEl.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
 
-                  currentWrap = createGroupAgentWrap(data.agent, typingEl);
+                  currentWrap = createSharedAgentWrap(data.agent, typingEl);
                   currentWrap.querySelector('.msg-time').style.visibility = 'hidden';
                   currentBubble = currentWrap.querySelector('.msg-agent');
                   body.appendChild(currentWrap);
                   currentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
                 }
 
-                // Append text
                 if (currentBubble) {
                   if (currentText === '') {
-                    // Replace typing indicator with actual text
                     currentBubble.textContent = '';
                   }
                   currentText += data.text;
@@ -2948,7 +2899,6 @@
               }
 
               if (data.done && data.agent) {
-                // This agent finished
                 if (currentAgent === data.agent && currentText) {
                   const replyTime = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                   if (currentWrap) {
@@ -2980,6 +2930,15 @@
         statusEl.textContent = 'Error';
         dotEl.classList.remove('streaming');
       }
+
+      // Reset card dots
+      linkedAgents.forEach(id => {
+        const info = agentCards.get(id);
+        if (info) {
+          const cardDot = info.element.querySelector('.dot');
+          if (cardDot) cardDot.classList.remove('streaming');
+        }
+      });
 
       btn.disabled = false;
       input.focus();
@@ -3015,15 +2974,12 @@
       const panel = document.getElementById('chat-panel');
       if (panel) panel.remove();
       openPanelId = null;
-      // Close group chat if open
-      const gPanel = document.getElementById('group-chat-panel');
-      if (gPanel) gPanel.remove();
-      groupChatOpen = false;
+      // Clear linking state
       linkedAgents.clear();
+      linkLineAnimations.clear();
       groupConversationMap.clear();
       localStorage.removeItem('wb-group-conversations');
       document.getElementById('link-lines').innerHTML = '';
-      document.getElementById('group-chat-prompt').style.display = 'none';
       // Remove all contact cards and sticky notes
       document.querySelectorAll('.agent-contact-card, .sticky-note').forEach(el => el.remove());
       agentCards.clear();
