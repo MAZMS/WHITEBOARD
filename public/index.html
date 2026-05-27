@@ -1918,6 +1918,9 @@
 
     // ── Open chat panel for an agent ──
     function openChat(agentId) {
+      // Hide suggestion bar when opening any chat
+      hideSuggestionBar();
+
       // If same panel is already open, just focus input
       if (openPanelId === agentId) {
         const existing = document.getElementById('chat-panel');
@@ -2389,6 +2392,7 @@
     // ── Clear board ──
     function clearBoard() {
       canvas.innerHTML = '';
+      hideSuggestionBar();
       // Close chat panel if open
       const panel = document.getElementById('chat-panel');
       if (panel) panel.remove();
