@@ -2370,6 +2370,14 @@
         if (replyText && isOutputContent(replyText, agentOutputType)) {
           const outputContent = extractOutputContent(replyText);
           createOrUpdateOutputNode(agentId, outputContent);
+
+          // Clean the chat bubble — show only the conversational part, not the code
+          const chatOnly = replyText.replace(/```[\s\S]*?```/g, '').trim();
+          if (chatOnly) {
+            agentBubble.textContent = chatOnly;
+          } else {
+            agentBubble.textContent = 'done — check the output.';
+          }
         }
       } catch (err) {
         agentBubble.textContent = 'Connection error: ' + err.message + '\n';
