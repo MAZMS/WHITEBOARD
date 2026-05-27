@@ -1063,6 +1063,7 @@
     /* ── Smooth theme transition on surfaces ── */
     .agent-chat-panel,
     .sticky-note,
+    .text-node,
     #help-panel,
     .msg-agent,
     .msg-user,
@@ -1096,6 +1097,54 @@
       0%, 100% { transform: scale(1); opacity: 1; }
       50% { transform: scale(1.15); opacity: 0.85; }
     }
+
+    /* ── Text nodes (user goals on canvas) ── */
+    .text-node {
+      position: absolute;
+      z-index: 30;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--fg);
+      max-width: 300px;
+      word-wrap: break-word;
+      animation: cardBounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      cursor: grab;
+      user-select: none;
+      transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 12px rgba(255,255,255,0.02);
+    }
+    [data-theme="light"] .text-node {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    .text-node:active { cursor: grabbing; }
+    .text-node .text-node-close {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: none;
+      border: none;
+      color: var(--border);
+      font-size: 15px;
+      cursor: pointer;
+      line-height: 1;
+      opacity: 0;
+      transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s;
+      z-index: 1;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .text-node:hover .text-node-close { opacity: 1; }
+    .text-node .text-node-close:hover { color: var(--fg); }
 
     /* ── Output nodes on canvas ── */
     .output-node {
@@ -1726,6 +1775,14 @@
         commandInput.placeholder = 'Finding your agent...';
         const hintEl = commandBar.querySelector('.hint');
         if (hintEl) hintEl.style.display = 'none';
+
+        // Create the text node on the whiteboard immediately
+        const textNodeId = createTextNode(val);
+
+        // Hide empty state hint
+        const hint = document.getElementById('empty-hint');
+        if (hint) hint.classList.add('hidden');
+
         // Close after a beat so the user sees the state
         await new Promise(r => setTimeout(r, 600));
         commandInput.disabled = false;
@@ -1745,9 +1802,15 @@
           }
           const data = await res.json();
 
-          // Center the card on screen
-          const cardX = Math.round(window.innerWidth / 2 - 90);
-          const cardY = Math.round(window.innerHeight / 2 - 80);
+          // Position agent card to the RIGHT of the text node
+          const textEl = document.getElementById(textNodeId);
+          const textRect = textEl ? textEl.getBoundingClientRect() : null;
+          const cardX = textRect
+            ? Math.round(textEl.offsetLeft + textRect.width + 60)
+            : Math.round(window.innerWidth / 2 - 90);
+          const cardY = textRect
+            ? Math.round(textEl.offsetTop + textRect.height / 2 - 80)
+            : Math.round(window.innerHeight / 2 - 80);
 
           const agentId = summonAgent(data.agent, {
             displayName: data.displayName,
@@ -1758,6 +1821,10 @@
             x: cardX,
             y: cardY,
           });
+
+          // Link text node to agent card and draw the connector line
+          textNodeLinks.set(textNodeId, agentId);
+          requestAnimationFrame(() => drawAllLines());
 
           // Show notification badge on the card
           showCardNotification(agentId, 1);
@@ -2468,6 +2535,46 @@
       }
     }
 
+    // ── Text node system (user goals on canvas) ──
+    const textNodeLinks = new Map(); // textNodeId -> agentId (to draw connector lines)
+
+    function createTextNode(text) {
+      const node = document.createElement('div');
+      node.className = 'text-node';
+      const nodeId = 'text-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+      node.id = nodeId;
+
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'text-node-close';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.onclick = () => dismissTextNode(nodeId);
+      node.appendChild(closeBtn);
+
+      const content = document.createElement('span');
+      content.textContent = text;
+      node.appendChild(content);
+
+      // Position center-left of canvas
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      node.style.left = (w / 2 - 150) + 'px';
+      node.style.top = (h / 2 - 20) + 'px';
+
+      document.body.appendChild(node);
+      makeDraggable(node);
+      return nodeId;
+    }
+
+    function dismissTextNode(nodeId) {
+      const node = document.getElementById(nodeId);
+      if (node) {
+        node.style.animation = 'cardDismiss 0.3s cubic-bezier(0.4, 0, 1, 1) forwards';
+        setTimeout(() => node.remove(), 300);
+      }
+      textNodeLinks.delete(nodeId);
+      requestAnimationFrame(() => drawAllLines());
+    }
+
     // ── Drag system ──
     function makeDraggable(el) {
       el.addEventListener('mousedown', (e) => {
@@ -2483,8 +2590,8 @@
       if (!dragTarget) return;
       dragTarget.style.left = (e.clientX - dragOffset.x) + 'px';
       dragTarget.style.top = (e.clientY - dragOffset.y) + 'px';
-      // Update output connection lines while dragging
-      drawOutputLines();
+      // Update all connection lines while dragging
+      drawAllLines();
     });
 
     document.addEventListener('mouseup', () => {
@@ -2710,10 +2817,42 @@
     }
 
     function drawOutputLines() {
+      drawAllLines();
+    }
+
+    function drawAllLines() {
       const svg = document.getElementById('link-lines');
       svg.innerHTML = '';
       const fg = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim();
 
+      // Draw text-node -> agent card connector lines
+      textNodeLinks.forEach((agentId, textNodeId) => {
+        const textNode = document.getElementById(textNodeId);
+        const info = agentCards.get(agentId);
+        if (!textNode || !info) return;
+
+        const textRect = textNode.getBoundingClientRect();
+        const cardRect = info.element.getBoundingClientRect();
+
+        // Line from right edge of text node to left edge of agent card
+        const ax = textRect.right;
+        const ay = textRect.top + textRect.height / 2;
+        const bx = cardRect.left;
+        const by = cardRect.top + cardRect.height / 2;
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const cx1 = ax + (bx - ax) * 0.4;
+        const cx2 = bx - (bx - ax) * 0.4;
+        line.setAttribute('d', `M ${ax} ${ay} C ${cx1} ${ay} ${cx2} ${by} ${bx} ${by}`);
+        line.setAttribute('stroke', fg);
+        line.setAttribute('stroke-width', '1.5');
+        line.setAttribute('fill', 'none');
+        line.setAttribute('stroke-linecap', 'round');
+        line.classList.add('output-line');
+        svg.appendChild(line);
+      });
+
+      // Draw agent card -> output node connector lines
       outputData.forEach((data, agentId) => {
         const info = agentCards.get(agentId);
         if (!info) return;
@@ -2732,7 +2871,6 @@
         const by = nodeRect.top + nodeRect.height / 2;
 
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        // Slight horizontal bezier curve for a clean connector look
         const cx1 = ax + (bx - ax) * 0.4;
         const cx2 = bx - (bx - ax) * 0.4;
         line.setAttribute('d', `M ${ax} ${ay} C ${cx1} ${ay} ${cx2} ${by} ${bx} ${by}`);
@@ -2939,8 +3077,9 @@
       outputData.clear();
       document.getElementById('link-lines').innerHTML = '';
       document.querySelectorAll('.output-node').forEach(el => el.remove());
-      // Remove all contact cards and sticky notes
-      document.querySelectorAll('.agent-contact-card, .sticky-note').forEach(el => el.remove());
+      // Remove all contact cards, sticky notes, and text nodes
+      document.querySelectorAll('.agent-contact-card, .sticky-note, .text-node').forEach(el => el.remove());
+      textNodeLinks.clear();
       agentCards.clear();
       conversationMap.clear();
       localStorage.removeItem('wb-conversations');
