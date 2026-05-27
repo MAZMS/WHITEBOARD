@@ -2473,22 +2473,12 @@
       // Only auto-reply if the last message is from the agent (not user)
       if (!lastMsg || lastMsg.role !== 'assistant') return;
 
-      // Max 5 auto-rounds per agent to prevent infinite loops
       const rounds = autoReplyRounds.get(agentId) || 0;
-      if (rounds >= 5) {
-        autoReplyRounds.set(agentId, 0);
-        const indicator = document.getElementById('auto-reply-indicator');
-        if (indicator) indicator.classList.remove('visible');
-        toast('Agent Mode paused — review the conversation');
-        return;
-      }
 
       // Show indicator
       const indicator = document.getElementById('auto-reply-indicator');
       if (indicator) indicator.classList.add('visible');
 
-      // Wait 1.5s to feel natural
-      await new Promise(r => setTimeout(r, 1500));
       if (!agentModeOn) {
         if (indicator) indicator.classList.remove('visible');
         return;

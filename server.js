@@ -761,13 +761,13 @@ app.post('/api/agent/auto-reply', async (req, res) => {
   try {
     resetIfNewDay();
 
-    const { goal, agentName, agentRole, messages } = req.body;
+    const { goal, agentName, agentRole, messages, model: requestedModel } = req.body;
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Messages are required.' });
     }
 
-    const model = 'gpt-4o-mini';
-    const tier = 'mini';
+    const model = requestedModel || tokenUsage.settings.defaultModel;
+    const tier = getModelTier(model);
 
     if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
       return res.status(429).json({
