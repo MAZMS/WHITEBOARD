@@ -1603,7 +1603,7 @@
   <!-- Splash -->
   <div id="splash">
     <h1>The Great Library</h1>
-    <p class="subtitle">AI Agent Workspace</p>
+    <p class="subtitle">Build anything you imagine.</p>
     <p class="disclaimer">Designed for desktop. Best experienced on a computer.</p>
     <button class="enter-btn" onclick="startApp()">Enter the Library</button>
   </div>
@@ -1612,7 +1612,7 @@
   <div id="grid"></div>
 
   <!-- Empty state hint -->
-  <div id="empty-hint" style="display:none;">press space to begin</div>
+  <div id="empty-hint" style="display:none;">press space &mdash; wish for anything</div>
 
   <!-- Drawing canvas -->
   <svg id="canvas"></svg>
@@ -1636,7 +1636,7 @@
       <input id="command-input" type="text" placeholder="" autocomplete="off" spellcheck="false">
       <span id="cmd-ghost"><span id="cmd-ghost-text"></span><kbd>tab</kbd></span>
     </div>
-    <span class="hint">enter to begin</span>
+    <span class="hint">enter</span>
   </div>
 
   <!-- Help panel -->
@@ -1766,7 +1766,7 @@
       if (agentCards.size === 0) {
         document.getElementById('empty-hint').style.display = '';
       }
-      toast('Ready — press Space to begin');
+      toast('Ready — press Space to wish');
     }
 
     document.addEventListener('keydown', (e) => {
@@ -1800,14 +1800,14 @@
     // ── Rotating goal suggestions (context-aware) ──
     // State A: No agents on canvas — goal-oriented prompts
     const goalSuggestions = [
-      'make money online',
-      'get healthier and lose weight',
-      'learn something new today',
-      'start my own business',
-      'organize my chaotic life',
-      'write something meaningful',
-      'plan my next big move',
-      'build something people want',
+      'a snake game with neon graphics',
+      'a personal portfolio website',
+      'a business plan for a coffee shop',
+      'a budgeting app that tracks expenses',
+      'a landing page for my startup',
+      'a multiplayer tic-tac-toe game',
+      'a resume that stands out',
+      'a workout tracker with charts',
     ];
     // State B: Agents already on canvas — action-oriented prompts
     const goalSuggestionsWithAgents = [
@@ -1860,8 +1860,8 @@
       commandInput.placeholder = '';
       // Lead with context-aware prompt, then cycle through goal suggestions
       const leadIn = agentCards.size > 0
-        ? 'what else do you need help with?'
-        : 'what are you trying to achieve?';
+        ? 'what else do you need?'
+        : 'wish for anything...';
       cmdGhostOrder = [leadIn, ...shuffleArray(getActiveSuggestions())];
       cmdGhostIndex = 0;
       showNextGhost();
@@ -1958,7 +1958,7 @@
       cmdGhostCurrent = '';
       // Restore placeholder when ghost stops (if input is empty)
       if (commandInput.value === '') {
-        commandInput.placeholder = 'Type your goal...';
+        commandInput.placeholder = 'Wish for anything...';
       }
     }
 
@@ -1972,7 +1972,7 @@
         cmdGhostCurrent = '';
       } else {
         // Input cleared -- restore placeholder and restart 8s idle wait
-        commandInput.placeholder = 'Type your goal...';
+        commandInput.placeholder = 'Wish for anything...';
         startGhostIdleTimer();
       }
     });
@@ -1982,7 +1982,7 @@
       commandBar.classList.add('visible');
       commandBackdrop.classList.add('visible');
       commandInput.value = '';
-      commandInput.placeholder = 'Type your goal...';
+      commandInput.placeholder = 'Wish for anything...';
       startGhostIdleTimer();
       // Immediate auto-focus with a microtask to ensure DOM is ready
       requestAnimationFrame(() => commandInput.focus());
@@ -2031,7 +2031,7 @@
         // Close command bar after a beat
         await new Promise(r => setTimeout(r, 600));
         commandInput.disabled = false;
-        commandInput.placeholder = 'Type your goal...';
+        commandInput.placeholder = 'Wish for anything...';
         if (hintEl) hintEl.style.display = '';
         closeCommand();
 
