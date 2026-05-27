@@ -1198,7 +1198,7 @@
     <button class="help-close-btn" onclick="closeHelp()" title="Close">&times;</button>
     <h3>SHORTCUTS</h3>
     <div class="help-row"><span>Open command bar</span> <kbd>Space</kbd></div>
-    <div class="help-row"><span>Cycle agent chats</span> <kbd>Tab</kbd> <kbd>←</kbd> <kbd>→</kbd></div>
+    <div class="help-row"><span>Cycle agent chats</span> <kbd>Tab</kbd> <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></div>
     <div class="help-row"><span>Close panel / bar</span> <kbd>Esc</kbd></div>
     <div class="help-row"><span>Clear board</span> <kbd>Ctrl+Shift+C</kbd></div>
     <h3>HOW IT WORKS</h3>
@@ -1532,8 +1532,11 @@
       if (e.key === 'Tab' && commandOpen) {
         if (commandInput.value.trim() === '' && ghostActive && cmdGhostCurrent) {
           e.preventDefault();
-          commandInput.value = cmdGhostCurrent;
+          const suggestion = cmdGhostCurrent; // save before stop clears it
           stopCmdGhost();
+          commandInput.value = suggestion;
+          // Trigger input event so placeholder hides
+          commandInput.dispatchEvent(new Event('input'));
         }
         return;
       }
@@ -1589,16 +1592,19 @@
       }
 
       // Let arrow keys through when chat panel is open (to cycle agents)
-      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && openPanelId && agentCards.size > 1) {
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') && openPanelId && agentCards.size > 1) {
         // Don't hijack arrows if user is typing in an input
         const el = e.target;
         if (el.tagName === 'INPUT' && el.value.length > 0) return; // let arrow move cursor in text
         e.preventDefault();
         const ids = Array.from(agentCards.keys());
         const curIdx = ids.indexOf(openPanelId);
-        const nextIdx = e.key === 'ArrowRight'
-          ? (curIdx + 1) % ids.length
-          : (curIdx - 1 + ids.length) % ids.length;
+        let step;
+        if (e.key === 'ArrowUp') step = -3;
+        else if (e.key === 'ArrowDown') step = 3;
+        else if (e.key === 'ArrowLeft') step = -1;
+        else step = 1; // ArrowRight
+        const nextIdx = ((curIdx + step) % ids.length + ids.length) % ids.length;
         openChat(ids[nextIdx]);
         return;
       }
@@ -1619,23 +1625,25 @@
         return;
       }
 
-      // Tab / ArrowRight — cycle forward between agent chats
-      // ArrowLeft — cycle backward between agent chats
-      if (e.key === 'Tab' || e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      // Tab / ArrowRight / ArrowDown — cycle forward between agent chats
+      // ArrowLeft / ArrowUp — cycle backward between agent chats
+      if (e.key === 'Tab' || e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         if (e.key === 'Tab' && currentSuggestion && suggestionBarEl.classList.contains('visible')) return;
         const ids = Array.from(agentCards.keys());
         if (ids.length === 0) return;
         e.preventDefault();
 
-        const forward = e.key !== 'ArrowLeft';
-
         if (!openPanelId) {
+          const forward = e.key === 'Tab' || e.key === 'ArrowRight' || e.key === 'ArrowDown';
           openChat(forward ? ids[0] : ids[ids.length - 1]);
         } else {
           const curIdx = ids.indexOf(openPanelId);
-          const nextIdx = forward
-            ? (curIdx + 1) % ids.length
-            : (curIdx - 1 + ids.length) % ids.length;
+          let step;
+          if (e.key === 'ArrowUp') step = -3;
+          else if (e.key === 'ArrowDown') step = 3;
+          else if (e.key === 'ArrowLeft') step = -1;
+          else step = 1; // ArrowRight, Tab
+          const nextIdx = ((curIdx + step) % ids.length + ids.length) % ids.length;
           openChat(ids[nextIdx]);
         }
         return;
