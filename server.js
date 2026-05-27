@@ -525,301 +525,8 @@ app.post('/api/admin/settings', async (req, res) => {
   res.json({ settings: tokenUsage.settings });
 });
 
-// ── Helper: infer output type from role ──
-function inferOutputType(role) {
-  const r = (role || '').toLowerCase();
-  if (/ceo|director|planner|manager|lead|strategist|consultant/.test(r)) return 'Business Plan';
-  if (/coder|developer|engineer|programmer/.test(r)) return 'Code';
-  if (/writer|author|copywriter|editor|blogger/.test(r)) return 'Document';
-  if (/designer|artist|illustrator|ux|ui/.test(r)) return 'Mockup';
-  if (/researcher|analyst|scientist|investigator/.test(r)) return 'Report';
-  if (/coach|trainer|mentor|tutor/.test(r)) return 'Guide';
-  if (/marketer|advertiser|seo|growth/.test(r)) return 'Strategy';
-  return 'Document';
-}
-
-// ── API: Pick best agent for a goal (uses gpt-4o-mini) ──
-app.post('/api/agent/pick', async (req, res) => {
-  try {
-    const { goal } = req.body;
-    if (!goal || !goal.trim()) {
-      return res.status(400).json({ error: 'Goal is required.' });
-    }
-
-    const agentList = getAllAgents();
-    const agentDescriptions = agentList
-      .map(a => `- ${a.key}: ${a.description}`)
-      .join('\n');
-
-    const pickerPrompt = `You are a router. Given a user's goal, either pick the best agent from the existing list OR invent a new specialist role if none fits perfectly.
-
-Reply with JSON only:
-{
-  "agent": "key from list, or 'custom' if inventing a new one",
-  "role": "a short role title (1-2 words) that fits the goal, e.g. 'Fitness Coach', 'Budget Analyst', 'Recipe Creator', 'Music Producer'",
-  "humanName": "a unique first name for this agent — diverse, friendly, never repeat",
-  "outputType": "the type of output this agent produces: 'Business Plan', 'Strategy', 'Code', 'Document', 'Mockup', 'Report', or similar",
-  "greeting": "a short friendly human greeting acknowledging their goal"
-}
-
-The role should be SPECIFIC to what the user wants — not generic. If they want to lose weight, the role is "Fitness Coach" not "Planner". If they want to write a song, the role is "Songwriter" not "Writer". Be creative.
-
-The human name should feel real and diverse — mix cultures, genders, styles. Never use the same name twice in a conversation.
-
-The greeting must sound like a real friend texting back. Rules:
-- Super casual, warm, maybe a little playful. Lowercase is fine.
-- Use contractions. Natural speech only.
-- React to what they actually said — reference their specific topic.
-- NEVER use phrases like "I'd be happy to help", "Great question", "Let's dive in", "Absolutely!", "Of course!", or anything that sounds like customer support.
-- Think of how a smart friend would text you back if you asked them about this topic. They'd probably react to it first, then offer to dig in.
-- 1-2 short sentences max. No exclamation-point overload.
-
-Available agents for reference (use these system prompts when the goal matches):
-${agentDescriptions}
-
-If the goal doesn't match any existing agent well, use agent key "custom" and the system will use a generic helpful prompt.`;
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: pickerPrompt },
-        { role: 'user', content: goal.trim() },
-      ],
-      max_completion_tokens: 256,
-      response_format: { type: 'json_object' },
-    });
-
-    const usage = completion.usage || { total_tokens: 0 };
-    resetIfNewDay();
-    tokenUsage.mini += usage.total_tokens || 0;
-    tokenUsage.history.push({
-      timestamp: new Date().toISOString(),
-      model: 'gpt-4o-mini',
-      tier: 'mini',
-      agent: 'router',
-      prompt_tokens: usage.prompt_tokens || 0,
-      completion_tokens: usage.completion_tokens || 0,
-      total: usage.total_tokens || 0,
-    });
-    persistUsage('mini', usage.total_tokens || 0, 'gpt-4o-mini', 'router', usage);
-
-    const raw = completion.choices[0]?.message?.content || '{}';
-    const parsed = JSON.parse(raw);
-
-    const agentKey = parsed.agent || 'custom';
-    const matched = agentList.find(a => a.key === agentKey);
-
-    // Infer output type from role if the model didn't provide one
-    const role = parsed.role || (matched ? matched.description.split('.')[0] : 'Assistant');
-    const outputType = parsed.outputType || inferOutputType(role);
-
-    res.json({
-      agent: agentKey,
-      displayName: parsed.humanName || (matched ? matched.humanName : 'Agent'),
-      role,
-      outputType,
-      icon: matched ? matched.icon : '●',
-      greeting: parsed.greeting || 'oh nice, tell me more about what you\'re working on',
-    });
-  } catch (err) {
-    console.error('Pick error:', err.message);
-    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
-  }
-});
-
-// ── API: Group chat — multiple agents respond in sequence ──
-app.post('/api/agent/group', async (req, res) => {
-  try {
-    resetIfNewDay();
-
-    const { agents: agentList, message, messages: msgHistory } = req.body;
-    if (!agentList || !Array.isArray(agentList) || agentList.length < 2 || agentList.length > 6) {
-      return res.status(400).json({ error: 'Provide 2-6 agents for a group chat.' });
-    }
-
-    const model = tokenUsage.settings.defaultModel;
-    const tier = getModelTier(model);
-
-    if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
-      return res.status(429).json({
-        error: `Daily ${tier} token limit reached. Try again tomorrow.`,
-        usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
-      });
-    }
-
-    // Set up SSE
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    let clientDisconnected = false;
-    req.on('close', () => { clientDisconnected = true; });
-
-    // Build shared conversation history from prior messages
-    const sharedHistory = [];
-    if (msgHistory && Array.isArray(msgHistory)) {
-      const trimmed = msgHistory.length > 30 ? msgHistory.slice(-30) : msgHistory;
-      sharedHistory.push(...trimmed);
-    } else if (message) {
-      sharedHistory.push({ role: 'user', content: message });
-    }
-
-    // This round's responses — each agent sees what agents before them said
-    const roundResponses = [];
-    let totalGroupTokens = 0;
-
-    for (const agent of agentList) {
-      if (clientDisconnected) break;
-
-      const { name, role, key } = agent;
-
-      // Build system prompt for this agent
-      let systemPrompt = getSystemPrompt(key || 'custom');
-      const identity = `Your name is ${name || 'Agent'}. Your role is ${role || 'Assistant'}. You are in a group conversation with other agents. Stay in character. Be concise — other agents will also respond. Build on what they said if relevant, don't repeat their points. If you disagree, say so respectfully.`;
-      systemPrompt = identity + '\n\n' + systemPrompt;
-
-      // Build messages: system + shared history + this round's prior agent responses
-      const chatMessages = [{ role: 'system', content: systemPrompt }];
-      chatMessages.push(...sharedHistory);
-      for (const prev of roundResponses) {
-        chatMessages.push({ role: 'assistant', content: `[${prev.name} — ${prev.role}]: ${prev.text}` });
-      }
-      // Add a user-role nudge so the model knows it's its turn
-      chatMessages.push({ role: 'user', content: `It's your turn to respond, ${name}. What are your thoughts?` });
-
-      try {
-        const stream = await openai.chat.completions.create({
-          model,
-          messages: chatMessages,
-          max_completion_tokens: 1024,
-          stream: true,
-          stream_options: { include_usage: true },
-        });
-
-        let agentReplyText = '';
-        let agentTokens = 0;
-
-        for await (const chunk of stream) {
-          if (clientDisconnected) break;
-
-          const delta = chunk.choices?.[0]?.delta?.content;
-          if (delta) {
-            agentReplyText += delta;
-            res.write(`data: ${JSON.stringify({ agent: name, role, text: delta })}\n\n`);
-          }
-          if (chunk.usage) {
-            agentTokens = chunk.usage.total_tokens || 0;
-            totalGroupTokens += agentTokens;
-            tokenUsage[tier] += agentTokens;
-            tokenUsage.history.push({
-              timestamp: new Date().toISOString(),
-              model,
-              tier,
-              agent: key || 'custom',
-              prompt_tokens: chunk.usage.prompt_tokens || 0,
-              completion_tokens: chunk.usage.completion_tokens || 0,
-              total: agentTokens,
-            });
-            persistUsage(tier, agentTokens, model, key || 'custom', chunk.usage);
-          }
-        }
-
-        // Signal this agent is done
-        if (!clientDisconnected) {
-          res.write(`data: ${JSON.stringify({ agent: name, role, done: true })}\n\n`);
-        }
-
-        // Store for next agent's context
-        roundResponses.push({ name, role, text: agentReplyText });
-
-        logRequest({ agent: key || 'custom', model, tier, tokens: agentTokens });
-      } catch (agentErr) {
-        if (agentErr.name === 'AbortError') break;
-        console.error(`Group chat error for agent ${name}:`, agentErr.message);
-        if (!clientDisconnected) {
-          res.write(`data: ${JSON.stringify({ agent: name, role, error: safeErrorMessage(agentErr) })}\n\n`);
-          res.write(`data: ${JSON.stringify({ agent: name, role, done: true })}\n\n`);
-        }
-      }
-    }
-
-    if (!clientDisconnected) {
-      res.write(`data: ${JSON.stringify({ allDone: true, total_tokens: totalGroupTokens })}\n\n`);
-      res.end();
-    }
-  } catch (err) {
-    if (err.name === 'AbortError') return;
-    console.error('Group chat error:', err.message);
-    if (!res.headersSent) {
-      res.status(err.status || 500).json({ error: safeErrorMessage(err) });
-    }
-  }
-});
-
-// ── API: Auto-reply (Agent Mode — AI answers on behalf of the user) ──
-app.post('/api/agent/auto-reply', async (req, res) => {
-  try {
-    resetIfNewDay();
-
-    const { goal, agentName, agentRole, messages, model: requestedModel } = req.body;
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: 'Messages are required.' });
-    }
-
-    const model = requestedModel || tokenUsage.settings.defaultModel;
-    const tier = getModelTier(model);
-
-    if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
-      return res.status(429).json({
-        error: 'Daily mini token limit reached.',
-        usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
-      });
-    }
-
-    const prompt = `You are the USER (not an AI assistant). You are a person who wants to "${goal || 'get help'}".
-An agent named ${agentName || 'Agent'} (${agentRole || 'Assistant'}) is helping you. They just asked you a question or gave you options.
-
-Reply as the user would — make decisions, state preferences, give clear answers. Be decisive.
-Keep it short (1-2 sentences) like a real person texting back.
-Don't ask questions back — just answer what was asked.
-Be specific — pick options, state numbers, make choices.`;
-
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: prompt },
-        ...messages.slice(-10),
-      ],
-      max_completion_tokens: 256,
-    });
-
-    const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-    const reply = completion.choices[0]?.message?.content || '';
-
-    // Track usage
-    tokenUsage[tier] += usage.total_tokens;
-    tokenUsage.history.push({
-      timestamp: new Date().toISOString(),
-      model,
-      tier,
-      agent: 'auto-reply',
-      prompt_tokens: usage.prompt_tokens || 0,
-      completion_tokens: usage.completion_tokens || 0,
-      total: usage.total_tokens || 0,
-    });
-
-    persistUsage(tier, usage.total_tokens, model, 'auto-reply', usage);
-    logRequest({ agent: 'auto-reply', model, tier, tokens: usage.total_tokens });
-
-    res.json({ reply });
-  } catch (err) {
-    console.error('Auto-reply error:', err.message);
-    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
-  }
-});
-
-// ── API: Autonomous pipeline — execute a goal (strategy + team plan) ──
-app.post('/api/agent/execute', async (req, res) => {
+// ── API: Build — single endpoint, input → output ──
+app.post('/api/build', async (req, res) => {
   try {
     resetIfNewDay();
 
@@ -833,32 +540,21 @@ app.post('/api/agent/execute', async (req, res) => {
 
     if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
       return res.status(429).json({
-        error: `Daily ${tier} token limit reached.`,
+        error: `Daily ${tier} token limit reached (${DAILY_LIMITS[tier].toLocaleString()} tokens). Try again tomorrow.`,
         usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
       });
     }
 
-    const prompt = `You are an autonomous AI system. The user gave you ONE command: "${goal.trim()}"
+    const prompt = `You are a builder. The user wants: "${goal.trim()}"
 
-You are the expert. Don't ask questions. EXECUTE.
+BUILD IT. Produce the complete output.
+- If it's a game/app/website → write complete runnable HTML/CSS/JavaScript in a single file
+- If it's a document/plan → write the full document
+- If it's code → write complete runnable code
 
-Create a concrete strategy and decide what specialist agents to spawn.
-
-Reply with JSON:
-{
-  "strategy": "A concise 2-3 sentence strategy for achieving this goal",
-  "agents": [
-    { "humanName": "unique first name", "role": "specific role title", "task": "exactly what this agent should produce — be specific and actionable" }
-  ]
-}
-
-Rules:
-- Max 3 agents. Focused team.
-- Each agent has a SPECIFIC task — not vague. "Build a Shopify dropshipping store in HTML" not "help with code"
-- The strategy is the plan. The agents execute it.
-- Be decisive. No maybes. No options. Just DO.
-- humanName should be a real-sounding diverse first name — mix cultures, genders.
-- role should be specific: "Shopify Developer", "Ad Copywriter", "SEO Strategist" — not generic.`;
+NO explanations. NO chat. NO preamble. JUST THE OUTPUT.
+Default to a single self-contained HTML file with embedded CSS and JS.
+Make it polished, functional, and complete.`;
 
     const completion = await openai.chat.completions.create({
       model,
@@ -866,103 +562,26 @@ Rules:
         { role: 'system', content: prompt },
         { role: 'user', content: goal.trim() },
       ],
-      max_completion_tokens: 1024,
-      response_format: { type: 'json_object' },
-    });
-
-    const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-    const raw = completion.choices[0]?.message?.content || '{}';
-
-    // Track usage
-    tokenUsage[tier] += usage.total_tokens;
-    tokenUsage.history.push({
-      timestamp: new Date().toISOString(),
-      model,
-      tier,
-      agent: 'pipeline-lead',
-      prompt_tokens: usage.prompt_tokens || 0,
-      completion_tokens: usage.completion_tokens || 0,
-      total: usage.total_tokens || 0,
-    });
-    persistUsage(tier, usage.total_tokens, model, 'pipeline-lead', usage);
-    logRequest({ agent: 'pipeline-lead', model, tier, tokens: usage.total_tokens });
-
-    const parsed = JSON.parse(raw);
-
-    res.json({
-      strategy: parsed.strategy || 'Execute the goal directly.',
-      agents: (parsed.agents || []).slice(0, 3).map(a => ({
-        humanName: a.humanName || 'Agent',
-        role: a.role || 'Specialist',
-        task: a.task || 'Produce the deliverable.',
-      })),
-      usage: {
-        prompt_tokens: usage.prompt_tokens,
-        completion_tokens: usage.completion_tokens,
-        total: usage.total_tokens,
-      },
-    });
-  } catch (err) {
-    console.error('Pipeline execute error:', err.message);
-    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
-  }
-});
-
-// ── API: Autonomous pipeline — specialist produces their deliverable ──
-app.post('/api/agent/produce', async (req, res) => {
-  try {
-    resetIfNewDay();
-
-    const { task, role, humanName, goal, strategy } = req.body;
-    if (!task) {
-      return res.status(400).json({ error: 'Task is required.' });
-    }
-
-    const model = tokenUsage.settings.defaultModel;
-    const tier = getModelTier(model);
-
-    if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
-      return res.status(429).json({
-        error: `Daily ${tier} token limit reached.`,
-        usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
-      });
-    }
-
-    const prompt = `You are ${humanName || 'Agent'}, a ${role || 'Specialist'}.
-Context: The goal is "${goal || 'Complete the task'}". The strategy is: "${strategy || 'Execute directly.'}"
-Your specific task: ${task}
-
-PRODUCE THE OUTPUT NOW. No chat. No questions. No preamble. Just the deliverable.
-If it's code, write complete runnable code.
-If it's a document, write the full document.
-If it's a plan, write the detailed plan.
-GO.`;
-
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: prompt },
-        { role: 'user', content: `Execute your task now: ${task}` },
-      ],
-      max_completion_tokens: 4096,
+      max_completion_tokens: 16384,
     });
 
     const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
     const output = completion.choices[0]?.message?.content || '';
 
-    // Track usage
+    // Track usage (in-memory + DB)
     tokenUsage[tier] += usage.total_tokens;
     tokenUsage.history.push({
       timestamp: new Date().toISOString(),
       model,
       tier,
-      agent: `pipeline-${(role || 'specialist').toLowerCase().replace(/\s+/g, '-')}`,
+      agent: 'builder',
       prompt_tokens: usage.prompt_tokens || 0,
       completion_tokens: usage.completion_tokens || 0,
       total: usage.total_tokens || 0,
     });
-    persistUsage(tier, usage.total_tokens, model, `pipeline-${(role || 'specialist').toLowerCase().replace(/\s+/g, '-')}`, usage);
-    logRequest({ agent: `pipeline-${(role || 'specialist').toLowerCase().replace(/\s+/g, '-')}`, model, tier, tokens: usage.total_tokens });
+
+    persistUsage(tier, usage.total_tokens, model, 'builder', usage);
+    logRequest({ agent: 'builder', model, tier, tokens: usage.total_tokens });
 
     res.json({
       output,
@@ -974,14 +593,9 @@ GO.`;
       },
     });
   } catch (err) {
-    console.error('Pipeline produce error:', err.message);
+    console.error('Build error:', err.message);
     res.status(err.status || 500).json({ error: safeErrorMessage(err) });
   }
-});
-
-// ── API: List available agents ──
-app.get('/api/agents', (req, res) => {
-  res.json(getAllAgents());
 });
 
 // ── API: Deploy output to Vercel ──
