@@ -2003,21 +2003,32 @@
       }
     }
 
-    // ── Card placement (staggered grid with randomness) ──
+    // ── Card placement (flexible, centered, natural spacing) ──
     function getCardPosition() {
-      const cols = 3;
-      const baseX = 120;
-      const baseY = 100;
-      const spacingX = 240;
-      const spacingY = 240;
-      const col = cardCounter % cols;
-      const row = Math.floor(cardCounter / cols);
-      const randX = (Math.random() - 0.5) * 40;
-      const randY = (Math.random() - 0.5) * 30;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const cardW = 180;
+      const cardH = 220;
+      const padding = 40;
+      const count = cardCounter;
       cardCounter++;
+
+      // First card: center of visible canvas area
+      if (count === 0) {
+        return { x: (w * 0.4) / 2 - cardW / 2, y: h / 2 - cardH / 2 };
+      }
+
+      // Spread outward in a loose circle from center
+      const centerX = (w * 0.4) / 2;
+      const centerY = h / 2;
+      const radius = 180 + Math.floor(count / 5) * 120;
+      const angleStep = (2 * Math.PI) / Math.max(count, 5);
+      const angle = angleStep * (count - 1) + (Math.random() - 0.5) * 0.3;
+      const randR = (Math.random() - 0.5) * 40;
+
       return {
-        x: baseX + col * spacingX + randX,
-        y: baseY + row * spacingY + randY,
+        x: Math.max(padding, Math.min(w * 0.5 - cardW, centerX + Math.cos(angle) * (radius + randR) - cardW / 2)),
+        y: Math.max(padding, Math.min(h - cardH - padding, centerY + Math.sin(angle) * (radius + randR) - cardH / 2)),
       };
     }
 
