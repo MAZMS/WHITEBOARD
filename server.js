@@ -526,6 +526,135 @@ If the goal doesn't match any existing agent well, use agent key "custom" and th
   }
 });
 
+// ── API: Group chat — multiple agents respond in sequence ──
+app.post('/api/agent/group', async (req, res) => {
+  try {
+    resetIfNewDay();
+
+    const { agents: agentList, message, messages: msgHistory } = req.body;
+    if (!agentList || !Array.isArray(agentList) || agentList.length < 2 || agentList.length > 3) {
+      return res.status(400).json({ error: 'Provide 2-3 agents for a group chat.' });
+    }
+
+    const model = tokenUsage.settings.defaultModel;
+    const tier = getModelTier(model);
+
+    if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
+      return res.status(429).json({
+        error: `Daily ${tier} token limit reached. Try again tomorrow.`,
+        usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
+      });
+    }
+
+    // Set up SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    let clientDisconnected = false;
+    req.on('close', () => { clientDisconnected = true; });
+
+    // Build shared conversation history from prior messages
+    const sharedHistory = [];
+    if (msgHistory && Array.isArray(msgHistory)) {
+      const trimmed = msgHistory.length > 30 ? msgHistory.slice(-30) : msgHistory;
+      sharedHistory.push(...trimmed);
+    } else if (message) {
+      sharedHistory.push({ role: 'user', content: message });
+    }
+
+    // This round's responses — each agent sees what agents before them said
+    const roundResponses = [];
+    let totalGroupTokens = 0;
+
+    for (const agent of agentList) {
+      if (clientDisconnected) break;
+
+      const { name, role, key } = agent;
+
+      // Build system prompt for this agent
+      let systemPrompt = getSystemPrompt(key || 'custom');
+      const identity = `Your name is ${name || 'Agent'}. Your role is ${role || 'Assistant'}. You are in a group conversation with other agents. Stay in character. Be concise — other agents will also respond. Build on what they said if relevant, don't repeat their points. If you disagree, say so respectfully.`;
+      systemPrompt = identity + '\n\n' + systemPrompt;
+
+      // Build messages: system + shared history + this round's prior agent responses
+      const chatMessages = [{ role: 'system', content: systemPrompt }];
+      chatMessages.push(...sharedHistory);
+      for (const prev of roundResponses) {
+        chatMessages.push({ role: 'assistant', content: `[${prev.name} — ${prev.role}]: ${prev.text}` });
+      }
+      // Add a user-role nudge so the model knows it's its turn
+      chatMessages.push({ role: 'user', content: `It's your turn to respond, ${name}. What are your thoughts?` });
+
+      try {
+        const stream = await openai.chat.completions.create({
+          model,
+          messages: chatMessages,
+          max_completion_tokens: 1024,
+          stream: true,
+          stream_options: { include_usage: true },
+        });
+
+        let agentReplyText = '';
+        let agentTokens = 0;
+
+        for await (const chunk of stream) {
+          if (clientDisconnected) break;
+
+          const delta = chunk.choices?.[0]?.delta?.content;
+          if (delta) {
+            agentReplyText += delta;
+            res.write(`data: ${JSON.stringify({ agent: name, role, text: delta })}\n\n`);
+          }
+          if (chunk.usage) {
+            agentTokens = chunk.usage.total_tokens || 0;
+            totalGroupTokens += agentTokens;
+            tokenUsage[tier] += agentTokens;
+            tokenUsage.history.push({
+              timestamp: new Date().toISOString(),
+              model,
+              tier,
+              agent: key || 'custom',
+              prompt_tokens: chunk.usage.prompt_tokens || 0,
+              completion_tokens: chunk.usage.completion_tokens || 0,
+              total: agentTokens,
+            });
+            persistUsage(tier, agentTokens, model, key || 'custom', chunk.usage);
+          }
+        }
+
+        // Signal this agent is done
+        if (!clientDisconnected) {
+          res.write(`data: ${JSON.stringify({ agent: name, role, done: true })}\n\n`);
+        }
+
+        // Store for next agent's context
+        roundResponses.push({ name, role, text: agentReplyText });
+
+        logRequest({ agent: key || 'custom', model, tier, tokens: agentTokens });
+      } catch (agentErr) {
+        if (agentErr.name === 'AbortError') break;
+        console.error(`Group chat error for agent ${name}:`, agentErr.message);
+        if (!clientDisconnected) {
+          res.write(`data: ${JSON.stringify({ agent: name, role, error: safeErrorMessage(agentErr) })}\n\n`);
+          res.write(`data: ${JSON.stringify({ agent: name, role, done: true })}\n\n`);
+        }
+      }
+    }
+
+    if (!clientDisconnected) {
+      res.write(`data: ${JSON.stringify({ allDone: true, total_tokens: totalGroupTokens })}\n\n`);
+      res.end();
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    console.error('Group chat error:', err.message);
+    if (!res.headersSent) {
+      res.status(err.status || 500).json({ error: safeErrorMessage(err) });
+    }
+  }
+});
+
 // ── API: List available agents ──
 app.get('/api/agents', (req, res) => {
   res.json(getAllAgents());
