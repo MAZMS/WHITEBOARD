@@ -443,10 +443,23 @@ app.post('/api/admin/settings', async (req, res) => {
   res.json({ settings: tokenUsage.settings });
 });
 
+// ── Helper: infer output type from role ──
+function inferOutputType(role) {
+  const r = (role || '').toLowerCase();
+  if (/ceo|director|planner|manager|lead|strategist|consultant/.test(r)) return 'Business Plan';
+  if (/coder|developer|engineer|programmer/.test(r)) return 'Code';
+  if (/writer|author|copywriter|editor|blogger/.test(r)) return 'Document';
+  if (/designer|artist|illustrator|ux|ui/.test(r)) return 'Mockup';
+  if (/researcher|analyst|scientist|investigator/.test(r)) return 'Report';
+  if (/coach|trainer|mentor|tutor/.test(r)) return 'Guide';
+  if (/marketer|advertiser|seo|growth/.test(r)) return 'Strategy';
+  return 'Document';
+}
+
 // ── API: Pick best agent for a goal (uses gpt-4o-mini) ──
 app.post('/api/agent/pick', async (req, res) => {
   try {
-    const { goal, isLead } = req.body;
+    const { goal } = req.body;
     if (!goal || !goal.trim()) {
       return res.status(400).json({ error: 'Goal is required.' });
     }
@@ -456,10 +469,6 @@ app.post('/api/agent/pick', async (req, res) => {
       .map(a => `- ${a.key}: ${a.description}`)
       .join('\n');
 
-    const leadInstructions = isLead
-      ? `\n\nIMPORTANT: This is the FIRST agent for this goal. You MUST assign a leadership/coordinator role (CEO, Director, Team Lead, Project Manager, etc). The greeting MUST include a clarifying question asking for more details about their goal. For example: "hey, I can help with that. before I bring in my team — how do you want to make money? online business, freelancing, investing, or something else?" The greeting should acknowledge the goal AND ask a specific clarifying question so you can build the right team.`
-      : '';
-
     const pickerPrompt = `You are a router. Given a user's goal, either pick the best agent from the existing list OR invent a new specialist role if none fits perfectly.
 
 Reply with JSON only:
@@ -467,6 +476,7 @@ Reply with JSON only:
   "agent": "key from list, or 'custom' if inventing a new one",
   "role": "a short role title (1-2 words) that fits the goal, e.g. 'Fitness Coach', 'Budget Analyst', 'Recipe Creator', 'Music Producer'",
   "humanName": "a unique first name for this agent — diverse, friendly, never repeat",
+  "outputType": "the type of output this agent produces: 'Business Plan', 'Strategy', 'Code', 'Document', 'Mockup', 'Report', or similar",
   "greeting": "a short friendly human greeting acknowledging their goal"
 }
 
@@ -485,7 +495,7 @@ The greeting must sound like a real friend texting back. Rules:
 Available agents for reference (use these system prompts when the goal matches):
 ${agentDescriptions}
 
-If the goal doesn't match any existing agent well, use agent key "custom" and the system will use a generic helpful prompt.${leadInstructions}`;
+If the goal doesn't match any existing agent well, use agent key "custom" and the system will use a generic helpful prompt.`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -517,163 +527,20 @@ If the goal doesn't match any existing agent well, use agent key "custom" and th
     const agentKey = parsed.agent || 'custom';
     const matched = agentList.find(a => a.key === agentKey);
 
+    // Infer output type from role if the model didn't provide one
+    const role = parsed.role || (matched ? matched.description.split('.')[0] : 'Assistant');
+    const outputType = parsed.outputType || inferOutputType(role);
+
     res.json({
       agent: agentKey,
       displayName: parsed.humanName || (matched ? matched.humanName : 'Agent'),
-      role: parsed.role || (matched ? matched.description.split('.')[0] : 'Assistant'),
+      role,
+      outputType,
       icon: matched ? matched.icon : '●',
       greeting: parsed.greeting || 'oh nice, tell me more about what you\'re working on',
     });
   } catch (err) {
     console.error('Pick error:', err.message);
-    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
-  }
-});
-
-// ── API: Plan a team of agents for a goal ──
-app.post('/api/agent/plan-team', async (req, res) => {
-  try {
-    const { goal } = req.body;
-    if (!goal || !goal.trim()) {
-      return res.status(400).json({ error: 'Goal is required.' });
-    }
-
-    const planPrompt = `You are a team builder. Given a goal, design a small team (2-4 agents max) to accomplish it.
-
-The FIRST agent is always the LEAD — they coordinate the others. Give them a leadership role like "CEO", "Director", "Team Lead", etc.
-
-The other agents are specialists that the lead needs.
-
-Reply with JSON only:
-{
-  "team": [
-    { "humanName": "unique name", "role": "CEO", "greeting": "casual greeting about the goal", "reason": "why this role is needed" },
-    { "humanName": "unique name", "role": "Marketing Strategist", "greeting": "casual greeting", "reason": "why needed" },
-    { "humanName": "unique name", "role": "Financial Analyst", "greeting": "casual greeting", "reason": "why needed" }
-  ]
-}
-
-Rules:
-- First agent is ALWAYS the lead/coordinator
-- 2-4 agents total (keep it focused, not bloated)
-- Each name is unique, diverse, real-sounding
-- Roles are SPECIFIC to the goal (not generic)
-- Greetings sound like a real person joining a team chat — casual, warm, lowercase ok
-- NEVER use phrases like "I'd be happy to help", "Great question", "Let's dive in", "Absolutely!", "Of course!" — sound like a real friend in a group chat
-- The lead's greeting should acknowledge they're taking charge and reference the specific goal
-- Sub-agent greetings should mention their specialty and how it connects to the goal`;
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: planPrompt },
-        { role: 'user', content: goal.trim() },
-      ],
-      max_completion_tokens: 512,
-      response_format: { type: 'json_object' },
-    });
-
-    const usage = completion.usage || { total_tokens: 0 };
-    resetIfNewDay();
-    tokenUsage.mini += usage.total_tokens || 0;
-    tokenUsage.history.push({
-      timestamp: new Date().toISOString(),
-      model: 'gpt-4o-mini',
-      tier: 'mini',
-      agent: 'team-planner',
-      prompt_tokens: usage.prompt_tokens || 0,
-      completion_tokens: usage.completion_tokens || 0,
-      total: usage.total_tokens || 0,
-    });
-    persistUsage('mini', usage.total_tokens || 0, 'gpt-4o-mini', 'team-planner', usage);
-
-    const raw = completion.choices[0]?.message?.content || '{}';
-    const parsed = JSON.parse(raw);
-
-    // Validate and cap at 4 agents
-    if (!parsed.team || !Array.isArray(parsed.team) || parsed.team.length < 2) {
-      return res.status(500).json({ error: 'AI returned an invalid team plan.' });
-    }
-    parsed.team = parsed.team.slice(0, 4);
-
-    res.json(parsed);
-  } catch (err) {
-    console.error('Plan-team error:', err.message);
-    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
-  }
-});
-
-// ── API: Expand team — lead agent interviews user, then decides what specialists to hire ──
-app.post('/api/agent/expand-team', async (req, res) => {
-  try {
-    const { goal, conversation, leadName, leadRole } = req.body;
-    if (!goal || !conversation || !Array.isArray(conversation)) {
-      return res.status(400).json({ error: 'Goal and conversation are required.' });
-    }
-
-    const convoText = conversation
-      .filter(m => m.role === 'user' || m.role === 'assistant')
-      .map(m => `${m.role === 'user' ? 'User' : `${leadName} (${leadRole})`}: ${m.content}`)
-      .join('\n');
-
-    const expandPrompt = `You are a team builder. A lead agent (${leadName}, ${leadRole}) has been talking to a user about their goal: "${goal}".
-
-Here is their conversation so far:
-${convoText}
-
-Based on this conversation, decide what 1-3 specialist agents to hire.
-
-Reply with JSON only:
-{
-  "team": [
-    { "humanName": "unique name", "role": "specific role", "greeting": "casual greeting referencing the goal", "reason": "why needed" }
-  ]
-}
-
-Rules:
-- Make roles SPECIFIC to what was discussed in the conversation — not generic
-- The lead agent already exists — only return NEW specialists
-- 1-3 specialists max (keep it focused)
-- Each name is unique, diverse, real-sounding
-- Greetings sound like a real person joining a team chat — casual, warm, lowercase ok
-- NEVER use phrases like "I'd be happy to help", "Great question", "Let's dive in", "Absolutely!", "Of course!" — sound like a real friend
-- Each specialist's greeting should mention their specialty and how it connects to the specific details the user shared`;
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: expandPrompt },
-        { role: 'user', content: `Build the team for goal: "${goal}"` },
-      ],
-      max_completion_tokens: 512,
-      response_format: { type: 'json_object' },
-    });
-
-    const usage = completion.usage || { total_tokens: 0 };
-    resetIfNewDay();
-    tokenUsage.mini += usage.total_tokens || 0;
-    tokenUsage.history.push({
-      timestamp: new Date().toISOString(),
-      model: 'gpt-4o-mini',
-      tier: 'mini',
-      agent: 'team-expander',
-      prompt_tokens: usage.prompt_tokens || 0,
-      completion_tokens: usage.completion_tokens || 0,
-      total: usage.total_tokens || 0,
-    });
-    persistUsage('mini', usage.total_tokens || 0, 'gpt-4o-mini', 'team-expander', usage);
-
-    const raw = completion.choices[0]?.message?.content || '{}';
-    const parsed = JSON.parse(raw);
-
-    if (!parsed.team || !Array.isArray(parsed.team) || parsed.team.length < 1) {
-      return res.status(500).json({ error: 'AI returned an invalid team expansion.' });
-    }
-    parsed.team = parsed.team.slice(0, 3);
-
-    res.json(parsed);
-  } catch (err) {
-    console.error('Expand-team error:', err.message);
     res.status(err.status || 500).json({ error: safeErrorMessage(err) });
   }
 });

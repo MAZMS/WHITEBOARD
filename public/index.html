@@ -1097,81 +1097,167 @@
       50% { transform: scale(1.15); opacity: 0.85; }
     }
 
-    /* ── Linked card highlight ── */
-    .agent-contact-card.linked {
-      box-shadow: 0 0 0 1px var(--fg), 0 0 20px rgba(255,255,255,0.06);
-      border-color: transparent;
+    /* ── Output nodes on canvas ── */
+    .output-node {
+      position: absolute;
+      z-index: 38;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      min-width: 200px;
+      max-width: 280px;
+      cursor: default;
+      user-select: none;
+      animation: cardBounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 12px rgba(255,255,255,0.02);
     }
-    [data-theme="light"] .agent-contact-card.linked {
-      box-shadow: 0 0 0 1px var(--fg), 0 0 20px rgba(0,0,0,0.06);
+    [data-theme="light"] .output-node {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    .output-node .output-type {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .output-node .output-type-icon {
+      font-size: 14px;
+      line-height: 1;
+    }
+    .output-node .output-preview {
+      font-size: 12px;
+      color: var(--dim);
+      line-height: 1.5;
+      max-height: 60px;
+      overflow: hidden;
+      word-break: break-word;
+      opacity: 0.75;
+      margin-bottom: 12px;
+    }
+    .output-node .output-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .output-node .output-actions button {
+      flex: 1;
+      padding: 7px 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: none;
+      color: var(--fg);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .output-node .output-actions button:hover {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+    }
+    .output-node .output-actions button:active {
+      transform: scale(0.95);
     }
 
-    /* ── SVG overlay for connection lines ── */
+    /* ── SVG overlay for output connection lines ── */
     #link-lines {
       position: fixed;
       inset: 0;
       z-index: 35;
       pointer-events: none;
     }
-    #link-lines .link-hit {
-      pointer-events: stroke;
-      cursor: pointer;
-    }
-    #link-lines .link-visible {
+    #link-lines .output-line {
       stroke: var(--fg);
       stroke-width: 1.5px;
       opacity: 0.25;
-      transition: opacity 0.2s ease, filter 0.2s ease;
-    }
-    #link-lines .link-hit:hover + .link-visible {
-      opacity: 0.6 !important;
-      filter: drop-shadow(0 0 3px var(--fg));
+      transition: opacity 0.2s ease;
     }
     @keyframes linkLineDrawOn {
       to { stroke-dashoffset: 0; }
     }
-    @keyframes linkPulse {
-      0% { opacity: 0; }
-      30% { opacity: 0.4; }
-      100% { opacity: 0; stroke-dashoffset: -60; }
-    }
 
-    /* ── Agent label in pair chat ── */
-    .msg-agent-label {
-      font-size: 10px;
-      font-weight: 400;
-      color: var(--dim);
-      letter-spacing: 0.3px;
-      margin-bottom: 2px;
-      padding-left: 4px;
-      opacity: 0.7;
-    }
-
-    /* ── Mini avatars in pair chat header ── */
-    .shared-avatars {
-      display: flex;
-      gap: 4px;
-      flex-shrink: 0;
-    }
-    .shared-avatar-mini {
-      display: flex;
+    /* ── Output viewer overlay ── */
+    #output-viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: none;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
+      animation: outputViewerIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
-    .shared-avatar-mini .avatar-head {
-      width: 12px;
-      height: 12px;
+    [data-theme="light"] #output-viewer {
+      background: rgba(255,255,255,0.85);
+    }
+    #output-viewer.visible {
+      display: flex;
+    }
+    @keyframes outputViewerIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    #output-viewer .viewer-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--fg);
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      border: 1.5px solid var(--fg);
-      margin-bottom: 0;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 2;
     }
-    .shared-avatar-mini .avatar-body {
-      width: 16px;
-      height: 7px;
-      border-radius: 8px 8px 0 0;
-      border: 1.5px solid var(--fg);
-      border-bottom: none;
+    #output-viewer .viewer-close:hover {
+      background: var(--fg);
+      color: var(--bg);
     }
+    #output-viewer .viewer-header {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 16px;
+    }
+    #output-viewer .viewer-content {
+      max-width: 720px;
+      width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--fg);
+      white-space: pre-wrap;
+      word-break: break-word;
+      scrollbar-width: none;
+    }
+    #output-viewer .viewer-content::-webkit-scrollbar { display: none; }
 
     /* ── Mobile responsive ── */
     @media (max-width: 640px) {
@@ -1264,17 +1350,25 @@
     <div class="help-feature">Click &ldquo;Message&rdquo; on a card to chat</div>
     <div class="help-feature">Drag cards to reposition them</div>
     <div class="help-feature">Clear chat with the button in chat header</div>
-    <div class="help-feature">Link agents with + to share a conversation</div>
+    <div class="help-feature">Agents produce output nodes on the canvas</div>
+    <div class="help-feature">View or download agent outputs</div>
     <div class="help-feature">Toggle dark / light mode (top-left)</div>
     <h3>AGENTS</h3>
-    <div style="color:var(--dim);font-size:11px;line-height:1.8;">Agents are AI-generated with unique names and roles based on your goal. No two are the same.</div>
+    <div style="color:var(--dim);font-size:11px;line-height:1.8;">Agents are AI-generated with unique names and roles based on your goal. Each produces a tangible output artifact.</div>
   </div>
 
   <!-- Toast -->
   <div id="toast"></div>
 
-  <!-- SVG overlay for link lines between agents -->
+  <!-- SVG overlay for output connection lines -->
   <svg id="link-lines"></svg>
+
+  <!-- Output viewer overlay -->
+  <div id="output-viewer">
+    <button class="viewer-close" onclick="closeOutputViewer()">&times;</button>
+    <div class="viewer-header" id="viewer-header"></div>
+    <div class="viewer-content" id="viewer-content"></div>
+  </div>
 
   <script>
     // ── Theme ──
@@ -1352,7 +1446,6 @@
       document.getElementById('admin-link').style.display = '';
       // Restore any saved conversations from localStorage
       loadConversations();
-      loadLinkConversations();
       // Show empty state hint if no agents yet
       if (agentCards.size === 0) {
         document.getElementById('empty-hint').style.display = '';
@@ -1607,7 +1700,7 @@
         // Brief in-bar loading state before closing
         commandInput.disabled = true;
         commandInput.value = '';
-        commandInput.placeholder = 'Finding your lead...';
+        commandInput.placeholder = 'Finding your agent...';
         const hintEl = commandBar.querySelector('.hint');
         if (hintEl) hintEl.style.display = 'none';
         // Close after a beat so the user sees the state
@@ -1617,47 +1710,38 @@
         if (hintEl) hintEl.style.display = '';
         closeCommand();
         try {
-          // Step 1: Pick a LEAD agent only (not a full team)
           const res = await fetch('/api/agent/pick', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ goal: val, isLead: true }),
+            body: JSON.stringify({ goal: val }),
           });
           if (!res.ok) {
             const err = await res.json();
-            toast(err.error || 'Failed to find a lead');
+            toast(err.error || 'Failed to find an agent');
             return;
           }
           const data = await res.json();
 
-          // Center the lead card on screen
-          const leadX = Math.round(window.innerWidth / 2 - 90);
-          const leadY = Math.round(window.innerHeight / 2 - 80);
+          // Center the card on screen
+          const cardX = Math.round(window.innerWidth / 2 - 90);
+          const cardY = Math.round(window.innerHeight / 2 - 80);
 
-          // Spawn only the lead agent
-          const leadId = summonAgent(data.agent, {
+          const agentId = summonAgent(data.agent, {
             displayName: data.displayName,
             role: data.role,
+            outputType: data.outputType || 'Document',
             greeting: data.greeting,
             goal: val,
-            x: leadX,
-            y: leadY,
+            x: cardX,
+            y: cardY,
           });
 
-          // Mark this agent as a lead awaiting team expansion
-          const leadInfo = agentCards.get(leadId);
-          if (leadInfo) {
-            leadInfo.isLead = true;
-            leadInfo.goalText = val;
-            leadInfo.teamExpanded = false;
-          }
+          // Show notification badge on the card
+          showCardNotification(agentId, 1);
 
-          // Show notification badge on the lead card
-          showCardNotification(leadId, 1);
-
-          // Auto-open the lead's chat after a brief pause
+          // Auto-open the agent's chat after a brief pause
           await new Promise(r => setTimeout(r, 500));
-          openChat(leadId);
+          openChat(agentId);
         } catch (err) {
           toast('Connection error: ' + err.message);
         }
@@ -1835,6 +1919,7 @@
             agentName: card.name,
             displayName: card.displayName,
             role: card.role,
+            outputType: card.outputType || 'Document',
             messages: msgs,
           };
         }
@@ -1861,6 +1946,7 @@
 
           // Derive role from stored data or fall back to capitalized agent name
           const role = entry.role || (entry.agentName.charAt(0).toUpperCase() + entry.agentName.slice(1));
+          const outputType = entry.outputType || 'Document';
 
           // Get staggered position for the card
           const pos = getCardPosition();
@@ -1895,8 +1981,15 @@
             name: entry.agentName,
             displayName: entry.displayName,
             role: role,
+            outputType: outputType,
             element: card,
           });
+
+          // Restore output node if there is at least one assistant message
+          const lastAssistant = [...(entry.messages || [])].reverse().find(m => m.role === 'assistant');
+          if (lastAssistant) {
+            createOrUpdateOutputNode(agentId, lastAssistant.content);
+          }
         });
 
         // Hide empty hint if we restored any agents
@@ -1933,6 +2026,7 @@
       const agent = agents[name] || { icon: '●', desc: `Custom agent "${name}" is ready. Ask me anything.` };
       const displayName = opts.displayName || (agent.humanName || name.charAt(0).toUpperCase() + name.slice(1));
       const role = opts.role || (name.charAt(0).toUpperCase() + name.slice(1));
+      const outputType = opts.outputType || 'Document';
       const greeting = opts.greeting || agent.desc;
       const goal = opts.goal || '';
       const agentId = 'agent-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
@@ -1973,7 +2067,7 @@
       makeDraggable(card);
 
       // Track the card
-      agentCards.set(agentId, { name, displayName, role, element: card });
+      agentCards.set(agentId, { name, displayName, role, outputType, element: card });
 
       // Hide empty state hint on first agent
       const hint = document.getElementById('empty-hint');
@@ -2005,171 +2099,6 @@
       if (!card) return;
       const badge = card.querySelector('.card-notification');
       if (badge) badge.remove();
-    }
-
-    // ── Lead-driven team expansion ──
-    async function expandTeamFromLead(leadId) {
-      const info = agentCards.get(leadId);
-      if (!info || !info.isLead || info.teamExpanded) return;
-      info.teamExpanded = true; // prevent double-trigger
-
-      const goal = info.goalText || '';
-      const history = conversationMap.get(leadId) || [];
-
-      try {
-        const res = await fetch('/api/agent/expand-team', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            goal,
-            conversation: history,
-            leadName: info.displayName,
-            leadRole: info.role,
-          }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          toast(err.error || 'Could not expand team');
-          return;
-        }
-        const data = await res.json();
-        if (!data.team || !Array.isArray(data.team) || data.team.length === 0) return;
-
-        // Close the chat panel while team spawns
-        closeChatPanel();
-        await new Promise(r => setTimeout(r, 400));
-
-        // Position: lead moves to the left, sub-agents fan out to the right
-        const leadCard = document.getElementById(leadId);
-        const canvasCenterY = window.innerHeight / 2;
-        const leadX = 80;
-        const leadY = canvasCenterY - 60;
-
-        // Animate lead card to its new position
-        if (leadCard) {
-          leadCard.style.transition = 'left 0.5s cubic-bezier(0.16, 1, 0.3, 1), top 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
-          leadCard.style.left = leadX + 'px';
-          leadCard.style.top = leadY + 'px';
-        }
-
-        const hGap = 300;
-        const vGap = 200;
-        const subX = leadX + hGap;
-        const subCount = data.team.length;
-        const totalSubHeight = (subCount - 1) * vGap;
-        const subStartY = canvasCenterY - totalSubHeight / 2 - 60;
-
-        const spawnedIds = [leadId];
-
-        // Spawn sub-agents with stagger
-        for (let i = 0; i < data.team.length; i++) {
-          const member = data.team[i];
-          await new Promise(r => setTimeout(r, 300));
-
-          const posX = subX;
-          const posY = subStartY + i * vGap;
-
-          const subId = summonAgent('custom', {
-            displayName: member.humanName,
-            role: member.role,
-            greeting: member.greeting,
-            goal,
-            x: posX,
-            y: posY,
-          });
-
-          spawnedIds.push(subId);
-
-          // Show notification badge on new agents
-          showCardNotification(subId, 1);
-        }
-
-        // Auto-link all agents (lead + subs)
-        await new Promise(r => setTimeout(r, 400));
-        for (const id of spawnedIds) {
-          if (!linkedAgents.has(id)) {
-            linkedAgents.add(id);
-          }
-        }
-        updateLinkVisuals();
-        triggerLinkPulse();
-
-        // Team is assembled — let user click Message or connection lines to chat
-        toast('Team assembled — click any agent to chat');
-
-        // Clear notification badges after a moment
-        setTimeout(() => {
-          spawnedIds.forEach(id => hideCardNotification(id));
-        }, 3000);
-      } catch (err) {
-        toast('Connection error: ' + err.message);
-        info.teamExpanded = false; // allow retry
-      }
-    }
-
-    // ── Team summoning: spawns multiple agents and links them ──
-    async function summonTeam(team, goal) {
-      if (!team || !Array.isArray(team) || team.length < 2) return;
-
-      const spawnedIds = [];
-      const subCount = team.length - 1;
-
-      // Hierarchical left-to-right layout
-      // Lead at far left, sub-agents stacked vertically to the right
-      const canvasCenterY = window.innerHeight / 2;
-      const leadX = 80;
-      const leadY = canvasCenterY - 60; // offset up slightly so card center is at canvas center
-      const hGap = 300;
-      const vGap = 200;
-
-      // Sub-agents: centered vertically as a group to the right of the lead
-      const subX = leadX + hGap;
-      const totalSubHeight = (subCount - 1) * vGap;
-      const subStartY = canvasCenterY - totalSubHeight / 2 - 60;
-
-      // Spawn each agent with a stagger
-      for (let i = 0; i < team.length; i++) {
-        const member = team[i];
-
-        // Calculate position
-        let posX, posY;
-        if (i === 0) {
-          // Lead agent: far left center
-          posX = leadX;
-          posY = leadY;
-        } else {
-          // Sub-agents: stacked vertically to the right
-          posX = subX;
-          posY = subStartY + (i - 1) * vGap;
-        }
-
-        // Wait between spawns for staggered effect
-        if (i > 0) await new Promise(r => setTimeout(r, 300));
-
-        const agentId = summonAgent('custom', {
-          displayName: member.humanName,
-          role: member.role,
-          greeting: member.greeting,
-          goal: goal,
-          x: posX,
-          y: posY,
-        });
-
-        spawnedIds.push(agentId);
-      }
-
-      // Auto-link all spawned agents with a brief delay
-      await new Promise(r => setTimeout(r, 400));
-      for (const id of spawnedIds) {
-        if (!linkedAgents.has(id)) {
-          linkedAgents.add(id);
-        }
-      }
-      updateLinkVisuals();
-      triggerLinkPulse();
-
-      // Team is assembled — let user click Message or connection lines to chat
-      toast('Team assembled — click any agent to chat');
     }
 
     // ── Input placeholder rotation ──
@@ -2254,19 +2183,18 @@
 
     // ── Dismiss agent card from canvas ──
     function dismissAgent(agentId) {
-      // Close chat panel if this agent's panel is open (individual or link chat)
+      // Close chat panel if this agent's panel is open
       if (openPanelId === agentId) {
         closeChatPanel();
       }
-      if (openPanelId && openPanelId.startsWith('link-chat-') && openPanelId.includes(agentId)) {
-        closeChatPanel();
-      }
 
-      // Unlink from group if linked
-      if (linkedAgents.has(agentId)) {
-        linkedAgents.delete(agentId);
-        updateLinkVisuals();
+      // Remove output node if exists
+      const outputNode = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
+      if (outputNode) {
+        outputNode.style.animation = 'cardDismiss 0.3s cubic-bezier(0.4, 0, 1, 1) forwards';
+        setTimeout(() => outputNode.remove(), 300);
       }
+      outputData.delete(agentId);
 
       const card = document.getElementById(agentId);
       if (card) {
@@ -2424,13 +2352,9 @@
         dotEl.classList.remove('streaming');
         if (cardDot) cardDot.classList.remove('streaming');
 
-        // Check if this is the lead agent's first reply after user's first message
-        // History at this point: [greeting, user msg, agent reply] = 3 messages
-        if (info && info.isLead && !info.teamExpanded && history.length === 3) {
-          // Clear the lead's notification badge (user engaged)
-          hideCardNotification(agentId);
-          // Trigger team expansion in the background
-          expandTeamFromLead(agentId);
+        // Create/update output node on the canvas
+        if (replyText) {
+          createOrUpdateOutputNode(agentId, replyText);
         }
       } catch (err) {
         agentBubble.textContent = 'Connection error: ' + err.message + '\n';
@@ -2465,6 +2389,8 @@
       if (!dragTarget) return;
       dragTarget.style.left = (e.clientX - dragOffset.x) + 'px';
       dragTarget.style.top = (e.clientY - dragOffset.y) + 'px';
+      // Update output connection lines while dragging
+      drawOutputLines();
     });
 
     document.addEventListener('mouseup', () => {
@@ -2518,134 +2444,163 @@
       placeholderTimer = null;
     }
 
-    // ── Linking: unified shared conversation ──
-    const linkedAgents = new Set(); // agentIds currently linked
-    let linkLineAnimations = new Map(); // track which lines have been animated
+    // ── Output node system ──
+    const outputData = new Map(); // agentId -> { content, outputId }
 
-    function triggerLinkPulse() {
-      // Brief glow on all linked cards — satisfying connection feel
-      linkedAgents.forEach(id => {
-        const info = agentCards.get(id);
-        if (!info) return;
-        const el = info.element;
-        el.style.transition = 'box-shadow 0.15s ease-out';
-        el.style.boxShadow = '0 0 0 2px var(--fg), 0 0 30px rgba(255,255,255,0.12)';
-        setTimeout(() => {
-          el.style.transition = 'box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
-          el.style.boxShadow = '';
-        }, 250);
-      });
+    function getOutputTypeIcon(type) {
+      const t = (type || '').toLowerCase();
+      if (t.includes('plan') || t.includes('strategy')) return '\u25B6';
+      if (t.includes('code')) return '\u2756';
+      if (t.includes('mockup') || t.includes('design')) return '\u25C7';
+      if (t.includes('report') || t.includes('research')) return '\u25CB';
+      if (t.includes('guide')) return '\u25B7';
+      return '\u25A1'; // default square for Document
     }
 
-    function updateLinkVisuals() {
-      // Update card classes
-      agentCards.forEach((info, id) => {
-        const card = info.element;
-        if (linkedAgents.has(id)) {
-          card.classList.add('linked');
-        } else {
-          card.classList.remove('linked');
-        }
-      });
-
-      // Draw connection lines
-      drawLinkLines();
+    function getDownloadExt(type, content) {
+      const t = (type || '').toLowerCase();
+      if (t.includes('code')) {
+        if (content.includes('def ') || content.includes('import ')) return '.py';
+        if (content.includes('function') || content.includes('const ') || content.includes('let ')) return '.js';
+        return '.txt';
+      }
+      return '.txt';
     }
 
-    function drawLinkLines(animate) {
+    function createOrUpdateOutputNode(agentId, content) {
+      const info = agentCards.get(agentId);
+      if (!info) return;
+
+      const outputType = info.outputType || 'Document';
+      const outputId = 'output-' + agentId;
+
+      // Store the output data
+      outputData.set(agentId, { content, outputId });
+
+      // Check if an output node already exists
+      let node = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
+      if (node) {
+        // Update existing node content
+        node.querySelector('.output-preview').textContent = content.slice(0, 100) + (content.length > 100 ? '...' : '');
+        drawOutputLines();
+        return;
+      }
+
+      // Calculate position: 250px to the right of agent card, vertically centered
+      const cardEl = info.element;
+      const cardRect = cardEl.getBoundingClientRect();
+      const nodeX = cardEl.offsetLeft + cardRect.width + 40;
+      const nodeY = cardEl.offsetTop + (cardRect.height / 2) - 50;
+
+      // Create new output node
+      node = document.createElement('div');
+      node.className = 'output-node';
+      node.dataset.agentId = agentId;
+      node.dataset.outputId = outputId;
+      node.style.left = nodeX + 'px';
+      node.style.top = nodeY + 'px';
+
+      const icon = getOutputTypeIcon(outputType);
+      const preview = content.slice(0, 100) + (content.length > 100 ? '...' : '');
+
+      node.innerHTML = `
+        <div class="output-type"><span class="output-type-icon">${icon}</span> ${outputType.toUpperCase()}</div>
+        <div class="output-preview">${preview}</div>
+        <div class="output-actions">
+          <button onclick="viewOutput('${agentId}')">View</button>
+          <button onclick="downloadOutput('${agentId}')">Download</button>
+        </div>
+      `;
+
+      document.body.appendChild(node);
+
+      // Draw connection line after node is in the DOM
+      requestAnimationFrame(() => drawOutputLines());
+    }
+
+    function drawOutputLines() {
       const svg = document.getElementById('link-lines');
       svg.innerHTML = '';
-      if (linkedAgents.size < 2) return;
-
-      const ids = Array.from(linkedAgents);
       const fg = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim();
 
-      // Draw elegant curved lines between every pair
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          const a = agentCards.get(ids[i]);
-          const b = agentCards.get(ids[j]);
-          if (!a || !b) continue;
+      outputData.forEach((data, agentId) => {
+        const info = agentCards.get(agentId);
+        if (!info) return;
 
-          const rectA = a.element.getBoundingClientRect();
-          const rectB = b.element.getBoundingClientRect();
-          const ax = rectA.left + rectA.width / 2;
-          const ay = rectA.top + rectA.height / 2;
-          const bx = rectB.left + rectB.width / 2;
-          const by = rectB.top + rectB.height / 2;
+        const cardEl = info.element;
+        const outputNode = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
+        if (!cardEl || !outputNode) return;
 
-          // Quadratic bezier — subtle organic curve
-          const mx = (ax + bx) / 2;
-          const my = (ay + by) / 2;
-          const dx = bx - ax;
-          const dy = by - ay;
-          // Perpendicular offset for the curve
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const curveAmount = Math.min(dist * 0.12, 40);
-          const cx = mx + (-dy / dist) * curveAmount;
-          const cy = my + (dx / dist) * curveAmount;
+        const cardRect = cardEl.getBoundingClientRect();
+        const nodeRect = outputNode.getBoundingClientRect();
 
-          const d = `M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}`;
-          const sortedPair = [ids[i], ids[j]].sort();
+        // Line from right edge of card to left edge of output node
+        const ax = cardRect.right;
+        const ay = cardRect.top + cardRect.height / 2;
+        const bx = nodeRect.left;
+        const by = nodeRect.top + nodeRect.height / 2;
 
-          // Invisible wide hit area for clicking (rendered first, behind visible line)
-          const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          hitPath.setAttribute('d', d);
-          hitPath.setAttribute('stroke', 'transparent');
-          hitPath.setAttribute('stroke-width', '20');
-          hitPath.setAttribute('fill', 'none');
-          hitPath.setAttribute('stroke-linecap', 'round');
-          hitPath.classList.add('link-hit');
-          hitPath.dataset.id1 = sortedPair[0];
-          hitPath.dataset.id2 = sortedPair[1];
-          hitPath.addEventListener('click', () => openLinkChat(sortedPair[0], sortedPair[1]));
-          hitPath.addEventListener('mouseenter', () => { visPath.setAttribute('opacity', '0.6'); visPath.style.filter = 'drop-shadow(0 0 3px ' + fg + ')'; });
-          hitPath.addEventListener('mouseleave', () => { visPath.setAttribute('opacity', '0.25'); visPath.style.filter = 'none'; });
-          svg.appendChild(hitPath);
-
-          // Visible line
-          const visPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          visPath.setAttribute('d', d);
-          visPath.setAttribute('stroke', fg);
-          visPath.setAttribute('stroke-width', '1.5');
-          visPath.setAttribute('fill', 'none');
-          visPath.setAttribute('opacity', '0.25');
-          visPath.setAttribute('stroke-linecap', 'round');
-          visPath.classList.add('link-visible');
-          visPath.style.pointerEvents = 'none';
-          visPath.style.transition = 'opacity 0.2s ease';
-          svg.appendChild(visPath);
-
-          // Draw-on animation for new lines
-          const lineKey = sortedPair.join(':');
-          if (!linkLineAnimations.has(lineKey)) {
-            linkLineAnimations.set(lineKey, true);
-            const len = visPath.getTotalLength ? visPath.getTotalLength() : 500;
-            visPath.style.strokeDasharray = len;
-            visPath.style.strokeDashoffset = len;
-            visPath.style.animation = `linkLineDrawOn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards`;
-          }
-        }
-      }
-
-      // Clean up animation tracking for removed pairs
-      const currentPairs = new Set();
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          currentPairs.add([ids[i], ids[j]].sort().join(':'));
-        }
-      }
-      linkLineAnimations.forEach((_, key) => {
-        if (!currentPairs.has(key)) linkLineAnimations.delete(key);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        // Slight horizontal bezier curve for a clean connector look
+        const cx1 = ax + (bx - ax) * 0.4;
+        const cx2 = bx - (bx - ax) * 0.4;
+        line.setAttribute('d', `M ${ax} ${ay} C ${cx1} ${ay} ${cx2} ${by} ${bx} ${by}`);
+        line.setAttribute('stroke', fg);
+        line.setAttribute('stroke-width', '1.5');
+        line.setAttribute('fill', 'none');
+        line.setAttribute('stroke-linecap', 'round');
+        line.classList.add('output-line');
+        svg.appendChild(line);
       });
     }
 
-    // Redraw lines when cards are dragged
-    document.addEventListener('mousemove', () => {
-      if (dragTarget && linkedAgents.size >= 2) {
-        drawLinkLines();
+    function viewOutput(agentId) {
+      const data = outputData.get(agentId);
+      if (!data) return;
+
+      const info = agentCards.get(agentId);
+      const outputType = info ? (info.outputType || 'Document') : 'Document';
+      const displayName = info ? info.displayName : 'Agent';
+
+      const viewer = document.getElementById('output-viewer');
+      document.getElementById('viewer-header').textContent = `${displayName} — ${outputType}`;
+      document.getElementById('viewer-content').textContent = data.content;
+      viewer.classList.add('visible');
+    }
+
+    function closeOutputViewer() {
+      document.getElementById('output-viewer').classList.remove('visible');
+    }
+
+    // Close viewer on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.getElementById('output-viewer').classList.contains('visible')) {
+        e.preventDefault();
+        closeOutputViewer();
       }
     });
+
+    function downloadOutput(agentId) {
+      const data = outputData.get(agentId);
+      if (!data) return;
+
+      const info = agentCards.get(agentId);
+      const outputType = info ? (info.outputType || 'Document') : 'Document';
+      const displayName = info ? info.displayName : 'output';
+      const ext = getDownloadExt(outputType, data.content);
+      const filename = `${displayName.toLowerCase().replace(/\s+/g, '-')}-${outputType.toLowerCase().replace(/\s+/g, '-')}${ext}`;
+
+      const blob = new Blob([data.content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast('Downloaded ' + filename);
+    }
 
     // ── Chat routing: always open individual chat ──
     function openChat(agentId) {
@@ -2742,372 +2697,6 @@
       startPlaceholderRotation(info.role, lastGoalText);
     }
 
-    function createSharedAgentWrap(agentName, content, opts = {}) {
-      const wrap = document.createElement('div');
-      wrap.className = 'msg-wrap msg-wrap-agent';
-      if (opts.delay != null) {
-        wrap.style.animationDelay = opts.delay + 's';
-        wrap.style.opacity = '0';
-      }
-
-      // Subtle agent name label — like seeing who texted in a group iMessage
-      const label = document.createElement('div');
-      label.className = 'msg-agent-label';
-      label.textContent = agentName;
-      wrap.appendChild(label);
-
-      const bubble = document.createElement('div');
-      bubble.className = 'msg msg-agent';
-      if (typeof content === 'string') {
-        bubble.textContent = content;
-      } else {
-        bubble.appendChild(content);
-      }
-      wrap.appendChild(bubble);
-
-      const ts = document.createElement('div');
-      ts.className = 'msg-time';
-      ts.textContent = opts.time || new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      wrap.appendChild(ts);
-
-      return wrap;
-    }
-
-    // ── Link conversations: per-pair chat between two agents ──
-    const linkConversations = new Map(); // 'id1|id2' -> [{ role, content, agent?, time }]
-
-    function loadLinkConversations() {
-      try {
-        const raw = localStorage.getItem('wb-link-conversations');
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        Object.entries(data).forEach(([key, msgs]) => {
-          linkConversations.set(key, msgs);
-        });
-      } catch {
-        localStorage.removeItem('wb-link-conversations');
-      }
-    }
-
-    function saveLinkConversations() {
-      const data = {};
-      linkConversations.forEach((msgs, key) => {
-        data[key] = msgs;
-      });
-      localStorage.setItem('wb-link-conversations', JSON.stringify(data));
-    }
-
-    function getLinkKey(id1, id2) {
-      return [id1, id2].sort().join('|');
-    }
-
-    function openLinkChat(id1, id2) {
-      const linkKey = getLinkKey(id1, id2);
-      const a = agentCards.get(id1);
-      const b = agentCards.get(id2);
-      if (!a || !b) return;
-
-      // Close existing panel instantly if switching
-      if (openPanelId) {
-        const oldPanel = document.getElementById('chat-panel');
-        if (oldPanel) oldPanel.remove();
-      }
-
-      openPanelId = 'link-chat-' + linkKey;
-
-      // Highlight the two linked cards
-      document.querySelectorAll('.agent-contact-card').forEach(c => {
-        if (c.id === id1 || c.id === id2) {
-          c.classList.remove('inactive');
-          c.classList.add('active');
-        } else {
-          c.classList.remove('active');
-          c.classList.add('inactive');
-        }
-      });
-
-      // Initialize conversation if needed
-      if (!linkConversations.has(linkKey)) {
-        const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        linkConversations.set(linkKey, [
-          { role: 'system-info', content: `${a.displayName} & ${b.displayName} connected`, time: now },
-        ]);
-        saveLinkConversations();
-      }
-
-      const namesStr = `${a.displayName} & ${b.displayName}`;
-      const avatarsHtml = [a, b].map(() =>
-        `<div class="shared-avatar-mini"><div class="avatar-head"></div><div class="avatar-body"></div></div>`
-      ).join('');
-
-      const panel = document.createElement('div');
-      panel.className = 'agent-chat-panel';
-      panel.id = 'chat-panel';
-      panel.dataset.agentId = openPanelId;
-      panel.dataset.linkKey = linkKey;
-      panel.dataset.linkId1 = id1;
-      panel.dataset.linkId2 = id2;
-
-      panel.innerHTML = `
-        <div class="agent-header">
-          <div class="shared-avatars">${avatarsHtml}</div>
-          <div class="agent-header-info">
-            <div class="agent-name">${namesStr}</div>
-            <div class="agent-status">
-              <span class="dot"></span>
-              <span class="status-text">Both online</span>
-            </div>
-          </div>
-          <button class="close-btn close-btn-top" onclick="closeChatPanel()">&times;</button>
-        </div>
-        <div class="agent-body-wrap" style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
-          <div class="agent-body"></div>
-          <div class="new-msg-pill" onclick="scrollChatToBottom()">&#8595; New message</div>
-        </div>
-        <div class="agent-input-area">
-          <div class="agent-input-row">
-            <input type="text" placeholder="Message ${namesStr}..." onkeydown="if(event.key==='Enter')sendToLinkChat()">
-            <button onclick="sendToLinkChat()">&#9654;</button>
-          </div>
-          <div class="agent-model"></div>
-        </div>
-      `;
-
-      document.body.appendChild(panel);
-
-      const bodyEl = panel.querySelector('.agent-body');
-      const pill = panel.querySelector('.new-msg-pill');
-      bodyEl.addEventListener('scroll', () => {
-        const distFromBottom = bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight;
-        if (distFromBottom > 100) {
-          pill.classList.add('visible');
-        } else {
-          pill.classList.remove('visible');
-        }
-      });
-
-      // Render existing history
-      const history = linkConversations.get(linkKey) || [];
-      history.forEach((msg, idx) => {
-        if (msg.role === 'system-info') {
-          const info = document.createElement('div');
-          info.style.cssText = 'text-align:center;font-size:11px;color:var(--dim);padding:8px 0;opacity:0.6;';
-          info.textContent = msg.content;
-          bodyEl.appendChild(info);
-        } else if (msg.role === 'user') {
-          const { wrap } = createMsgWrap('user', msg.content, { time: msg.time, delay: 0.3 + idx * 0.04 });
-          bodyEl.appendChild(wrap);
-        } else if (msg.role === 'assistant') {
-          const wrap = createSharedAgentWrap(msg.agent, msg.content, { time: msg.time, delay: 0.3 + idx * 0.04 });
-          bodyEl.appendChild(wrap);
-        }
-      });
-
-      bodyEl.scrollTop = bodyEl.scrollHeight;
-      panel.querySelector('.agent-input-row input').focus();
-    }
-
-    async function sendToLinkChat() {
-      const panel = document.getElementById('chat-panel');
-      if (!panel || !panel.dataset.linkKey) return;
-
-      const linkKey = panel.dataset.linkKey;
-      const id1 = panel.dataset.linkId1;
-      const id2 = panel.dataset.linkId2;
-      const input = panel.querySelector('.agent-input-row input');
-      const btn = panel.querySelector('.agent-input-row button');
-      const body = panel.querySelector('.agent-body');
-      const statusEl = panel.querySelector('.status-text');
-      const dotEl = panel.querySelector('.agent-header .dot');
-      const modelEl = panel.querySelector('.agent-model');
-      const message = input.value.trim();
-      if (!message) return;
-
-      const history = linkConversations.get(linkKey) || [];
-
-      // Show user bubble
-      const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      const { wrap: userWrap } = createMsgWrap('user', message, { time: now });
-      body.appendChild(userWrap);
-      history.push({ role: 'user', content: message, time: now });
-      saveLinkConversations();
-
-      input.value = '';
-      btn.disabled = true;
-
-      // Build agents array for the API (just the two agents)
-      const agentList = [];
-      for (const id of [id1, id2]) {
-        const info = agentCards.get(id);
-        if (info) {
-          agentList.push({
-            name: info.displayName,
-            role: info.role,
-            key: info.name,
-          });
-        }
-      }
-
-      // Build messages for API
-      const apiMessages = [];
-      for (const msg of history) {
-        if (msg.role === 'user') {
-          apiMessages.push({ role: 'user', content: msg.content });
-        } else if (msg.role === 'assistant') {
-          apiMessages.push({ role: 'assistant', content: `[${msg.agent}]: ${msg.content}` });
-        }
-      }
-
-      statusEl.textContent = 'thinking...';
-      dotEl.classList.add('streaming');
-
-      // Pulse dots on both cards
-      for (const id of [id1, id2]) {
-        const info = agentCards.get(id);
-        if (info) {
-          const cardDot = info.element.querySelector('.dot');
-          if (cardDot) cardDot.classList.add('streaming');
-        }
-      }
-
-      try {
-        const res = await fetch('/api/agent/group', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            agents: agentList,
-            message,
-            messages: apiMessages,
-          }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          toast(err.error || 'Something went wrong');
-          statusEl.textContent = 'Error';
-          dotEl.classList.remove('streaming');
-          for (const id of [id1, id2]) {
-            const info = agentCards.get(id);
-            if (info) {
-              const cardDot = info.element.querySelector('.dot');
-              if (cardDot) cardDot.classList.remove('streaming');
-            }
-          }
-          btn.disabled = false;
-          return;
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        let currentAgent = null;
-        let currentWrap = null;
-        let currentBubble = null;
-        let currentText = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop();
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            try {
-              const data = JSON.parse(line.slice(6));
-
-              if (data.allDone) {
-                modelEl.textContent = data.total_tokens ? `${data.total_tokens} tokens` : '';
-                continue;
-              }
-
-              if (data.agent && data.text) {
-                if (currentAgent !== data.agent) {
-                  // Save previous agent's message
-                  if (currentAgent && currentText) {
-                    const replyTime = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                    if (currentWrap) {
-                      const tsEl = currentWrap.querySelector('.msg-time');
-                      if (tsEl) { tsEl.textContent = replyTime; tsEl.style.visibility = ''; }
-                    }
-                    history.push({ role: 'assistant', content: currentText, agent: currentAgent, time: replyTime });
-                  }
-
-                  // New agent bubble
-                  currentAgent = data.agent;
-                  currentText = '';
-                  statusEl.textContent = `${data.agent} is typing...`;
-
-                  const typingEl = document.createElement('span');
-                  typingEl.className = 'typing-indicator';
-                  typingEl.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
-
-                  currentWrap = createSharedAgentWrap(data.agent, typingEl);
-                  currentWrap.querySelector('.msg-time').style.visibility = 'hidden';
-                  currentBubble = currentWrap.querySelector('.msg-agent');
-                  body.appendChild(currentWrap);
-                  currentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }
-
-                if (currentBubble) {
-                  if (currentText === '') {
-                    currentBubble.textContent = '';
-                  }
-                  currentText += data.text;
-                  currentBubble.textContent = currentText;
-                  currentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }
-              }
-
-              if (data.done && data.agent) {
-                if (currentAgent === data.agent && currentText) {
-                  const replyTime = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                  if (currentWrap) {
-                    const tsEl = currentWrap.querySelector('.msg-time');
-                    if (tsEl) { tsEl.textContent = replyTime; tsEl.style.visibility = ''; }
-                  }
-                  history.push({ role: 'assistant', content: currentText, agent: currentAgent, time: replyTime });
-                  currentAgent = null;
-                  currentText = '';
-                  currentWrap = null;
-                  currentBubble = null;
-                }
-              }
-
-              if (data.error) {
-                toast(`${data.agent}: ${data.error}`);
-              }
-            } catch {}
-          }
-        }
-
-        linkConversations.set(linkKey, history);
-        saveLinkConversations();
-
-        statusEl.textContent = 'Both online';
-        dotEl.classList.remove('streaming');
-      } catch (err) {
-        toast('Connection error: ' + err.message);
-        statusEl.textContent = 'Error';
-        dotEl.classList.remove('streaming');
-      }
-
-      // Reset card dots
-      for (const id of [id1, id2]) {
-        const info = agentCards.get(id);
-        if (info) {
-          const cardDot = info.element.querySelector('.dot');
-          if (cardDot) cardDot.classList.remove('streaming');
-        }
-      }
-
-      btn.disabled = false;
-      input.focus();
-    }
-
     // ── Clear board ──
     function clearBoard() {
       canvas.innerHTML = '';
@@ -3116,12 +2705,10 @@
       const panel = document.getElementById('chat-panel');
       if (panel) panel.remove();
       openPanelId = null;
-      // Clear linking state
-      linkedAgents.clear();
-      linkLineAnimations.clear();
-      linkConversations.clear();
-      localStorage.removeItem('wb-link-conversations');
+      // Clear output nodes and connection lines
+      outputData.clear();
       document.getElementById('link-lines').innerHTML = '';
+      document.querySelectorAll('.output-node').forEach(el => el.remove());
       // Remove all contact cards and sticky notes
       document.querySelectorAll('.agent-contact-card, .sticky-note').forEach(el => el.remove());
       agentCards.clear();
