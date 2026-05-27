@@ -13,7 +13,6 @@
       --dim: #555;
       --border: #333;
       --surface: #111;
-      --ghost-text: #444;
       --grid-dot: #1a1a1a;
     }
 
@@ -23,7 +22,6 @@
       --dim: #555;
       --border: #d4d4d4;
       --surface: #f0f0f0;
-      --ghost-text: #bbb;
       --grid-dot: #e8e8e8;
     }
 
@@ -135,50 +133,6 @@
       display: flex;
       align-items: center;
       overflow: hidden;
-    }
-    #cmd-ghost {
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      pointer-events: none;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      white-space: nowrap;
-      opacity: 0;
-      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      font-family: inherit;
-      font-size: 16px;
-      font-style: italic;
-      color: #555;
-    }
-    [data-theme="light"] #cmd-ghost {
-      color: #999;
-    }
-    #cmd-ghost.visible {
-      opacity: 1;
-    }
-    #cmd-ghost.fade-out {
-      opacity: 0;
-      transition: opacity 0.3s ease-out;
-    }
-    #cmd-ghost kbd {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 2px 6px;
-      border-radius: 5px;
-      font-family: inherit;
-      font-size: 10px;
-      font-style: normal;
-      color: var(--ghost-text);
-      letter-spacing: 0.3px;
-      flex-shrink: 0;
-      opacity: 0;
-      transition: opacity 0.3s ease-in;
-    }
-    #cmd-ghost kbd.visible {
-      opacity: 1;
     }
     #command-bar .hint {
       color: var(--border);
@@ -636,7 +590,7 @@
     #admin-link {
       position: fixed;
       top: 26px;
-      left: 228px;
+      left: 124px;
       z-index: 100;
       color: var(--border);
       text-decoration: none;
@@ -1022,66 +976,6 @@
     #help-btn:hover { color: var(--fg); border-color: var(--fg); }
     #help-btn:active { transform: scale(0.92); }
 
-    /* ── Agent Mode toggle ── */
-    #agent-mode-toggle {
-      position: fixed;
-      top: 20px;
-      left: 124px;
-      z-index: 100;
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--dim);
-      height: 44px;
-      padding: 0 14px;
-      border-radius: 22px;
-      cursor: pointer;
-      font-size: 12px;
-      font-family: inherit;
-      font-weight: 500;
-      letter-spacing: 0.5px;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      white-space: nowrap;
-    }
-    #agent-mode-toggle:hover { color: var(--fg); border-color: var(--fg); }
-    #agent-mode-toggle:active { transform: scale(0.95); }
-    #agent-mode-toggle.active {
-      border-color: #4ade80;
-      color: #4ade80;
-      box-shadow: 0 0 12px rgba(74, 222, 128, 0.2), inset 0 0 12px rgba(74, 222, 128, 0.05);
-    }
-    #agent-mode-toggle .agent-mode-icon {
-      font-size: 15px;
-      line-height: 1;
-    }
-    #agent-mode-toggle .agent-mode-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--dim);
-      transition: background 0.3s;
-    }
-    #agent-mode-toggle.active .agent-mode-dot {
-      background: #4ade80;
-      animation: pulse 1.5s infinite ease-in-out;
-    }
-
-    /* Auto-replying indicator above chat input */
-    .auto-reply-indicator {
-      text-align: center;
-      font-size: 11px;
-      color: #4ade80;
-      letter-spacing: 0.5px;
-      padding: 4px 0;
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-    }
-    .auto-reply-indicator.visible {
-      opacity: 1;
-    }
 
     /* ── Focus-visible states for keyboard navigation ── */
     button:focus-visible,
@@ -1617,14 +1511,10 @@
   <!-- Drawing canvas -->
   <svg id="canvas"></svg>
 
-  <!-- Theme toggle + help button + agent mode -->
+  <!-- Controls: help, theme, admin -->
   <a id="admin-link" href="/admin" title="Admin panel" style="display:none;">Admin</a>
   <button id="help-btn" onclick="toggleHelp()" title="Help &amp; shortcuts (?)" style="display:none;">?</button>
   <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" style="display:none;">&#9684;</button>
-  <button id="agent-mode-toggle" onclick="toggleAgentMode()" title="Toggle Agent Mode — AI answers for you" style="display:none;">
-    <span class="agent-mode-dot"></span>
-    <span class="agent-mode-label">Auto</span>
-  </button>
 
   <!-- Command bar backdrop -->
   <div id="command-backdrop" onclick="closeCommand()"></div>
@@ -1633,8 +1523,7 @@
   <div id="command-bar">
     <span class="prefix">&gt;</span>
     <div class="input-wrapper">
-      <input id="command-input" type="text" placeholder="" autocomplete="off" spellcheck="false">
-      <span id="cmd-ghost"><span id="cmd-ghost-text"></span><kbd>tab</kbd></span>
+      <input id="command-input" type="text" placeholder="Wish for anything..." autocomplete="off" spellcheck="false">
     </div>
     <span class="hint">enter</span>
   </div>
@@ -1644,20 +1533,9 @@
     <button class="help-close-btn" onclick="closeHelp()" title="Close">&times;</button>
     <h3>SHORTCUTS</h3>
     <div class="help-row"><span>Open command bar</span> <kbd>Space</kbd></div>
-    <div class="help-row"><span>Cycle agent chats</span> <kbd>Tab</kbd> <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></div>
-    <div class="help-row"><span>Close panel / bar</span> <kbd>Esc</kbd></div>
-    <div class="help-row"><span>Clear board</span> <kbd>Ctrl+Shift+C</kbd></div>
+    <div class="help-row"><span>Close</span> <kbd>Esc</kbd></div>
     <h3>HOW IT WORKS</h3>
-    <div class="help-feature">Type a goal &mdash; AI creates a strategy + spawns a team</div>
-    <div class="help-feature">Agents work autonomously &mdash; no babysitting</div>
-    <div class="help-feature">Each agent produces a deliverable on the canvas</div>
-    <div class="help-feature">Click &ldquo;View&rdquo; on outputs to read the full content</div>
-    <div class="help-feature">Download or copy any agent output</div>
-    <div class="help-feature">Click &ldquo;Message&rdquo; to chat with an agent after</div>
-    <div class="help-feature">Drag anything to reposition</div>
-    <div class="help-feature">Toggle dark / light mode (top-left)</div>
-    <h3>PIPELINE</h3>
-    <div style="color:var(--dim);font-size:11px;line-height:1.8;">Goal &rarr; Strategy &rarr; Agent Team &rarr; Deliverables. Everything runs autonomously. No questions asked.</div>
+    <div class="help-feature">Type what you want. We build it.</div>
   </div>
 
   <!-- Toast -->
@@ -1754,12 +1632,6 @@
       themeToggle.style.display = '';
       helpBtn.style.display = '';
       document.getElementById('admin-link').style.display = '';
-      document.getElementById('agent-mode-toggle').style.display = '';
-      // Restore agent mode state from localStorage
-      if (localStorage.getItem('wb-agent-mode') === 'on') {
-        agentModeOn = true;
-        document.getElementById('agent-mode-toggle').classList.add('active');
-      }
       // Restore any saved conversations from localStorage
       loadConversations();
       // Show empty state hint if no agents yet
@@ -1794,188 +1666,6 @@
 
     // ── Command bar ──
     const commandBackdrop = document.getElementById('command-backdrop');
-    const cmdGhost = document.getElementById('cmd-ghost');
-    const cmdGhostText = document.getElementById('cmd-ghost-text');
-
-    // ── Rotating goal suggestions (context-aware) ──
-    // State A: No agents on canvas — goal-oriented prompts
-    const goalSuggestions = [
-      'a snake game with neon graphics',
-      'a personal portfolio website',
-      'a business plan for a coffee shop',
-      'a budgeting app that tracks expenses',
-      'a landing page for my startup',
-      'a multiplayer tic-tac-toe game',
-      'a resume that stands out',
-      'a workout tracker with charts',
-    ];
-    // State B: Agents already on canvas — action-oriented prompts
-    const goalSuggestionsWithAgents = [
-      'get a second opinion on my plan',
-      'find someone to handle the numbers',
-      'brainstorm ideas with a creative mind',
-      'need a writer to polish my words',
-      'debug this problem with a fresh pair of eyes',
-      'research this topic deeper',
-      'help me think through a tough decision',
-      'get technical help building something',
-    ];
-    let cmdGhostTimer = null;
-    let cmdGhostIndex = 0;
-    let cmdGhostCurrent = '';
-    let cmdGhostTypeTimer = null;
-    let cmdGhostStopped = false;
-    let ghostIdleTimer = null;
-    let ghostActive = false;
-
-    function shuffleArray(arr) {
-      const a = [...arr];
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a;
-    }
-
-    let cmdGhostOrder = [];
-
-    function hideGhost() {
-      cmdGhostStopped = true;
-      clearTimeout(cmdGhostTimer);
-      clearTimeout(cmdGhostTypeTimer);
-      cmdGhostTimer = null;
-      cmdGhostTypeTimer = null;
-      cmdGhost.classList.remove('visible', 'fade-out');
-      cmdGhostText.textContent = '';
-      const kbdEl = cmdGhost.querySelector('kbd');
-      if (kbdEl) kbdEl.classList.remove('visible');
-      // Keep cmdGhostCurrent so Tab can still fill if ghost was showing
-    }
-
-    function startCmdGhost() {
-      hideGhost();
-      cmdGhostStopped = false;
-      cmdGhostCurrent = '';
-      // Clear placeholder so it never overlaps with ghost text
-      commandInput.placeholder = '';
-      // Lead with context-aware prompt, then cycle through goal suggestions
-      const leadIn = agentCards.size > 0
-        ? 'what else do you need?'
-        : 'wish for anything...';
-      cmdGhostOrder = [leadIn, ...shuffleArray(getActiveSuggestions())];
-      cmdGhostIndex = 0;
-      showNextGhost();
-    }
-
-    function getActiveSuggestions() {
-      return agentCards.size > 0 ? goalSuggestionsWithAgents : goalSuggestions;
-    }
-
-    function startGhostIdleTimer() {
-      clearTimeout(ghostIdleTimer);
-      ghostActive = false;
-      hideGhost();
-      cmdGhostCurrent = '';
-      // 8s idle — the sweet spot where the brain has thought but hasn't given up
-      ghostIdleTimer = setTimeout(() => {
-        if (commandOpen && commandInput.value === '') {
-          ghostActive = true;
-          startCmdGhost();
-        }
-      }, 8000);
-    }
-
-    function typewriterGhost(text, onDone) {
-      let i = 0;
-      const kbdEl = cmdGhost.querySelector('kbd');
-      cmdGhostText.textContent = '';
-      if (kbdEl) kbdEl.classList.remove('visible');
-      cmdGhost.classList.add('visible');
-      cmdGhost.classList.remove('fade-out');
-
-      function typeNext() {
-        if (cmdGhostStopped) return;
-        if (i < text.length) {
-          cmdGhostText.textContent = text.slice(0, i + 1);
-          i++;
-          cmdGhostTypeTimer = setTimeout(typeNext, 25);
-        } else {
-          // Typing done — show kbd after 0.3s, then hold for 4s
-          cmdGhostTypeTimer = null;
-          if (kbdEl) {
-            setTimeout(() => {
-              if (!cmdGhostStopped) kbdEl.classList.add('visible');
-            }, 300);
-          }
-          if (onDone) {
-            cmdGhostTimer = setTimeout(onDone, 4000);
-          }
-        }
-      }
-      typeNext();
-    }
-
-    function showNextGhost() {
-      if (cmdGhostStopped) return;
-      if (cmdGhostIndex >= cmdGhostOrder.length) {
-        cmdGhostOrder = shuffleArray(getActiveSuggestions());
-        cmdGhostIndex = 0;
-      }
-      cmdGhostCurrent = cmdGhostOrder[cmdGhostIndex];
-      cmdGhostIndex++;
-
-      // Typewriter in, hold 4s, fade out 0.3s, then next
-      typewriterGhost(cmdGhostCurrent, () => {
-        if (cmdGhostStopped) return;
-        // Hide kbd before fading out text
-        const kbdEl = cmdGhost.querySelector('kbd');
-        if (kbdEl) kbdEl.classList.remove('visible');
-        // Fade out
-        cmdGhost.classList.add('fade-out');
-        cmdGhostTimer = setTimeout(() => {
-          if (cmdGhostStopped) return;
-          cmdGhost.classList.remove('visible', 'fade-out');
-          cmdGhostText.textContent = '';
-          // Small gap before next suggestion
-          cmdGhostTimer = setTimeout(showNextGhost, 100);
-        }, 300);
-      });
-    }
-
-    function stopCmdGhost() {
-      clearTimeout(ghostIdleTimer);
-      ghostIdleTimer = null;
-      ghostActive = false;
-      cmdGhostStopped = true;
-      clearTimeout(cmdGhostTimer);
-      clearTimeout(cmdGhostTypeTimer);
-      cmdGhostTimer = null;
-      cmdGhostTypeTimer = null;
-      cmdGhost.classList.remove('visible', 'fade-out');
-      cmdGhostText.textContent = '';
-      const kbdEl = cmdGhost.querySelector('kbd');
-      if (kbdEl) kbdEl.classList.remove('visible');
-      cmdGhostCurrent = '';
-      // Restore placeholder when ghost stops (if input is empty)
-      if (commandInput.value === '') {
-        commandInput.placeholder = 'Wish for anything...';
-      }
-    }
-
-    commandInput.addEventListener('input', () => {
-      if (commandInput.value.length > 0) {
-        // User is typing -- hide ghost immediately, clear idle timer
-        clearTimeout(ghostIdleTimer);
-        ghostIdleTimer = null;
-        ghostActive = false;
-        hideGhost();
-        cmdGhostCurrent = '';
-      } else {
-        // Input cleared -- restore placeholder and restart 8s idle wait
-        commandInput.placeholder = 'Wish for anything...';
-        startGhostIdleTimer();
-      }
-    });
 
     function openCommand() {
       commandOpen = true;
@@ -1983,7 +1673,6 @@
       commandBackdrop.classList.add('visible');
       commandInput.value = '';
       commandInput.placeholder = 'Wish for anything...';
-      startGhostIdleTimer();
       // Immediate auto-focus with a microtask to ensure DOM is ready
       requestAnimationFrame(() => commandInput.focus());
     }
@@ -1992,27 +1681,13 @@
       commandBar.classList.remove('visible');
       commandBackdrop.classList.remove('visible');
       commandInput.blur();
-      stopCmdGhost();
     }
 
     commandInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Escape') { closeCommand(); }
-      // Tab to accept ghost suggestion (only when ghost is visible and input empty)
-      if (e.key === 'Tab' && commandOpen) {
-        if (commandInput.value.trim() === '' && ghostActive && cmdGhostCurrent) {
-          e.preventDefault();
-          const suggestion = cmdGhostCurrent; // save before stop clears it
-          stopCmdGhost();
-          commandInput.value = suggestion;
-          // Trigger input event so placeholder hides
-          commandInput.dispatchEvent(new Event('input'));
-        }
-        return;
-      }
       if (e.key === 'Enter') {
         const val = commandInput.value.trim();
         if (!val) return;
-        stopCmdGhost();
 
         // Brief in-bar loading state
         commandInput.disabled = true;
@@ -2730,11 +2405,6 @@
         statusEl.textContent = 'Online';
         dotEl.classList.remove('streaming');
         if (cardDot) cardDot.classList.remove('streaming');
-
-        // Trigger Agent Mode auto-reply if enabled
-        if (agentModeOn && replyText) {
-          setTimeout(() => autoReplyLoop(agentId), 300);
-        }
       } catch (err) {
         agentBubble.textContent = 'Connection error: ' + err.message + '\n';
         const retryBtn = document.createElement('button');
@@ -2751,95 +2421,6 @@
 
       btn.disabled = false;
       input.focus();
-    }
-
-    // ── Agent Mode: AI answers on behalf of the user ──
-    let agentModeOn = false;
-    const autoReplyRounds = new Map(); // agentId -> count of auto-replies this session
-
-    function toggleAgentMode() {
-      agentModeOn = !agentModeOn;
-      const btn = document.getElementById('agent-mode-toggle');
-      if (agentModeOn) {
-        btn.classList.add('active');
-        localStorage.setItem('wb-agent-mode', 'on');
-        toast('Agent Mode ON — AI will reply for you');
-      } else {
-        btn.classList.remove('active');
-        localStorage.setItem('wb-agent-mode', 'off');
-        // Hide indicator if visible
-        const indicator = document.getElementById('auto-reply-indicator');
-        if (indicator) indicator.classList.remove('visible');
-        toast('Agent Mode OFF');
-      }
-    }
-
-    async function autoReplyLoop(agentId) {
-      if (!agentModeOn) return;
-
-      const info = agentCards.get(agentId);
-      if (!info) return;
-
-      const history = conversationMap.get(agentId) || [];
-      const lastMsg = history[history.length - 1];
-
-      // Only auto-reply if the last message is from the agent (not user)
-      if (!lastMsg || lastMsg.role !== 'assistant') return;
-
-      const rounds = autoReplyRounds.get(agentId) || 0;
-
-      // Show indicator
-      const indicator = document.getElementById('auto-reply-indicator');
-      if (indicator) indicator.classList.add('visible');
-
-      if (!agentModeOn) {
-        if (indicator) indicator.classList.remove('visible');
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/agent/auto-reply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            goal: info.goal || lastGoalText || '',
-            agentName: info.displayName,
-            agentRole: info.role,
-            messages: history,
-          }),
-        });
-
-        if (!res.ok || !agentModeOn) {
-          if (indicator) indicator.classList.remove('visible');
-          return;
-        }
-
-        const data = await res.json();
-        if (!data.reply || !agentModeOn) {
-          if (indicator) indicator.classList.remove('visible');
-          return;
-        }
-
-        // Inject the auto-reply as if the user typed it
-        const panel = document.getElementById('chat-panel');
-        if (!panel || panel.dataset.agentId !== agentId) {
-          if (indicator) indicator.classList.remove('visible');
-          return;
-        }
-
-        const input = panel.querySelector('.agent-input-row input');
-        if (input) {
-          input.value = data.reply;
-          autoReplyRounds.set(agentId, rounds + 1);
-          if (indicator) indicator.classList.remove('visible');
-          sendToAgent(agentId);
-        } else {
-          if (indicator) indicator.classList.remove('visible');
-        }
-      } catch (err) {
-        console.error('Auto-reply error:', err.message);
-        if (indicator) indicator.classList.remove('visible');
-      }
     }
 
     // ── Text node system (user goals on canvas) ──
@@ -3113,7 +2694,6 @@
           <div class="new-msg-pill" onclick="scrollChatToBottom()">&#8595; New message</div>
         </div>
         <div class="agent-input-area">
-          <div class="auto-reply-indicator" id="auto-reply-indicator">AI replying...</div>
           <div class="agent-input-row">
             <input type="text" placeholder="${randomPlaceholder()}" onkeydown="if(event.key==='Enter')sendToAgent('${agentId}')">
             <button onclick="sendToAgent('${agentId}')">&#9654;</button>
@@ -3538,7 +3118,6 @@
       textNodeLinesAnimated.clear();
       agentCards.clear();
       conversationMap.clear();
-      autoReplyRounds.clear();
       localStorage.removeItem('wb-conversations');
       cardCounter = 0;
       toast('Board cleared');
