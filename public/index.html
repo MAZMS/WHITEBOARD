@@ -1581,6 +1581,21 @@
         return;
       }
 
+      // Let arrow keys through when chat panel is open (to cycle agents)
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && openPanelId && agentCards.size > 1) {
+        // Don't hijack arrows if user is typing in an input
+        const el = e.target;
+        if (el.tagName === 'INPUT' && el.value.length > 0) return; // let arrow move cursor in text
+        e.preventDefault();
+        const ids = Array.from(agentCards.keys());
+        const curIdx = ids.indexOf(openPanelId);
+        const nextIdx = e.key === 'ArrowRight'
+          ? (curIdx + 1) % ids.length
+          : (curIdx - 1 + ids.length) % ids.length;
+        openChat(ids[nextIdx]);
+        return;
+      }
+
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
 
       // Ctrl+Shift+C — clear board
