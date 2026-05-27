@@ -1599,13 +1599,34 @@
         e.preventDefault();
         const ids = Array.from(agentCards.keys());
         const curIdx = ids.indexOf(openPanelId);
-        let step;
-        if (e.key === 'ArrowUp') step = -3;
-        else if (e.key === 'ArrowDown') step = 3;
-        else if (e.key === 'ArrowLeft') step = -1;
-        else step = 1; // ArrowRight
-        const nextIdx = ((curIdx + step) % ids.length + ids.length) % ids.length;
-        openChat(ids[nextIdx]);
+        const cols = 3;
+        const row = Math.floor(curIdx / cols);
+        const col = curIdx % cols;
+        let nextIdx = curIdx;
+
+        if (e.key === 'ArrowRight') {
+          // Go right in row, wrap to next row start if at end
+          nextIdx = curIdx + 1;
+          if (nextIdx >= ids.length) nextIdx = 0;
+        } else if (e.key === 'ArrowLeft') {
+          // Go left in row, wrap to previous row end if at start
+          nextIdx = curIdx - 1;
+          if (nextIdx < 0) nextIdx = ids.length - 1;
+        } else if (e.key === 'ArrowDown') {
+          // Go to same column in next row
+          nextIdx = curIdx + cols;
+          if (nextIdx >= ids.length) nextIdx = col < ids.length ? col : 0;
+        } else if (e.key === 'ArrowUp') {
+          // Go to same column in previous row
+          nextIdx = curIdx - cols;
+          if (nextIdx < 0) {
+            // Wrap to last row, same column
+            const lastRow = Math.floor((ids.length - 1) / cols);
+            nextIdx = lastRow * cols + col;
+            if (nextIdx >= ids.length) nextIdx = ids.length - 1;
+          }
+        }
+        if (nextIdx !== curIdx) openChat(ids[nextIdx]);
         return;
       }
 
@@ -1638,13 +1659,28 @@
           openChat(forward ? ids[0] : ids[ids.length - 1]);
         } else {
           const curIdx = ids.indexOf(openPanelId);
-          let step;
-          if (e.key === 'ArrowUp') step = -3;
-          else if (e.key === 'ArrowDown') step = 3;
-          else if (e.key === 'ArrowLeft') step = -1;
-          else step = 1; // ArrowRight, Tab
-          const nextIdx = ((curIdx + step) % ids.length + ids.length) % ids.length;
-          openChat(ids[nextIdx]);
+          const cols = 3;
+          const col = curIdx % cols;
+          let nextIdx = curIdx;
+
+          if (e.key === 'ArrowRight' || e.key === 'Tab') {
+            nextIdx = curIdx + 1;
+            if (nextIdx >= ids.length) nextIdx = 0;
+          } else if (e.key === 'ArrowLeft') {
+            nextIdx = curIdx - 1;
+            if (nextIdx < 0) nextIdx = ids.length - 1;
+          } else if (e.key === 'ArrowDown') {
+            nextIdx = curIdx + cols;
+            if (nextIdx >= ids.length) nextIdx = col < ids.length ? col : 0;
+          } else if (e.key === 'ArrowUp') {
+            nextIdx = curIdx - cols;
+            if (nextIdx < 0) {
+              const lastRow = Math.floor((ids.length - 1) / cols);
+              nextIdx = lastRow * cols + col;
+              if (nextIdx >= ids.length) nextIdx = ids.length - 1;
+            }
+          }
+          if (nextIdx !== curIdx) openChat(ids[nextIdx]);
         }
         return;
       }
