@@ -1117,6 +1117,31 @@
       transform: rotate(45deg) scale(1.1);
     }
 
+    /* ── Notification badge on agent cards ── */
+    .card-notification {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--fg);
+      color: var(--bg);
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: notifPulse 1.5s infinite;
+      z-index: 2;
+      pointer-events: none;
+      line-height: 1;
+    }
+    @keyframes notifPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.15); opacity: 0.85; }
+    }
+
     /* ── Linked card highlight ── */
     .agent-contact-card.linked {
       box-shadow: 0 0 0 1px var(--fg), 0 0 20px rgba(255,255,255,0.06);
@@ -1625,7 +1650,7 @@
         // Brief in-bar loading state before closing
         commandInput.disabled = true;
         commandInput.value = '';
-        commandInput.placeholder = 'Assembling your team...';
+        commandInput.placeholder = 'Finding your lead...';
         const hintEl = commandBar.querySelector('.hint');
         if (hintEl) hintEl.style.display = 'none';
         // Close after a beat so the user sees the state
@@ -1635,18 +1660,47 @@
         if (hintEl) hintEl.style.display = '';
         closeCommand();
         try {
-          const res = await fetch('/api/agent/plan-team', {
+          // Step 1: Pick a LEAD agent only (not a full team)
+          const res = await fetch('/api/agent/pick', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ goal: val }),
+            body: JSON.stringify({ goal: val, isLead: true }),
           });
           if (!res.ok) {
             const err = await res.json();
-            toast(err.error || 'Failed to plan team');
+            toast(err.error || 'Failed to find a lead');
             return;
           }
           const data = await res.json();
-          summonTeam(data.team, val);
+
+          // Center the lead card on screen
+          const leadX = Math.round(window.innerWidth / 2 - 90);
+          const leadY = Math.round(window.innerHeight / 2 - 80);
+
+          // Spawn only the lead agent
+          const leadId = summonAgent(data.agent, {
+            displayName: data.displayName,
+            role: data.role,
+            greeting: data.greeting,
+            goal: val,
+            x: leadX,
+            y: leadY,
+          });
+
+          // Mark this agent as a lead awaiting team expansion
+          const leadInfo = agentCards.get(leadId);
+          if (leadInfo) {
+            leadInfo.isLead = true;
+            leadInfo.goalText = val;
+            leadInfo.teamExpanded = false;
+          }
+
+          // Show notification badge on the lead card
+          showCardNotification(leadId, 1);
+
+          // Auto-open the lead's chat after a brief pause
+          await new Promise(r => setTimeout(r, 500));
+          openChat(leadId);
         } catch (err) {
           toast('Connection error: ' + err.message);
         }
@@ -1983,6 +2037,159 @@
       lastGoalText = goal;
 
       return agentId;
+    }
+
+    // ── Notification badge helpers ──
+    function showCardNotification(agentId, count) {
+      const card = document.getElementById(agentId);
+      if (!card) return;
+      // Remove existing badge if any
+      hideCardNotification(agentId);
+      const badge = document.createElement('span');
+      badge.className = 'card-notification';
+      badge.textContent = count || '1';
+      badge.dataset.notifBadge = 'true';
+      card.appendChild(badge);
+    }
+
+    function hideCardNotification(agentId) {
+      const card = document.getElementById(agentId);
+      if (!card) return;
+      const badge = card.querySelector('.card-notification');
+      if (badge) badge.remove();
+    }
+
+    // ── Lead-driven team expansion ──
+    async function expandTeamFromLead(leadId) {
+      const info = agentCards.get(leadId);
+      if (!info || !info.isLead || info.teamExpanded) return;
+      info.teamExpanded = true; // prevent double-trigger
+
+      const goal = info.goalText || '';
+      const history = conversationMap.get(leadId) || [];
+
+      try {
+        const res = await fetch('/api/agent/expand-team', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            goal,
+            conversation: history,
+            leadName: info.displayName,
+            leadRole: info.role,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          toast(err.error || 'Could not expand team');
+          return;
+        }
+        const data = await res.json();
+        if (!data.team || !Array.isArray(data.team) || data.team.length === 0) return;
+
+        // Close the individual chat panel so we can transition to shared
+        closeChatPanel();
+        await new Promise(r => setTimeout(r, 400));
+
+        // Position: lead moves to the left, sub-agents fan out to the right
+        const leadCard = document.getElementById(leadId);
+        const canvasCenterY = window.innerHeight / 2;
+        const leadX = 80;
+        const leadY = canvasCenterY - 60;
+
+        // Animate lead card to its new position
+        if (leadCard) {
+          leadCard.style.transition = 'left 0.5s cubic-bezier(0.16, 1, 0.3, 1), top 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+          leadCard.style.left = leadX + 'px';
+          leadCard.style.top = leadY + 'px';
+        }
+
+        const hGap = 300;
+        const vGap = 200;
+        const subX = leadX + hGap;
+        const subCount = data.team.length;
+        const totalSubHeight = (subCount - 1) * vGap;
+        const subStartY = canvasCenterY - totalSubHeight / 2 - 60;
+
+        const spawnedIds = [leadId];
+
+        // Spawn sub-agents with stagger
+        for (let i = 0; i < data.team.length; i++) {
+          const member = data.team[i];
+          await new Promise(r => setTimeout(r, 300));
+
+          const posX = subX;
+          const posY = subStartY + i * vGap;
+
+          const subId = summonAgent('custom', {
+            displayName: member.humanName,
+            role: member.role,
+            greeting: member.greeting,
+            goal,
+            x: posX,
+            y: posY,
+          });
+
+          spawnedIds.push(subId);
+
+          // Show notification badge on new agents
+          showCardNotification(subId, 1);
+        }
+
+        // Auto-link all agents (lead + subs)
+        await new Promise(r => setTimeout(r, 400));
+        for (const id of spawnedIds) {
+          if (!linkedAgents.has(id)) {
+            linkedAgents.add(id);
+          }
+        }
+        updateLinkVisuals();
+        triggerLinkPulse();
+
+        // Open shared chat after all cards are in
+        await new Promise(r => setTimeout(r, 600));
+
+        // Initialize group conversation with greetings
+        const groupKey = getGroupKey();
+        const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const names = [];
+        linkedAgents.forEach(id => {
+          const cardInfo = agentCards.get(id);
+          if (cardInfo) names.push(cardInfo.displayName);
+        });
+
+        const greetingMessages = [
+          { role: 'system-info', content: `${names.join(', ')} joined the conversation`, time: now },
+        ];
+
+        // Add each sub-agent's greeting
+        for (let i = 0; i < data.team.length; i++) {
+          const subId = spawnedIds[i + 1]; // skip lead (index 0)
+          const subInfo = agentCards.get(subId);
+          if (subInfo && data.team[i]) {
+            greetingMessages.push({
+              role: 'assistant',
+              content: data.team[i].greeting,
+              agent: subInfo.displayName,
+              time: now,
+            });
+          }
+        }
+
+        groupConversationMap.set(groupKey, greetingMessages);
+        saveGroupConversations();
+
+        openSharedChat(spawnedIds[0]);
+        toast('Team assembled based on your input');
+
+        // Clear notification badges after shared chat opens
+        setTimeout(() => {
+          spawnedIds.forEach(id => hideCardNotification(id));
+        }, 2000);
+      } catch (err) {
+        toast('Connection error: ' + err.message);
+        info.teamExpanded = false; // allow retry
+      }
     }
 
     // ── Team summoning: spawns multiple agents, links them, opens shared chat ──
@@ -2336,6 +2543,15 @@
         statusEl.textContent = 'Online';
         dotEl.classList.remove('streaming');
         if (cardDot) cardDot.classList.remove('streaming');
+
+        // Check if this is the lead agent's first reply after user's first message
+        // History at this point: [greeting, user msg, agent reply] = 3 messages
+        if (info && info.isLead && !info.teamExpanded && history.length === 3) {
+          // Clear the lead's notification badge (user engaged)
+          hideCardNotification(agentId);
+          // Trigger team expansion in the background
+          expandTeamFromLead(agentId);
+        }
       } catch (err) {
         agentBubble.textContent = 'Connection error: ' + err.message + '\n';
         const retryBtn = document.createElement('button');

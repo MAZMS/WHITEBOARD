@@ -446,7 +446,7 @@ app.post('/api/admin/settings', async (req, res) => {
 // ── API: Pick best agent for a goal (uses gpt-4o-mini) ──
 app.post('/api/agent/pick', async (req, res) => {
   try {
-    const { goal } = req.body;
+    const { goal, isLead } = req.body;
     if (!goal || !goal.trim()) {
       return res.status(400).json({ error: 'Goal is required.' });
     }
@@ -455,6 +455,10 @@ app.post('/api/agent/pick', async (req, res) => {
     const agentDescriptions = agentList
       .map(a => `- ${a.key}: ${a.description}`)
       .join('\n');
+
+    const leadInstructions = isLead
+      ? `\n\nIMPORTANT: This is the FIRST agent for this goal. You MUST assign a leadership/coordinator role (CEO, Director, Team Lead, Project Manager, etc). The greeting MUST include a clarifying question asking for more details about their goal. For example: "hey, I can help with that. before I bring in my team — how do you want to make money? online business, freelancing, investing, or something else?" The greeting should acknowledge the goal AND ask a specific clarifying question so you can build the right team.`
+      : '';
 
     const pickerPrompt = `You are a router. Given a user's goal, either pick the best agent from the existing list OR invent a new specialist role if none fits perfectly.
 
@@ -481,7 +485,7 @@ The greeting must sound like a real friend texting back. Rules:
 Available agents for reference (use these system prompts when the goal matches):
 ${agentDescriptions}
 
-If the goal doesn't match any existing agent well, use agent key "custom" and the system will use a generic helpful prompt.`;
+If the goal doesn't match any existing agent well, use agent key "custom" and the system will use a generic helpful prompt.${leadInstructions}`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -595,6 +599,81 @@ Rules:
     res.json(parsed);
   } catch (err) {
     console.error('Plan-team error:', err.message);
+    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
+  }
+});
+
+// ── API: Expand team — lead agent interviews user, then decides what specialists to hire ──
+app.post('/api/agent/expand-team', async (req, res) => {
+  try {
+    const { goal, conversation, leadName, leadRole } = req.body;
+    if (!goal || !conversation || !Array.isArray(conversation)) {
+      return res.status(400).json({ error: 'Goal and conversation are required.' });
+    }
+
+    const convoText = conversation
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .map(m => `${m.role === 'user' ? 'User' : `${leadName} (${leadRole})`}: ${m.content}`)
+      .join('\n');
+
+    const expandPrompt = `You are a team builder. A lead agent (${leadName}, ${leadRole}) has been talking to a user about their goal: "${goal}".
+
+Here is their conversation so far:
+${convoText}
+
+Based on this conversation, decide what 1-3 specialist agents to hire.
+
+Reply with JSON only:
+{
+  "team": [
+    { "humanName": "unique name", "role": "specific role", "greeting": "casual greeting referencing the goal", "reason": "why needed" }
+  ]
+}
+
+Rules:
+- Make roles SPECIFIC to what was discussed in the conversation — not generic
+- The lead agent already exists — only return NEW specialists
+- 1-3 specialists max (keep it focused)
+- Each name is unique, diverse, real-sounding
+- Greetings sound like a real person joining a team chat — casual, warm, lowercase ok
+- NEVER use phrases like "I'd be happy to help", "Great question", "Let's dive in", "Absolutely!", "Of course!" — sound like a real friend
+- Each specialist's greeting should mention their specialty and how it connects to the specific details the user shared`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: expandPrompt },
+        { role: 'user', content: `Build the team for goal: "${goal}"` },
+      ],
+      max_completion_tokens: 512,
+      response_format: { type: 'json_object' },
+    });
+
+    const usage = completion.usage || { total_tokens: 0 };
+    resetIfNewDay();
+    tokenUsage.mini += usage.total_tokens || 0;
+    tokenUsage.history.push({
+      timestamp: new Date().toISOString(),
+      model: 'gpt-4o-mini',
+      tier: 'mini',
+      agent: 'team-expander',
+      prompt_tokens: usage.prompt_tokens || 0,
+      completion_tokens: usage.completion_tokens || 0,
+      total: usage.total_tokens || 0,
+    });
+    persistUsage('mini', usage.total_tokens || 0, 'gpt-4o-mini', 'team-expander', usage);
+
+    const raw = completion.choices[0]?.message?.content || '{}';
+    const parsed = JSON.parse(raw);
+
+    if (!parsed.team || !Array.isArray(parsed.team) || parsed.team.length < 1) {
+      return res.status(500).json({ error: 'AI returned an invalid team expansion.' });
+    }
+    parsed.team = parsed.team.slice(0, 3);
+
+    res.json(parsed);
+  } catch (err) {
+    console.error('Expand-team error:', err.message);
     res.status(err.status || 500).json({ error: safeErrorMessage(err) });
   }
 });
