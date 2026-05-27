@@ -2014,12 +2014,15 @@
       try {
         const agentName = info ? info.name : (document.getElementById(agentId)?.dataset.agentName || 'unknown');
 
+        const card = document.getElementById(agentId);
         const res = await fetch('/api/agent/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             agent: agentName,
             messages: history,
+            displayName: card?.dataset.displayName,
+            role: card?.dataset.role,
           }),
         });
 

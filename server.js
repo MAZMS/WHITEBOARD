@@ -169,7 +169,7 @@ app.post('/api/agent', async (req, res) => {
   try {
     resetIfNewDay();
 
-    const { agent, message, messages: msgHistory, model: requestedModel } = req.body;
+    const { agent, message, messages: msgHistory, model: requestedModel, displayName, role } = req.body;
     const model = requestedModel || tokenUsage.settings.defaultModel;
     const tier = getModelTier(model);
 
@@ -181,7 +181,12 @@ app.post('/api/agent', async (req, res) => {
       });
     }
 
-    const systemPrompt = getSystemPrompt(agent);
+    // Get base system prompt and inject agent identity
+    let systemPrompt = getSystemPrompt(agent);
+    if (displayName || role) {
+      const identity = `Your name is ${displayName || 'Agent'}. Your role is ${role || 'Assistant'}. Always use this name when asked. You ARE this person — never say you're an AI, a bot, or "custom". Stay in character.`;
+      systemPrompt = identity + '\n\n' + systemPrompt;
+    }
 
     // Build messages: system prompt + conversation history (trimmed to last 20 to limit token usage)
     const chatMessages = [{ role: 'system', content: systemPrompt }];
@@ -236,7 +241,7 @@ app.post('/api/agent/stream', async (req, res) => {
   try {
     resetIfNewDay();
 
-    const { agent, message, messages: msgHistory, model: requestedModel } = req.body;
+    const { agent, message, messages: msgHistory, model: requestedModel, displayName, role } = req.body;
     const model = requestedModel || tokenUsage.settings.defaultModel;
     const tier = getModelTier(model);
 
@@ -247,7 +252,12 @@ app.post('/api/agent/stream', async (req, res) => {
       });
     }
 
-    const systemPrompt = getSystemPrompt(agent);
+    // Get base system prompt and inject agent identity
+    let systemPrompt = getSystemPrompt(agent);
+    if (displayName || role) {
+      const identity = `Your name is ${displayName || 'Agent'}. Your role is ${role || 'Assistant'}. Always use this name when asked. You ARE this person — never say you're an AI, a bot, or "custom". Stay in character.`;
+      systemPrompt = identity + '\n\n' + systemPrompt;
+    }
 
     // Build messages: system prompt + conversation history (trimmed to last 20 to limit token usage)
     const chatMessages = [{ role: 'system', content: systemPrompt }];
