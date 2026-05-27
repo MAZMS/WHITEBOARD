@@ -1985,10 +1985,11 @@
             element: card,
           });
 
-          // Restore output node if there is at least one assistant message
+          // Restore output node only if the last assistant message was actual output
           const lastAssistant = [...(entry.messages || [])].reverse().find(m => m.role === 'assistant');
-          if (lastAssistant) {
-            createOrUpdateOutputNode(agentId, lastAssistant.content);
+          if (lastAssistant && isOutputContent(lastAssistant.content, outputType)) {
+            const outputContent = extractOutputContent(lastAssistant.content);
+            createOrUpdateOutputNode(agentId, outputContent);
           }
         });
 
@@ -2364,9 +2365,11 @@
         dotEl.classList.remove('streaming');
         if (cardDot) cardDot.classList.remove('streaming');
 
-        // Create/update output node on the canvas
-        if (replyText) {
-          createOrUpdateOutputNode(agentId, replyText);
+        // Create/update output node on the canvas — only for actual deliverables
+        const agentOutputType = info ? info.outputType : 'Document';
+        if (replyText && isOutputContent(replyText, agentOutputType)) {
+          const outputContent = extractOutputContent(replyText);
+          createOrUpdateOutputNode(agentId, outputContent);
         }
       } catch (err) {
         agentBubble.textContent = 'Connection error: ' + err.message + '\n';
@@ -2454,6 +2457,31 @@
     function stopPlaceholderRotation() {
       clearTimeout(placeholderTimer);
       placeholderTimer = null;
+    }
+
+    // ── Output detection helpers ──
+    // Determines whether agent response is actual deliverable output (code, plan, doc)
+    // vs. conversational chat that should stay in the chat panel only.
+    function isOutputContent(text, outputType) {
+      if (!text) return false;
+      const t = (outputType || '').toLowerCase();
+      if (t.includes('code')) {
+        return /```|<html|<!doctype|function\s+\w+|const\s+\w+\s*=|import\s+|class\s+\w+|def\s+\w+/i.test(text);
+      }
+      // For plans, documents, reports — only if substantial
+      return text.length > 500;
+    }
+
+    // Extracts the actual code/content from a response that may include
+    // conversational text around it. Strips markdown code fences.
+    function extractOutputContent(text) {
+      // Try to find a markdown code block and extract its contents
+      const match = text.match(/```\w*\n([\s\S]*?)```/);
+      if (match) return match[1].trim();
+      // If the whole response looks like raw code (starts with typical code patterns)
+      if (/^(<|function|const|import|class|def |#!)/i.test(text.trim())) return text.trim();
+      // For long structured text (plans, docs), return as-is
+      return text;
     }
 
     // ── Output node system ──
