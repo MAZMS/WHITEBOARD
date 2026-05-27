@@ -626,6 +626,20 @@
       animation: spinOnce 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
+    /* ── Reset button confirm (armed) state ── */
+    .refresh-btn.confirm-armed {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .refresh-btn.confirm-armed:hover {
+      background: var(--fg);
+      color: var(--bg);
+      opacity: 0.85;
+    }
+
     /* ── Focus-visible states for keyboard navigation ── */
     button:focus-visible,
     input:focus-visible,
@@ -688,7 +702,9 @@
       animation: helpPanelOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     @keyframes helpPanelIn {
-      0% { opacity: 0; transform: scale(0.9) translateY(12px); }
+      0%   { opacity: 0; transform: scale(0.9) translateY(12px); }
+      60%  { opacity: 1; transform: scale(1.04) translateY(-2px); }
+      80%  { transform: scale(0.99) translateY(1px); }
       100% { opacity: 1; transform: scale(1) translateY(0); }
     }
     @keyframes helpPanelOut {
@@ -1132,20 +1148,17 @@
       if (!resetPending) {
         resetPending = true;
         btn.textContent = 'Confirm reset?';
-        btn.style.borderColor = 'var(--fg)';
-        btn.style.color = 'var(--fg)';
+        btn.classList.add('confirm-armed');
         resetTimer = setTimeout(() => {
           resetPending = false;
           btn.textContent = 'Reset';
-          btn.style.borderColor = '';
-          btn.style.color = '';
+          btn.classList.remove('confirm-armed');
         }, 2000);
       } else {
         clearTimeout(resetTimer);
         resetPending = false;
         btn.textContent = 'Reset';
-        btn.style.borderColor = '';
-        btn.style.color = '';
+        btn.classList.remove('confirm-armed');
         try {
           await fetch('/api/admin/reset', { method: 'POST' });
           loadData();
