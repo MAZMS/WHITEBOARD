@@ -642,6 +642,127 @@
       transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
+    /* ── Help button (matches whiteboard) ── */
+    #admin-help-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #admin-help-btn:hover { color: var(--fg); border-color: var(--fg); }
+    #admin-help-btn:active { transform: scale(0.92); }
+
+    /* ── Help panel (matches whiteboard) ── */
+    #admin-help-panel {
+      position: fixed;
+      right: 20px;
+      top: 80px;
+      z-index: 100;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 24px 20px;
+      width: 290px;
+      font-size: 12px;
+      color: var(--dim);
+      line-height: 1.6;
+      display: none;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    #admin-help-panel.visible {
+      display: block;
+      animation: helpPanelIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    #admin-help-panel.dismissing {
+      animation: helpPanelOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    @keyframes helpPanelIn {
+      0% { opacity: 0; transform: scale(0.9) translateY(12px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes helpPanelOut {
+      0% { opacity: 1; transform: scale(1) translateY(0); }
+      100% { opacity: 0; transform: scale(0.95) translateY(8px); }
+    }
+    [data-theme="light"] #admin-help-panel {
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    #admin-help-panel h3 {
+      color: var(--fg);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    #admin-help-panel h3:not(:first-child) { margin-top: 16px; }
+    #admin-help-panel .help-feature {
+      padding: 3px 0;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    #admin-help-panel .help-feature::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--border);
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    #admin-help-panel .help-close-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--border);
+      font-size: 14px;
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                  background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #admin-help-panel .help-close-btn:hover {
+      color: var(--fg);
+      background: var(--surface);
+    }
+    #admin-help-panel .wb-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--dim);
+      text-decoration: none;
+      font-size: 11px;
+      margin-top: 14px;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #admin-help-panel .wb-link:hover {
+      color: var(--fg);
+      border-color: var(--dim);
+    }
+
     /* ── Responsive ── */
     @media (max-width: 700px) {
       body { padding: 16px; }
@@ -652,6 +773,7 @@
       .top-bar-right { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
       h1 { font-size: 16px; letter-spacing: 3px; }
       .usage-pct { font-size: 22px; min-width: 48px; }
+      #admin-help-panel { right: 12px; left: 12px; width: auto; }
       .big-number { font-size: 28px; }
       .history-section { margin: 0 -16px; padding: 0 16px; }
     }
@@ -673,6 +795,7 @@
     </div>
     <div class="top-bar-right" style="display:flex;gap:8px;align-items:center;">
       <span class="auto-refresh-label" id="auto-refresh-label">Auto-refreshing...</span>
+      <button id="admin-help-btn" onclick="toggleAdminHelp()" title="Help">?</button>
       <button id="theme-toggle" onclick="toggleTheme()">&#9684;</button>
       <button class="refresh-btn" id="reset-btn" onclick="handleReset()">Reset</button>
       <button class="refresh-btn" id="refresh-btn" onclick="refreshWithSpin()">Refresh</button>
@@ -768,6 +891,20 @@
         </tbody>
       </table>
     </div>
+  </div>
+
+  <!-- Help panel -->
+  <div id="admin-help-panel">
+    <button class="help-close-btn" onclick="closeAdminHelp()" title="Close">&times;</button>
+    <h3>TOKEN TRACKER</h3>
+    <div class="help-feature">Usage bars show daily token consumption per tier</div>
+    <div class="help-feature">Premium models are powerful but have a lower limit</div>
+    <div class="help-feature">Mini models are lighter with a much higher ceiling</div>
+    <h3>CONTROLS</h3>
+    <div class="help-feature">Click any model card below to switch the default</div>
+    <div class="help-feature">Click Reset once to arm, then again to confirm</div>
+    <div class="help-feature">Usage auto-refreshes every 10 seconds</div>
+    <a class="wb-link" href="/"><span>&larr;</span> Back to Whiteboard</a>
   </div>
 
 </div><!-- /.page-wrapper -->
@@ -1017,6 +1154,28 @@
         }
       }
     }
+
+    // ── Admin help panel ──
+    const adminHelpPanel = document.getElementById('admin-help-panel');
+    function toggleAdminHelp() {
+      if (adminHelpPanel.classList.contains('visible')) {
+        closeAdminHelp();
+      } else {
+        adminHelpPanel.classList.remove('dismissing');
+        adminHelpPanel.classList.add('visible');
+      }
+    }
+    function closeAdminHelp() {
+      if (!adminHelpPanel.classList.contains('visible')) return;
+      adminHelpPanel.classList.add('dismissing');
+      adminHelpPanel.addEventListener('animationend', function onEnd() {
+        adminHelpPanel.removeEventListener('animationend', onEnd);
+        adminHelpPanel.classList.remove('visible', 'dismissing');
+      }, { once: true });
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAdminHelp();
+    });
 
     loadData();
     setInterval(() => {
