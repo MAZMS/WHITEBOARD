@@ -230,6 +230,59 @@
       color: var(--dim);
       margin-bottom: 16px;
     }
+
+    /* ── Current model hero ── */
+    .current-model-display {
+      font-size: 16px;
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: fadeIn 0.5s 0.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .current-model-display .label {
+      color: var(--dim);
+      font-weight: 300;
+    }
+    .current-model-display .name {
+      color: var(--fg);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      transition: opacity 0.2s ease;
+    }
+    @keyframes modelNameSwap {
+      0%   { opacity: 0; transform: translateY(4px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .current-model-display .name.swapping {
+      display: inline-block;
+      animation: modelNameSwap 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* ── Toast notification ── */
+    .model-toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--fg);
+      color: var(--bg);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 24px;
+      border-radius: 8px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      white-space: nowrap;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .model-toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
     .model-group-label {
       font-size: 10px;
       font-weight: 400;
@@ -238,6 +291,16 @@
       color: var(--border);
       margin-bottom: 10px;
       padding-left: 2px;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .model-group-label .tier-remaining {
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      color: var(--dim);
+      font-weight: 300;
+      opacity: 0.7;
     }
     .model-group-label:not(:first-child) {
       margin-top: 20px;
@@ -675,8 +738,14 @@
   <!-- Model selector -->
   <div class="model-section">
     <h2>Default Model (click to switch)</h2>
+    <div class="current-model-display">
+      <span class="label">Currently using: </span><span class="name" id="current-model-name">...</span>
+    </div>
     <div id="model-container"></div>
   </div>
+
+  <!-- Toast -->
+  <div class="model-toast" id="model-toast"></div>
 
   <!-- History -->
   <div class="history-section">
@@ -778,9 +847,18 @@
         // Current model
         currentModel = data.settings.defaultModel;
 
+        // Update current model hero display
+        const modelNameEl = document.getElementById('current-model-name');
+        modelNameEl.textContent = currentModel;
+
         // Model grid — grouped by tier
         const container = document.getElementById('model-container');
         container.innerHTML = '';
+
+        const tierRemaining = {
+          premium: data.premium.remaining,
+          mini: data.mini.remaining,
+        };
 
         const groups = [
           { label: 'Premium', models: data.models.premium, tier: 'premium' },
@@ -791,7 +869,8 @@
           if (!group.models.length) return;
           const label = document.createElement('div');
           label.className = 'model-group-label';
-          label.textContent = group.label;
+          const remaining = tierRemaining[group.tier];
+          label.innerHTML = `<span>${group.label}</span><span class="tier-remaining">${remaining != null ? remaining.toLocaleString() + ' remaining' : ''}</span>`;
           container.appendChild(label);
 
           const grid = document.createElement('div');
@@ -842,8 +921,22 @@
       setTimeout(() => bar.classList.add('shimmer-done'), 2200);
     }
 
+    // ── Toast helper ──
+    let toastTimer = null;
+    function showToast(message) {
+      const toast = document.getElementById('model-toast');
+      toast.textContent = message;
+      toast.classList.remove('visible');
+      void toast.offsetWidth;
+      toast.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('visible'), 2000);
+    }
+
     // ── Model select with flash ──
     async function selectModelWithFlash(btn, model) {
+      if (model === currentModel) return;
+
       const flash = btn.querySelector('.flash-overlay');
       if (flash) {
         flash.classList.remove('flash');
@@ -857,6 +950,16 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ defaultModel: model }),
         });
+
+        // Animate the hero model name swap
+        const nameEl = document.getElementById('current-model-name');
+        nameEl.classList.remove('swapping');
+        void nameEl.offsetWidth;
+        nameEl.textContent = model;
+        nameEl.classList.add('swapping');
+        nameEl.addEventListener('animationend', () => nameEl.classList.remove('swapping'), { once: true });
+
+        showToast('Switched to ' + model);
         loadData();
       } catch (err) {
         console.error('Failed to set model:', err);
