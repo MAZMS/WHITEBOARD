@@ -150,14 +150,18 @@
       transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       font-family: inherit;
       font-size: 16px;
-      color: var(--ghost-text);
+      font-style: italic;
+      color: #555;
+    }
+    [data-theme="light"] #cmd-ghost {
+      color: #999;
     }
     #cmd-ghost.visible {
       opacity: 1;
     }
     #cmd-ghost.fade-out {
       opacity: 0;
-      transition: opacity 0.4s ease-out;
+      transition: opacity 0.3s ease-out;
     }
     #cmd-ghost kbd {
       background: var(--surface);
@@ -166,9 +170,15 @@
       border-radius: 5px;
       font-family: inherit;
       font-size: 10px;
+      font-style: normal;
       color: var(--ghost-text);
       letter-spacing: 0.3px;
       flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.3s ease-in;
+    }
+    #cmd-ghost kbd.visible {
+      opacity: 1;
     }
     #command-bar .hint {
       color: var(--border);
@@ -606,8 +616,8 @@
     /* ── Theme toggle ── */
     #theme-toggle {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
+      top: 20px;
+      left: 72px;
       z-index: 100;
       background: none;
       border: 1px solid var(--border);
@@ -625,13 +635,14 @@
     /* ── Admin link ── */
     #admin-link {
       position: fixed;
-      bottom: 24px;
-      right: 124px;
+      top: 26px;
+      left: 124px;
       z-index: 100;
       color: var(--border);
       text-decoration: none;
       font-size: 10px;
       letter-spacing: 1px;
+      line-height: 32px;
       transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     #admin-link:hover { color: var(--dim); }
@@ -1317,23 +1328,28 @@
     const cmdGhost = document.getElementById('cmd-ghost');
     const cmdGhostText = document.getElementById('cmd-ghost-text');
 
-    // ── Rotating goal suggestions ──
+    // ── Rotating goal suggestions (context-aware) ──
+    // State A: No agents on canvas — goal-oriented prompts
     const goalSuggestions = [
       'make money online',
-      'build a website',
-      'learn a new skill',
-      'plan my week',
-      'write a blog post',
-      'start a business',
-      'get fit and healthy',
-      'organize my life',
-      'create a budget',
-      'design a logo',
-      'find a new job',
-      'learn to cook',
-      'write a book',
-      'plan a trip',
-      'improve my resume',
+      'get healthier and lose weight',
+      'learn something new today',
+      'start my own business',
+      'organize my chaotic life',
+      'write something meaningful',
+      'plan my next big move',
+      'build something people want',
+    ];
+    // State B: Agents already on canvas — action-oriented prompts
+    const goalSuggestionsWithAgents = [
+      'get a second opinion on my plan',
+      'find someone to handle the numbers',
+      'brainstorm ideas with a creative mind',
+      'need a writer to polish my words',
+      'debug this problem with a fresh pair of eyes',
+      'research this topic deeper',
+      'help me think through a tough decision',
+      'get technical help building something',
     ];
     let cmdGhostTimer = null;
     let cmdGhostIndex = 0;
@@ -1362,6 +1378,8 @@
       cmdGhostTypeTimer = null;
       cmdGhost.classList.remove('visible', 'fade-out');
       cmdGhostText.textContent = '';
+      const kbdEl = cmdGhost.querySelector('kbd');
+      if (kbdEl) kbdEl.classList.remove('visible');
       // Keep cmdGhostCurrent so Tab can still fill if ghost was showing
     }
 
@@ -1369,9 +1387,13 @@
       hideGhost();
       cmdGhostStopped = false;
       cmdGhostCurrent = '';
-      cmdGhostOrder = shuffleArray(goalSuggestions);
+      cmdGhostOrder = shuffleArray(getActiveSuggestions());
       cmdGhostIndex = 0;
       showNextGhost();
+    }
+
+    function getActiveSuggestions() {
+      return agentCards.size > 0 ? goalSuggestionsWithAgents : goalSuggestions;
     }
 
     function startGhostIdleTimer() {
@@ -1379,18 +1401,20 @@
       ghostActive = false;
       hideGhost();
       cmdGhostCurrent = '';
-      // Only start ghost after 15s of empty input
+      // 8s idle — the sweet spot where the brain has thought but hasn't given up
       ghostIdleTimer = setTimeout(() => {
         if (commandOpen && commandInput.value === '') {
           ghostActive = true;
           startCmdGhost();
         }
-      }, 15000);
+      }, 8000);
     }
 
     function typewriterGhost(text, onDone) {
       let i = 0;
+      const kbdEl = cmdGhost.querySelector('kbd');
       cmdGhostText.textContent = '';
+      if (kbdEl) kbdEl.classList.remove('visible');
       cmdGhost.classList.add('visible');
       cmdGhost.classList.remove('fade-out');
 
@@ -1399,12 +1423,17 @@
         if (i < text.length) {
           cmdGhostText.textContent = text.slice(0, i + 1);
           i++;
-          cmdGhostTypeTimer = setTimeout(typeNext, 30);
+          cmdGhostTypeTimer = setTimeout(typeNext, 25);
         } else {
-          // Typing done -- hold for 3s then call onDone
+          // Typing done — show kbd after 0.3s, then hold for 4s
           cmdGhostTypeTimer = null;
+          if (kbdEl) {
+            setTimeout(() => {
+              if (!cmdGhostStopped) kbdEl.classList.add('visible');
+            }, 300);
+          }
           if (onDone) {
-            cmdGhostTimer = setTimeout(onDone, 3000);
+            cmdGhostTimer = setTimeout(onDone, 4000);
           }
         }
       }
@@ -1414,15 +1443,18 @@
     function showNextGhost() {
       if (cmdGhostStopped) return;
       if (cmdGhostIndex >= cmdGhostOrder.length) {
-        cmdGhostOrder = shuffleArray(goalSuggestions);
+        cmdGhostOrder = shuffleArray(getActiveSuggestions());
         cmdGhostIndex = 0;
       }
       cmdGhostCurrent = cmdGhostOrder[cmdGhostIndex];
       cmdGhostIndex++;
 
-      // Typewriter in, hold 3s, fade out 0.4s, then next
+      // Typewriter in, hold 4s, fade out 0.3s, then next
       typewriterGhost(cmdGhostCurrent, () => {
         if (cmdGhostStopped) return;
+        // Hide kbd before fading out text
+        const kbdEl = cmdGhost.querySelector('kbd');
+        if (kbdEl) kbdEl.classList.remove('visible');
         // Fade out
         cmdGhost.classList.add('fade-out');
         cmdGhostTimer = setTimeout(() => {
@@ -1431,7 +1463,7 @@
           cmdGhostText.textContent = '';
           // Small gap before next suggestion
           cmdGhostTimer = setTimeout(showNextGhost, 100);
-        }, 400);
+        }, 300);
       });
     }
 
@@ -1446,6 +1478,8 @@
       cmdGhostTypeTimer = null;
       cmdGhost.classList.remove('visible', 'fade-out');
       cmdGhostText.textContent = '';
+      const kbdEl = cmdGhost.querySelector('kbd');
+      if (kbdEl) kbdEl.classList.remove('visible');
       cmdGhostCurrent = '';
     }
 
@@ -1458,7 +1492,7 @@
         hideGhost();
         cmdGhostCurrent = '';
       } else {
-        // Input cleared -- restart 15s idle wait
+        // Input cleared -- restart 8s idle wait
         startGhostIdleTimer();
       }
     });
@@ -1468,6 +1502,10 @@
       commandBar.classList.add('visible');
       commandBackdrop.classList.add('visible');
       commandInput.value = '';
+      // Context-aware placeholder based on canvas state
+      commandInput.placeholder = agentCards.size > 0
+        ? 'What else do you need help with?'
+        : 'What are you trying to achieve?';
       startGhostIdleTimer();
       // Immediate auto-focus with a microtask to ensure DOM is ready
       requestAnimationFrame(() => commandInput.focus());
@@ -1945,10 +1983,6 @@
 
       // Scroll to bottom
       bodyEl.scrollTop = bodyEl.scrollHeight;
-
-      // Hide theme toggle and admin link to avoid overlap with send button
-      document.getElementById('theme-toggle').style.display = 'none';
-      document.getElementById('admin-link').style.display = 'none';
 
       // Focus the input
       panel.querySelector('.agent-input-row input').focus();
