@@ -1340,6 +1340,8 @@
     let cmdGhostCurrent = '';
     let cmdGhostTypeTimer = null;
     let cmdGhostStopped = false;
+    let ghostIdleTimer = null;
+    let ghostActive = false;
 
     function shuffleArray(arr) {
       const a = [...arr];
@@ -1352,12 +1354,38 @@
 
     let cmdGhostOrder = [];
 
+    function hideGhost() {
+      cmdGhostStopped = true;
+      clearTimeout(cmdGhostTimer);
+      clearTimeout(cmdGhostTypeTimer);
+      cmdGhostTimer = null;
+      cmdGhostTypeTimer = null;
+      cmdGhost.classList.remove('visible', 'fade-out');
+      cmdGhostText.textContent = '';
+      // Keep cmdGhostCurrent so Tab can still fill if ghost was showing
+    }
+
     function startCmdGhost() {
-      stopCmdGhost();
+      hideGhost();
       cmdGhostStopped = false;
+      cmdGhostCurrent = '';
       cmdGhostOrder = shuffleArray(goalSuggestions);
       cmdGhostIndex = 0;
       showNextGhost();
+    }
+
+    function startGhostIdleTimer() {
+      clearTimeout(ghostIdleTimer);
+      ghostActive = false;
+      hideGhost();
+      cmdGhostCurrent = '';
+      // Only start ghost after 15s of empty input
+      ghostIdleTimer = setTimeout(() => {
+        if (commandOpen && commandInput.value === '') {
+          ghostActive = true;
+          startCmdGhost();
+        }
+      }, 15000);
     }
 
     function typewriterGhost(text, onDone) {
@@ -1408,6 +1436,9 @@
     }
 
     function stopCmdGhost() {
+      clearTimeout(ghostIdleTimer);
+      ghostIdleTimer = null;
+      ghostActive = false;
       cmdGhostStopped = true;
       clearTimeout(cmdGhostTimer);
       clearTimeout(cmdGhostTypeTimer);
@@ -1418,22 +1449,26 @@
       cmdGhostCurrent = '';
     }
 
-    function updateCmdGhostVisibility() {
+    commandInput.addEventListener('input', () => {
       if (commandInput.value.length > 0) {
-        stopCmdGhost();
-      } else if (commandOpen && cmdGhostStopped) {
-        startCmdGhost();
+        // User is typing -- hide ghost immediately, clear idle timer
+        clearTimeout(ghostIdleTimer);
+        ghostIdleTimer = null;
+        ghostActive = false;
+        hideGhost();
+        cmdGhostCurrent = '';
+      } else {
+        // Input cleared -- restart 15s idle wait
+        startGhostIdleTimer();
       }
-    }
-
-    commandInput.addEventListener('input', updateCmdGhostVisibility);
+    });
 
     function openCommand() {
       commandOpen = true;
       commandBar.classList.add('visible');
       commandBackdrop.classList.add('visible');
       commandInput.value = '';
-      startCmdGhost();
+      startGhostIdleTimer();
       // Immediate auto-focus with a microtask to ensure DOM is ready
       requestAnimationFrame(() => commandInput.focus());
     }
@@ -1447,9 +1482,9 @@
 
     commandInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Escape') { closeCommand(); }
-      // Tab to accept ghost suggestion
+      // Tab to accept ghost suggestion (only when ghost is visible and input empty)
       if (e.key === 'Tab' && commandOpen) {
-        if (commandInput.value.trim() === '' && cmdGhostCurrent) {
+        if (commandInput.value.trim() === '' && ghostActive && cmdGhostCurrent) {
           e.preventDefault();
           commandInput.value = cmdGhostCurrent;
           stopCmdGhost();
