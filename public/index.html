@@ -2341,7 +2341,15 @@
                   firstChunk = false;
                 }
                 replyText += data.text;
-                agentBubble.textContent = replyText;
+                // Show only the conversational part — hide code blocks in real-time
+                const visibleText = replyText.replace(/```[\s\S]*?```/g, '').replace(/```[\s\S]*$/, '').trim();
+                if (visibleText) {
+                  agentBubble.textContent = visibleText;
+                } else if (replyText.includes('```')) {
+                  agentBubble.textContent = 'generating output...';
+                } else {
+                  agentBubble.textContent = replyText;
+                }
                 agentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
               }
               if (data.done) {
