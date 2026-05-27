@@ -1206,7 +1206,7 @@
     <div class="help-feature">Click &ldquo;Message&rdquo; on a card to chat</div>
     <div class="help-feature">Drag cards to reposition them</div>
     <div class="help-feature">Clear chat with the button in chat header</div>
-    <div class="help-feature">Toggle dark / light mode (bottom-right)</div>
+    <div class="help-feature">Toggle dark / light mode (top-left)</div>
     <h3>AGENTS</h3>
     <div style="color:var(--dim);font-size:11px;line-height:1.8;">Agents are AI-generated with unique names and roles based on your goal. No two are the same.</div>
   </div>
@@ -1997,10 +1997,6 @@
       document.querySelectorAll('.agent-contact-card').forEach(c => {
         c.classList.remove('active', 'inactive');
       });
-
-      // Show theme toggle and admin link again
-      document.getElementById('theme-toggle').style.display = '';
-      document.getElementById('admin-link').style.display = '';
 
       panel.classList.add('dismissing');
       setTimeout(() => {
