@@ -2279,6 +2279,7 @@
             messages: history,
             displayName: card?.dataset.displayName,
             role: card?.dataset.role,
+            outputType: info ? info.outputType : undefined,
           }),
         });
 
@@ -2460,9 +2461,10 @@
     function getDownloadExt(type, content) {
       const t = (type || '').toLowerCase();
       if (t.includes('code')) {
+        if (/<html|<!doctype/i.test(content)) return '.html';
         if (content.includes('def ') || content.includes('import ')) return '.py';
         if (content.includes('function') || content.includes('const ') || content.includes('let ')) return '.js';
-        return '.txt';
+        return '.html';
       }
       return '.txt';
     }
@@ -2503,12 +2505,14 @@
       const icon = getOutputTypeIcon(outputType);
       const preview = content.slice(0, 100) + (content.length > 100 ? '...' : '');
 
+      const isCode = outputType.toLowerCase().includes('code');
       node.innerHTML = `
         <div class="output-type"><span class="output-type-icon">${icon}</span> ${outputType.toUpperCase()}</div>
         <div class="output-preview">${preview}</div>
         <div class="output-actions">
           <button onclick="viewOutput('${agentId}')">View</button>
           <button onclick="downloadOutput('${agentId}')">Download</button>
+          ${isCode ? `<button onclick="runOutput('${agentId}')">Run</button>` : ''}
         </div>
       `;
 
@@ -2561,11 +2565,47 @@
       const info = agentCards.get(agentId);
       const outputType = info ? (info.outputType || 'Document') : 'Document';
       const displayName = info ? info.displayName : 'Agent';
+      const isCode = outputType.toLowerCase().includes('code');
 
       const viewer = document.getElementById('output-viewer');
       document.getElementById('viewer-header').textContent = `${displayName} — ${outputType}`;
-      document.getElementById('viewer-content').textContent = data.content;
+
+      const contentEl = document.getElementById('viewer-content');
+      if (isCode) {
+        contentEl.innerHTML = '';
+        const pre = document.createElement('pre');
+        pre.style.margin = '0';
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.wordBreak = 'break-word';
+        const code = document.createElement('code');
+        code.textContent = data.content;
+        code.style.fontFamily = "'SF Mono', 'Fira Code', 'Consolas', monospace";
+        code.style.fontSize = '13px';
+        code.style.lineHeight = '1.6';
+        pre.appendChild(code);
+        contentEl.appendChild(pre);
+      } else {
+        contentEl.textContent = data.content;
+      }
+
       viewer.classList.add('visible');
+    }
+
+    function runOutput(agentId) {
+      const data = outputData.get(agentId);
+      if (!data) return;
+
+      const content = data.content;
+      // Wrap in a full HTML page if it's not already one
+      const html = /<html|<!doctype/i.test(content)
+        ? content
+        : `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Run Output</title></head><body>${content}</body></html>`;
+
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      // Revoke after a short delay so the tab has time to load
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
 
     function closeOutputViewer() {
@@ -2608,6 +2648,9 @@
     }
 
     function _openIndividualChat(agentId) {
+      // Clear notification badge when opening this agent's chat
+      hideCardNotification(agentId);
+
       if (openPanelId === agentId) {
         const existing = document.getElementById('chat-panel');
         if (existing) {

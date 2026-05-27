@@ -169,7 +169,7 @@ app.post('/api/agent', async (req, res) => {
   try {
     resetIfNewDay();
 
-    const { agent, message, messages: msgHistory, model: requestedModel, displayName, role } = req.body;
+    const { agent, message, messages: msgHistory, model: requestedModel, displayName, role, outputType } = req.body;
     const model = requestedModel || tokenUsage.settings.defaultModel;
     const tier = getModelTier(model);
 
@@ -186,6 +186,9 @@ app.post('/api/agent', async (req, res) => {
     if (displayName || role) {
       const identity = `Your name is ${displayName || 'Agent'}. Your role is ${role || 'Assistant'}. Always use this name when asked. You ARE this person — never say you're an AI, a bot, or "custom". Stay in character.`;
       systemPrompt = identity + '\n\n' + systemPrompt;
+    }
+    if (outputType) {
+      systemPrompt += `\nYour primary output is: ${outputType}. Produce this output directly when asked — don't just describe it or ask questions.`;
     }
 
     // Build messages: system prompt + conversation history (trimmed to last 20 to limit token usage)
@@ -241,7 +244,7 @@ app.post('/api/agent/stream', async (req, res) => {
   try {
     resetIfNewDay();
 
-    const { agent, message, messages: msgHistory, model: requestedModel, displayName, role } = req.body;
+    const { agent, message, messages: msgHistory, model: requestedModel, displayName, role, outputType } = req.body;
     const model = requestedModel || tokenUsage.settings.defaultModel;
     const tier = getModelTier(model);
 
@@ -257,6 +260,9 @@ app.post('/api/agent/stream', async (req, res) => {
     if (displayName || role) {
       const identity = `Your name is ${displayName || 'Agent'}. Your role is ${role || 'Assistant'}. Always use this name when asked. You ARE this person — never say you're an AI, a bot, or "custom". Stay in character.`;
       systemPrompt = identity + '\n\n' + systemPrompt;
+    }
+    if (outputType) {
+      systemPrompt += `\nYour primary output is: ${outputType}. Produce this output directly when asked — don't just describe it or ask questions.`;
     }
 
     // Build messages: system prompt + conversation history (trimmed to last 20 to limit token usage)
