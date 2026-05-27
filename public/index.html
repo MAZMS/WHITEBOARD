@@ -1136,7 +1136,7 @@
       100% { opacity: 0; stroke-dashoffset: -60; }
     }
 
-    /* ── Group agent label in shared chat ── */
+    /* ── Agent label in pair chat ── */
     .msg-agent-label {
       font-size: 10px;
       font-weight: 400;
@@ -1147,7 +1147,7 @@
       opacity: 0.7;
     }
 
-    /* ── Mini avatars in shared chat header ── */
+    /* ── Mini avatars in pair chat header ── */
     .shared-avatars {
       display: flex;
       gap: 4px;
@@ -1276,8 +1276,6 @@
   <!-- SVG overlay for link lines between agents -->
   <svg id="link-lines"></svg>
 
-  <!-- (group chat prompt removed — linking agents shares the conversation naturally) -->
-
   <script>
     // ── Theme ──
     (function initTheme() {
@@ -1354,7 +1352,6 @@
       document.getElementById('admin-link').style.display = '';
       // Restore any saved conversations from localStorage
       loadConversations();
-      loadGroupConversations();
       loadLinkConversations();
       // Show empty state hint if no agents yet
       if (agentCards.size === 0) {
@@ -1686,11 +1683,7 @@
         e.preventDefault();
         const ids = Array.from(agentCards.keys());
         let curIdx = ids.indexOf(openPanelId);
-        // If shared chat is open, start from first linked agent
-        if (curIdx < 0 && openPanelId === 'shared-chat') {
-          curIdx = 0;
-          for (const lid of linkedAgents) { const idx = ids.indexOf(lid); if (idx >= 0) { curIdx = idx; break; } }
-        }
+        if (curIdx < 0) curIdx = 0;
         const cols = 3;
         const row = Math.floor(curIdx / cols);
         const col = curIdx % cols;
@@ -1750,10 +1743,7 @@
           openChat(forward ? ids[0] : ids[ids.length - 1]);
         } else {
           let curIdx = ids.indexOf(openPanelId);
-          if (curIdx < 0 && openPanelId === 'shared-chat') {
-            curIdx = 0;
-            for (const lid of linkedAgents) { const idx = ids.indexOf(lid); if (idx >= 0) { curIdx = idx; break; } }
-          }
+          if (curIdx < 0) curIdx = 0;
           const cols = 3;
           const col = curIdx % cols;
           let nextIdx = curIdx;
@@ -2045,7 +2035,7 @@
         const data = await res.json();
         if (!data.team || !Array.isArray(data.team) || data.team.length === 0) return;
 
-        // Close the individual chat panel so we can transition to shared
+        // Close the chat panel while team spawns
         closeChatPanel();
         await new Promise(r => setTimeout(r, 400));
 
@@ -2104,53 +2094,20 @@
         updateLinkVisuals();
         triggerLinkPulse();
 
-        // Open shared chat after all cards are in
-        await new Promise(r => setTimeout(r, 600));
+        // Team is assembled — let user click Message or connection lines to chat
+        toast('Team assembled — click any agent to chat');
 
-        // Initialize group conversation with greetings
-        const groupKey = getGroupKey();
-        const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        const names = [];
-        linkedAgents.forEach(id => {
-          const cardInfo = agentCards.get(id);
-          if (cardInfo) names.push(cardInfo.displayName);
-        });
-
-        const greetingMessages = [
-          { role: 'system-info', content: `${names.join(', ')} joined the conversation`, time: now },
-        ];
-
-        // Add each sub-agent's greeting
-        for (let i = 0; i < data.team.length; i++) {
-          const subId = spawnedIds[i + 1]; // skip lead (index 0)
-          const subInfo = agentCards.get(subId);
-          if (subInfo && data.team[i]) {
-            greetingMessages.push({
-              role: 'assistant',
-              content: data.team[i].greeting,
-              agent: subInfo.displayName,
-              time: now,
-            });
-          }
-        }
-
-        groupConversationMap.set(groupKey, greetingMessages);
-        saveGroupConversations();
-
-        openSharedChat(spawnedIds[0]);
-        toast('Team assembled based on your input');
-
-        // Clear notification badges after shared chat opens
+        // Clear notification badges after a moment
         setTimeout(() => {
           spawnedIds.forEach(id => hideCardNotification(id));
-        }, 2000);
+        }, 3000);
       } catch (err) {
         toast('Connection error: ' + err.message);
         info.teamExpanded = false; // allow retry
       }
     }
 
-    // ── Team summoning: spawns multiple agents, links them, opens shared chat ──
+    // ── Team summoning: spawns multiple agents and links them ──
     async function summonTeam(team, goal) {
       if (!team || !Array.isArray(team) || team.length < 2) return;
 
@@ -2211,40 +2168,8 @@
       updateLinkVisuals();
       triggerLinkPulse();
 
-      // Auto-open the shared chat after all cards are in
-      await new Promise(r => setTimeout(r, 800));
-
-      // Initialize the group conversation with greetings
-      const groupKey = getGroupKey();
-      const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      const names = [];
-      linkedAgents.forEach(id => {
-        const info = agentCards.get(id);
-        if (info) names.push(info.displayName);
-      });
-
-      const greetingMessages = [
-        { role: 'system-info', content: `${names.join(', ')} joined the conversation`, time: now },
-      ];
-
-      // Add each agent's greeting as an assistant message
-      for (let i = 0; i < spawnedIds.length; i++) {
-        const info = agentCards.get(spawnedIds[i]);
-        if (info && team[i]) {
-          greetingMessages.push({
-            role: 'assistant',
-            content: team[i].greeting,
-            agent: info.displayName,
-            time: now,
-          });
-        }
-      }
-
-      groupConversationMap.set(groupKey, greetingMessages);
-      saveGroupConversations();
-
-      // Open the shared chat — greetings will render from the history
-      openSharedChat(spawnedIds[0]);
+      // Team is assembled — let user click Message or connection lines to chat
+      toast('Team assembled — click any agent to chat');
     }
 
     // ── Input placeholder rotation ──
@@ -2329,8 +2254,8 @@
 
     // ── Dismiss agent card from canvas ──
     function dismissAgent(agentId) {
-      // Close chat panel if this agent's panel is open (individual, shared, or link chat)
-      if (openPanelId === agentId || (openPanelId === 'shared-chat' && linkedAgents.has(agentId))) {
+      // Close chat panel if this agent's panel is open (individual or link chat)
+      if (openPanelId === agentId) {
         closeChatPanel();
       }
       if (openPanelId && openPanelId.startsWith('link-chat-') && openPanelId.includes(agentId)) {
@@ -2340,9 +2265,6 @@
       // Unlink from group if linked
       if (linkedAgents.has(agentId)) {
         linkedAgents.delete(agentId);
-        if (linkedAgents.size < 2 && openPanelId === 'shared-chat') {
-          closeChatPanel();
-        }
         updateLinkVisuals();
       }
 
@@ -2598,20 +2520,7 @@
 
     // ── Linking: unified shared conversation ──
     const linkedAgents = new Set(); // agentIds currently linked
-    const groupConversationMap = new Map(); // groupKey -> [{ role, content, agent?, time }]
     let linkLineAnimations = new Map(); // track which lines have been animated
-
-    function getGroupKey() {
-      return Array.from(linkedAgents).sort().join('+');
-    }
-
-    function getLinkedGroupFor(agentId) {
-      // Returns the set of linked agents if agentId is in a link group, else null
-      if (linkedAgents.has(agentId) && linkedAgents.size >= 2) {
-        return new Set(linkedAgents);
-      }
-      return null;
-    }
 
     function triggerLinkPulse() {
       // Brief glow on all linked cards — satisfying connection feel
@@ -2738,13 +2647,8 @@
       }
     });
 
-    // ── Chat routing: linked agents share a conversation, others chat individually ──
+    // ── Chat routing: always open individual chat ──
     function openChat(agentId) {
-      const group = getLinkedGroupFor(agentId);
-      if (group) {
-        openSharedChat(agentId);
-        return;
-      }
       _openIndividualChat(agentId);
     }
 
@@ -2838,157 +2742,6 @@
       startPlaceholderRotation(info.role, lastGoalText);
     }
 
-    // ── Shared chat panel (for linked agents) ──
-    function openSharedChat(triggeredByAgentId) {
-      // If shared chat is already open, just focus
-      if (openPanelId === 'shared-chat') {
-        const existing = document.getElementById('chat-panel');
-        if (existing) {
-          existing.querySelector('.agent-input-row input').focus();
-        }
-        return;
-      }
-
-      // Close existing panel instantly if switching
-      if (openPanelId) {
-        const oldPanel = document.getElementById('chat-panel');
-        if (oldPanel) oldPanel.remove();
-      }
-
-      openPanelId = 'shared-chat';
-
-      // Highlight all linked cards
-      document.querySelectorAll('.agent-contact-card').forEach(c => {
-        if (linkedAgents.has(c.id)) {
-          c.classList.remove('inactive');
-          c.classList.add('active');
-        } else {
-          c.classList.remove('active');
-          c.classList.add('inactive');
-        }
-      });
-
-      const groupKey = getGroupKey();
-      if (!groupConversationMap.has(groupKey)) {
-        const names = [];
-        linkedAgents.forEach(id => {
-          const info = agentCards.get(id);
-          if (info) names.push(info.displayName);
-        });
-        const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        groupConversationMap.set(groupKey, [
-          { role: 'system-info', content: `${names.join(', ')} joined the conversation`, time: now },
-        ]);
-        saveGroupConversations();
-      }
-
-      // Build header with mini-avatars and names
-      const agentInfos = [];
-      linkedAgents.forEach(id => {
-        const info = agentCards.get(id);
-        if (info) agentInfos.push(info);
-      });
-
-      // Format names naturally: "Maya, Dev & Atlas"
-      const namesList = agentInfos.map(a => a.displayName);
-      let namesStr;
-      if (namesList.length <= 2) {
-        namesStr = namesList.join(' & ');
-      } else {
-        namesStr = namesList.slice(0, -1).join(', ') + ' & ' + namesList[namesList.length - 1];
-      }
-
-      const avatarsHtml = agentInfos.map(() =>
-        `<div class="shared-avatar-mini"><div class="avatar-head"></div><div class="avatar-body"></div></div>`
-      ).join('');
-
-      const panel = document.createElement('div');
-      panel.className = 'agent-chat-panel';
-      panel.id = 'chat-panel';
-      panel.dataset.agentId = 'shared-chat';
-
-      panel.innerHTML = `
-        <div class="agent-header">
-          <div class="shared-avatars">${avatarsHtml}</div>
-          <div class="agent-header-info">
-            <div class="agent-name" id="shared-chat-names">${namesStr}</div>
-            <div class="agent-status">
-              <span class="dot"></span>
-              <span class="status-text">All online</span>
-            </div>
-          </div>
-          <button class="close-btn close-btn-top" onclick="closeChatPanel()">&times;</button>
-        </div>
-        <div class="agent-body-wrap" style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
-          <div class="agent-body"></div>
-          <div class="new-msg-pill" onclick="scrollChatToBottom()">&#8595; New message</div>
-        </div>
-        <div class="agent-input-area">
-          <div class="agent-input-row">
-            <input type="text" placeholder="Message the group..." onkeydown="if(event.key==='Enter')sendToSharedChat()">
-            <button onclick="sendToSharedChat()">&#9654;</button>
-          </div>
-          <div class="agent-model"></div>
-        </div>
-      `;
-
-      document.body.appendChild(panel);
-
-      const bodyEl = panel.querySelector('.agent-body');
-      const pill = panel.querySelector('.new-msg-pill');
-      bodyEl.addEventListener('scroll', () => {
-        const distFromBottom = bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight;
-        if (distFromBottom > 100) {
-          pill.classList.add('visible');
-        } else {
-          pill.classList.remove('visible');
-        }
-      });
-
-      // Render existing shared history
-      const history = groupConversationMap.get(groupKey) || [];
-      history.forEach((msg, idx) => {
-        if (msg.role === 'system-info') {
-          const info = document.createElement('div');
-          info.style.cssText = 'text-align:center;font-size:11px;color:var(--dim);padding:8px 0;opacity:0.6;';
-          info.textContent = msg.content;
-          bodyEl.appendChild(info);
-        } else if (msg.role === 'user') {
-          const { wrap } = createMsgWrap('user', msg.content, { time: msg.time, delay: 0.3 + idx * 0.04 });
-          bodyEl.appendChild(wrap);
-        } else if (msg.role === 'assistant') {
-          const wrap = createSharedAgentWrap(msg.agent, msg.content, { time: msg.time, delay: 0.3 + idx * 0.04 });
-          bodyEl.appendChild(wrap);
-        }
-      });
-
-      bodyEl.scrollTop = bodyEl.scrollHeight;
-      panel.querySelector('.agent-input-row input').focus();
-    }
-
-    function refreshSharedChatHeader() {
-      const namesEl = document.getElementById('shared-chat-names');
-      if (!namesEl) return;
-      const agentInfos = [];
-      linkedAgents.forEach(id => {
-        const info = agentCards.get(id);
-        if (info) agentInfos.push(info);
-      });
-      const namesList = agentInfos.map(a => a.displayName);
-      if (namesList.length <= 2) {
-        namesEl.textContent = namesList.join(' & ');
-      } else {
-        namesEl.textContent = namesList.slice(0, -1).join(', ') + ' & ' + namesList[namesList.length - 1];
-      }
-      // Update avatars
-      const avatarsContainer = document.querySelector('#chat-panel .shared-avatars');
-      if (avatarsContainer) {
-        avatarsContainer.innerHTML = agentInfos.map(() =>
-          `<div class="shared-avatar-mini"><div class="avatar-head"></div><div class="avatar-body"></div></div>`
-        ).join('');
-      }
-    }
-
     function createSharedAgentWrap(agentName, content, opts = {}) {
       const wrap = document.createElement('div');
       wrap.className = 'msg-wrap msg-wrap-agent';
@@ -3018,228 +2771,6 @@
       wrap.appendChild(ts);
 
       return wrap;
-    }
-
-    // ── Send to shared chat ──
-    async function sendToSharedChat() {
-      const panel = document.getElementById('chat-panel');
-      if (!panel || panel.dataset.agentId !== 'shared-chat') return;
-
-      const input = panel.querySelector('.agent-input-row input');
-      const btn = panel.querySelector('.agent-input-row button');
-      const body = panel.querySelector('.agent-body');
-      const statusEl = panel.querySelector('.status-text');
-      const dotEl = panel.querySelector('.agent-header .dot');
-      const modelEl = panel.querySelector('.agent-model');
-      const message = input.value.trim();
-      if (!message) return;
-
-      const groupKey = getGroupKey();
-      const history = groupConversationMap.get(groupKey) || [];
-
-      // Show user bubble
-      const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      const { wrap: userWrap } = createMsgWrap('user', message, { time: now });
-      body.appendChild(userWrap);
-      history.push({ role: 'user', content: message, time: now });
-      saveGroupConversations();
-
-      input.value = '';
-      btn.disabled = true;
-
-      // Build agents array for the API
-      const agentList = [];
-      linkedAgents.forEach(id => {
-        const info = agentCards.get(id);
-        if (info) {
-          agentList.push({
-            name: info.displayName,
-            role: info.role,
-            key: info.name,
-          });
-        }
-      });
-
-      // Build messages for API
-      const apiMessages = [];
-      for (const msg of history) {
-        if (msg.role === 'user') {
-          apiMessages.push({ role: 'user', content: msg.content });
-        } else if (msg.role === 'assistant') {
-          apiMessages.push({ role: 'assistant', content: `[${msg.agent}]: ${msg.content}` });
-        }
-      }
-
-      statusEl.textContent = 'thinking...';
-      dotEl.classList.add('streaming');
-
-      // Also pulse linked card dots
-      linkedAgents.forEach(id => {
-        const info = agentCards.get(id);
-        if (info) {
-          const cardDot = info.element.querySelector('.dot');
-          if (cardDot) cardDot.classList.add('streaming');
-        }
-      });
-
-      try {
-        const res = await fetch('/api/agent/group', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            agents: agentList,
-            message,
-            messages: apiMessages,
-          }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          toast(err.error || 'Something went wrong');
-          statusEl.textContent = 'Error';
-          dotEl.classList.remove('streaming');
-          linkedAgents.forEach(id => {
-            const info = agentCards.get(id);
-            if (info) {
-              const cardDot = info.element.querySelector('.dot');
-              if (cardDot) cardDot.classList.remove('streaming');
-            }
-          });
-          btn.disabled = false;
-          return;
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        let currentAgent = null;
-        let currentWrap = null;
-        let currentBubble = null;
-        let currentText = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop();
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            try {
-              const data = JSON.parse(line.slice(6));
-
-              if (data.allDone) {
-                modelEl.textContent = data.total_tokens ? `${data.total_tokens} tokens` : '';
-                continue;
-              }
-
-              if (data.agent && data.text) {
-                if (currentAgent !== data.agent) {
-                  // Save previous agent's message
-                  if (currentAgent && currentText) {
-                    const replyTime = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                    if (currentWrap) {
-                      const tsEl = currentWrap.querySelector('.msg-time');
-                      if (tsEl) { tsEl.textContent = replyTime; tsEl.style.visibility = ''; }
-                    }
-                    history.push({ role: 'assistant', content: currentText, agent: currentAgent, time: replyTime });
-                  }
-
-                  // New agent bubble
-                  currentAgent = data.agent;
-                  currentText = '';
-                  statusEl.textContent = `${data.agent} is typing...`;
-
-                  const typingEl = document.createElement('span');
-                  typingEl.className = 'typing-indicator';
-                  typingEl.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
-
-                  currentWrap = createSharedAgentWrap(data.agent, typingEl);
-                  currentWrap.querySelector('.msg-time').style.visibility = 'hidden';
-                  currentBubble = currentWrap.querySelector('.msg-agent');
-                  body.appendChild(currentWrap);
-                  currentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }
-
-                if (currentBubble) {
-                  if (currentText === '') {
-                    currentBubble.textContent = '';
-                  }
-                  currentText += data.text;
-                  currentBubble.textContent = currentText;
-                  currentWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }
-              }
-
-              if (data.done && data.agent) {
-                if (currentAgent === data.agent && currentText) {
-                  const replyTime = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                  if (currentWrap) {
-                    const tsEl = currentWrap.querySelector('.msg-time');
-                    if (tsEl) { tsEl.textContent = replyTime; tsEl.style.visibility = ''; }
-                  }
-                  history.push({ role: 'assistant', content: currentText, agent: currentAgent, time: replyTime });
-                  currentAgent = null;
-                  currentText = '';
-                  currentWrap = null;
-                  currentBubble = null;
-                }
-              }
-
-              if (data.error) {
-                toast(`${data.agent}: ${data.error}`);
-              }
-            } catch {}
-          }
-        }
-
-        groupConversationMap.set(groupKey, history);
-        saveGroupConversations();
-
-        statusEl.textContent = 'All online';
-        dotEl.classList.remove('streaming');
-      } catch (err) {
-        toast('Connection error: ' + err.message);
-        statusEl.textContent = 'Error';
-        dotEl.classList.remove('streaming');
-      }
-
-      // Reset card dots
-      linkedAgents.forEach(id => {
-        const info = agentCards.get(id);
-        if (info) {
-          const cardDot = info.element.querySelector('.dot');
-          if (cardDot) cardDot.classList.remove('streaming');
-        }
-      });
-
-      btn.disabled = false;
-      input.focus();
-    }
-
-    // ── Persist group conversations ──
-    function saveGroupConversations() {
-      const data = {};
-      groupConversationMap.forEach((msgs, key) => {
-        data[key] = msgs;
-      });
-      localStorage.setItem('wb-group-conversations', JSON.stringify(data));
-    }
-
-    function loadGroupConversations() {
-      try {
-        const raw = localStorage.getItem('wb-group-conversations');
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        Object.entries(data).forEach(([key, msgs]) => {
-          groupConversationMap.set(key, msgs);
-        });
-      } catch {
-        localStorage.removeItem('wb-group-conversations');
-      }
     }
 
     // ── Link conversations: per-pair chat between two agents ──
@@ -3588,9 +3119,7 @@
       // Clear linking state
       linkedAgents.clear();
       linkLineAnimations.clear();
-      groupConversationMap.clear();
       linkConversations.clear();
-      localStorage.removeItem('wb-group-conversations');
       localStorage.removeItem('wb-link-conversations');
       document.getElementById('link-lines').innerHTML = '';
       // Remove all contact cards and sticky notes
