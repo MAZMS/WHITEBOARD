@@ -1211,196 +1211,28 @@
       50% { opacity: 0.55; transform: scale(1.15); }
     }
 
-    /* ── Output nodes on canvas ── */
-    .output-node {
-      position: absolute;
-      z-index: 38;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      min-width: 200px;
-      max-width: 280px;
-      cursor: default;
-      user-select: none;
-      animation: cardBounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-      transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                  opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                  box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                  background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 0 12px rgba(255,255,255,0.02);
-    }
-    [data-theme="light"] .output-node {
-      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-    }
-    .output-node .output-type {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--dim);
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .output-node .output-type-icon {
-      font-size: 14px;
-      line-height: 1;
-    }
-    .output-node .output-preview {
-      font-size: 12px;
-      color: var(--dim);
-      line-height: 1.5;
-      max-height: 60px;
-      overflow: hidden;
-      word-break: break-word;
-      opacity: 0.75;
-      margin-bottom: 12px;
-    }
-    .output-node .output-actions {
-      display: flex;
-      gap: 8px;
-    }
-    .output-node .output-actions button {
-      flex: 1;
-      padding: 7px 0;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: none;
-      color: var(--fg);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 11px;
-      letter-spacing: 0.5px;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .output-node .output-actions button:hover {
-      background: var(--fg);
-      color: var(--bg);
-      border-color: var(--fg);
-    }
-    .output-node .output-actions button:active {
-      transform: scale(0.95);
-    }
-
-    /* ── Output node loading spinner ── */
-    .output-node .output-spinner {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--dim);
-      margin-bottom: 12px;
-    }
-    .output-node .output-spinner .spin-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--dim);
-      animation: pulseFast 0.6s infinite ease-in-out;
-    }
-    .output-node .output-spinner .spin-dot:nth-child(2) {
-      animation-delay: 0.15s;
-    }
-    .output-node .output-spinner .spin-dot:nth-child(3) {
-      animation-delay: 0.3s;
-    }
-
-    /* ── SVG overlay for output connection lines ── */
+    /* ── SVG overlay for connection lines ── */
     #link-lines {
       position: fixed;
       inset: 0;
       z-index: 35;
       pointer-events: none;
+      overflow: visible;
     }
-    #link-lines .output-line {
+    #link-lines .connector-line {
       stroke: var(--fg);
       stroke-width: 1.5px;
-      opacity: 0.25;
+      opacity: 0.3;
+      fill: none;
+      stroke-linecap: round;
       transition: opacity 0.2s ease;
     }
-    #link-lines .output-line.text-node-line {
-      opacity: 0.3;
-    }
-    #link-lines .output-line.draw-on {
+    #link-lines .connector-line.draw-on {
       animation: linkLineDrawOn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     @keyframes linkLineDrawOn {
       to { stroke-dashoffset: 0; }
     }
-
-    /* ── Output viewer overlay ── */
-    #output-viewer {
-      position: fixed;
-      inset: 0;
-      z-index: 300;
-      background: rgba(0,0,0,0.8);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      animation: outputViewerIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    [data-theme="light"] #output-viewer {
-      background: rgba(255,255,255,0.85);
-    }
-    #output-viewer.visible {
-      display: flex;
-    }
-    @keyframes outputViewerIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    #output-viewer .viewer-close {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--fg);
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      z-index: 2;
-    }
-    #output-viewer .viewer-close:hover {
-      background: var(--fg);
-      color: var(--bg);
-    }
-    #output-viewer .viewer-header {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--dim);
-      margin-bottom: 16px;
-    }
-    #output-viewer .viewer-content {
-      max-width: 720px;
-      width: 90vw;
-      max-height: 80vh;
-      overflow-y: auto;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 32px;
-      font-size: 14px;
-      line-height: 1.8;
-      color: var(--fg);
-      white-space: pre-wrap;
-      word-break: break-word;
-      scrollbar-width: none;
-    }
-    #output-viewer .viewer-content::-webkit-scrollbar { display: none; }
 
     /* ── Mobile responsive ── */
     @media (max-width: 640px) {
@@ -1503,15 +1335,8 @@
   <!-- Toast -->
   <div id="toast"></div>
 
-  <!-- SVG overlay for output connection lines -->
-  <svg id="link-lines"></svg>
-
-  <!-- Output viewer overlay -->
-  <div id="output-viewer">
-    <button class="viewer-close" onclick="closeOutputViewer()">&times;</button>
-    <div class="viewer-header" id="viewer-header"></div>
-    <div class="viewer-content" id="viewer-content"></div>
-  </div>
+  <!-- SVG overlay for connection lines -->
+  <svg id="link-lines" width="100%" height="100%"></svg>
 
   <script>
     // ── Theme ──
@@ -2145,13 +1970,6 @@
             outputType: outputType,
             element: card,
           });
-
-          // Restore output node only if the last assistant message was actual output
-          const lastAssistant = [...(entry.messages || [])].reverse().find(m => m.role === 'assistant');
-          if (lastAssistant && isOutputContent(lastAssistant.content, outputType)) {
-            const outputContent = extractOutputContent(lastAssistant.content);
-            createOrUpdateOutputNode(agentId, outputContent);
-          }
         });
 
         // Hide empty hint if we restored any agents
@@ -2361,14 +2179,6 @@
         closeChatPanel();
       }
 
-      // Remove output node if exists
-      const outputNode = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
-      if (outputNode) {
-        outputNode.style.animation = 'cardDismiss 0.3s cubic-bezier(0.4, 0, 1, 1) forwards';
-        setTimeout(() => outputNode.remove(), 300);
-      }
-      outputData.delete(agentId);
-
       const card = document.getElementById(agentId);
       if (card) {
         card.style.animation = 'cardDismiss 0.3s cubic-bezier(0.4, 0, 1, 1) forwards';
@@ -2527,23 +2337,6 @@
         statusEl.textContent = 'Online';
         dotEl.classList.remove('streaming');
         if (cardDot) cardDot.classList.remove('streaming');
-
-        // ── STEP 2: Fire the output call in the background ──
-        const agentOutputType = info ? info.outputType : 'Document';
-        if (info && agentOutputType) {
-          // Show a loading output node immediately
-          createLoadingOutputNode(agentId);
-
-          // Fire the output generation in the background (don't await)
-          generateOutput(agentId, {
-            agent: agentName,
-            message: message,
-            outputType: agentOutputType,
-            displayName: card?.dataset.displayName,
-            role: card?.dataset.role,
-            messages: history.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({ role: m.role, content: m.content })),
-          });
-        }
       } catch (err) {
         agentBubble.textContent = 'Connection error: ' + err.message + '\n';
         const retryBtn = document.createElement('button');
@@ -2560,50 +2353,6 @@
 
       btn.disabled = false;
       input.focus();
-    }
-
-    // ── Background output generation ──
-    async function generateOutput(agentId, params) {
-      const info = agentCards.get(agentId);
-      const cardDot = info ? info.element.querySelector('.dot') : null;
-
-      // Show "working..." status on card
-      if (cardDot) cardDot.classList.add('streaming');
-      const statusEl = document.querySelector(`#chat-panel[data-agent-id="${agentId}"] .status-text`);
-      if (statusEl) statusEl.textContent = 'working...';
-
-      try {
-        const res = await fetch('/api/agent/output', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(params),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          removeLoadingOutputNode(agentId);
-          toast(err.error || 'Output generation failed');
-          return;
-        }
-
-        const data = await res.json();
-        if (data.output) {
-          const outputContent = extractOutputContent(data.output);
-          createOrUpdateOutputNode(agentId, outputContent);
-          toast('Output ready');
-        } else {
-          removeLoadingOutputNode(agentId);
-        }
-      } catch (err) {
-        removeLoadingOutputNode(agentId);
-        toast('Output generation failed: ' + err.message);
-      } finally {
-        if (cardDot) cardDot.classList.remove('streaming');
-        const currentStatusEl = document.querySelector(`#chat-panel[data-agent-id="${agentId}"] .status-text`);
-        if (currentStatusEl && currentStatusEl.textContent === 'working...') {
-          currentStatusEl.textContent = 'Online';
-        }
-      }
     }
 
     // ── Text node system (user goals on canvas) ──
@@ -2737,194 +2486,23 @@
       placeholderTimer = null;
     }
 
-    // ── Output detection helpers ──
-    // Determines whether agent response is actual deliverable output (code, plan, doc)
-    // vs. conversational chat that should stay in the chat panel only.
-    function isOutputContent(text, outputType) {
-      if (!text) return false;
-      const t = (outputType || '').toLowerCase();
-      if (t.includes('code')) {
-        return /```|<html|<!doctype|function\s+\w+|const\s+\w+\s*=|import\s+|class\s+\w+|def\s+\w+/i.test(text);
-      }
-      // For plans, documents, reports — only if substantial
-      return text.length > 500;
-    }
-
-    // Extracts the actual code/content from a response that may include
-    // conversational text around it. Strips markdown code fences.
-    function extractOutputContent(text) {
-      // Try to find a markdown code block and extract its contents
-      const match = text.match(/```\w*\n([\s\S]*?)```/);
-      if (match) return match[1].trim();
-      // If the whole response looks like raw code (starts with typical code patterns)
-      if (/^(<|function|const|import|class|def |#!)/i.test(text.trim())) return text.trim();
-      // For long structured text (plans, docs), return as-is
-      return text;
-    }
-
-    // ── Output node system ──
-    const outputData = new Map(); // agentId -> { content, outputId }
-
-    function getOutputTypeIcon(type) {
-      const t = (type || '').toLowerCase();
-      if (t.includes('plan') || t.includes('strategy')) return '\u25B6';
-      if (t.includes('code')) return '\u2756';
-      if (t.includes('mockup') || t.includes('design')) return '\u25C7';
-      if (t.includes('report') || t.includes('research')) return '\u25CB';
-      if (t.includes('guide')) return '\u25B7';
-      return '\u25A1'; // default square for Document
-    }
-
-    function getDownloadExt(type, content) {
-      const t = (type || '').toLowerCase();
-      if (t.includes('code')) {
-        if (/<html|<!doctype/i.test(content)) return '.html';
-        if (content.includes('def ') || content.includes('import ')) return '.py';
-        if (content.includes('function') || content.includes('const ') || content.includes('let ')) return '.js';
-        return '.html';
-      }
-      return '.txt';
-    }
-
-    function createLoadingOutputNode(agentId) {
-      const info = agentCards.get(agentId);
-      if (!info) return;
-
-      const outputType = info.outputType || 'Document';
-
-      // Don't create a new loading node if output node already exists — it will be updated
-      let node = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
-      if (node) {
-        // Replace preview with spinner
-        const preview = node.querySelector('.output-preview');
-        if (preview) {
-          preview.innerHTML = '<div class="output-spinner"><span class="spin-dot"></span><span class="spin-dot"></span><span class="spin-dot"></span> working...</div>';
-        }
-        // Hide action buttons while loading
-        const actions = node.querySelector('.output-actions');
-        if (actions) actions.style.display = 'none';
-        return;
-      }
-
-      // Calculate position: to the right of agent card
-      const cardEl = info.element;
-      const cardRect = cardEl.getBoundingClientRect();
-      const nodeX = cardEl.offsetLeft + cardRect.width + 40;
-      const nodeY = cardEl.offsetTop + (cardRect.height / 2) - 50;
-
-      const icon = getOutputTypeIcon(outputType);
-
-      node = document.createElement('div');
-      node.className = 'output-node';
-      node.dataset.agentId = agentId;
-      node.dataset.outputId = 'output-' + agentId;
-      node.style.left = nodeX + 'px';
-      node.style.top = nodeY + 'px';
-
-      node.innerHTML = `
-        <div class="output-type"><span class="output-type-icon">${icon}</span> ${outputType.toUpperCase()}</div>
-        <div class="output-preview"><div class="output-spinner"><span class="spin-dot"></span><span class="spin-dot"></span><span class="spin-dot"></span> working...</div></div>
-        <div class="output-actions" style="display:none;"></div>
-      `;
-
-      document.body.appendChild(node);
-      requestAnimationFrame(() => drawOutputLines());
-    }
-
-    function removeLoadingOutputNode(agentId) {
-      // Only remove if it's still in loading state (no real content)
-      const node = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
-      if (!node) return;
-      const spinner = node.querySelector('.output-spinner');
-      if (spinner) {
-        node.style.animation = 'cardDismiss 0.3s cubic-bezier(0.4, 0, 1, 1) forwards';
-        setTimeout(() => node.remove(), 300);
-        outputData.delete(agentId);
-        requestAnimationFrame(() => drawOutputLines());
-      }
-    }
-
-    function createOrUpdateOutputNode(agentId, content) {
-      const info = agentCards.get(agentId);
-      if (!info) return;
-
-      const outputType = info.outputType || 'Document';
-      const outputId = 'output-' + agentId;
-      const isCode = outputType.toLowerCase().includes('code');
-
-      // Store the output data
-      outputData.set(agentId, { content, outputId });
-
-      // Check if an output node already exists (could be a loading placeholder)
-      let node = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
-      if (node) {
-        // Update existing node — replace spinner/preview with real content
-        const preview = node.querySelector('.output-preview');
-        if (preview) preview.textContent = content.slice(0, 100) + (content.length > 100 ? '...' : '');
-        // Rebuild action buttons (they may have been hidden during loading)
-        let actions = node.querySelector('.output-actions');
-        if (actions) {
-          actions.style.display = '';
-          actions.innerHTML = `
-            <button onclick="viewOutput('${agentId}')">View</button>
-            <button onclick="downloadOutput('${agentId}')">Download</button>
-            ${isCode ? `<button onclick="runOutput('${agentId}')">Run</button>` : ''}
-          `;
-        }
-        drawOutputLines();
-        return;
-      }
-
-      // Calculate position: 250px to the right of agent card, vertically centered
-      const cardEl = info.element;
-      const cardRect = cardEl.getBoundingClientRect();
-      const nodeX = cardEl.offsetLeft + cardRect.width + 40;
-      const nodeY = cardEl.offsetTop + (cardRect.height / 2) - 50;
-
-      // Create new output node
-      node = document.createElement('div');
-      node.className = 'output-node';
-      node.dataset.agentId = agentId;
-      node.dataset.outputId = outputId;
-      node.style.left = nodeX + 'px';
-      node.style.top = nodeY + 'px';
-
-      const icon = getOutputTypeIcon(outputType);
-      const preview = content.slice(0, 100) + (content.length > 100 ? '...' : '');
-
-      node.innerHTML = `
-        <div class="output-type"><span class="output-type-icon">${icon}</span> ${outputType.toUpperCase()}</div>
-        <div class="output-preview">${preview}</div>
-        <div class="output-actions">
-          <button onclick="viewOutput('${agentId}')">View</button>
-          <button onclick="downloadOutput('${agentId}')">Download</button>
-          ${isCode ? `<button onclick="runOutput('${agentId}')">Run</button>` : ''}
-        </div>
-      `;
-
-      document.body.appendChild(node);
-
-      // Draw connection line after node is in the DOM
-      requestAnimationFrame(() => drawOutputLines());
-    }
-
-    function drawOutputLines() {
-      drawAllLines();
-    }
-
+    // ── Connection line drawing ──
     function drawAllLines() {
       const svg = document.getElementById('link-lines');
+      if (!svg) return;
       svg.innerHTML = '';
-      const fg = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim();
 
       // Draw text-node -> agent card connector lines
       textNodeLinks.forEach((agentId, textNodeId) => {
         const textNode = document.getElementById(textNodeId);
         const info = agentCards.get(agentId);
-        if (!textNode || !info) return;
+        if (!textNode || !info || !info.element) return;
 
         const textRect = textNode.getBoundingClientRect();
         const cardRect = info.element.getBoundingClientRect();
+
+        // Skip if either element is hidden / zero-sized
+        if (textRect.width === 0 || cardRect.width === 0) return;
 
         // Line from right edge of text node to left edge of agent card
         const ax = textRect.right;
@@ -2935,12 +2513,8 @@
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const cx1 = ax + (bx - ax) * 0.4;
         const cx2 = bx - (bx - ax) * 0.4;
-        line.setAttribute('d', `M ${ax} ${ay} C ${cx1} ${ay} ${cx2} ${by} ${bx} ${by}`);
-        line.setAttribute('stroke', fg);
-        line.setAttribute('stroke-width', '1.5');
-        line.setAttribute('fill', 'none');
-        line.setAttribute('stroke-linecap', 'round');
-        line.classList.add('output-line', 'text-node-line');
+        line.setAttribute('d', `M ${ax} ${ay} C ${cx1} ${ay}, ${cx2} ${by}, ${bx} ${by}`);
+        line.classList.add('connector-line');
         svg.appendChild(line);
 
         // Draw-on animation: only on first appearance, not while dragging
@@ -2958,120 +2532,6 @@
           }, { once: true });
         }
       });
-
-      // Draw agent card -> output node connector lines
-      outputData.forEach((data, agentId) => {
-        const info = agentCards.get(agentId);
-        if (!info) return;
-
-        const cardEl = info.element;
-        const outputNode = document.querySelector(`.output-node[data-agent-id="${agentId}"]`);
-        if (!cardEl || !outputNode) return;
-
-        const cardRect = cardEl.getBoundingClientRect();
-        const nodeRect = outputNode.getBoundingClientRect();
-
-        // Line from right edge of card to left edge of output node
-        const ax = cardRect.right;
-        const ay = cardRect.top + cardRect.height / 2;
-        const bx = nodeRect.left;
-        const by = nodeRect.top + nodeRect.height / 2;
-
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const cx1 = ax + (bx - ax) * 0.4;
-        const cx2 = bx - (bx - ax) * 0.4;
-        line.setAttribute('d', `M ${ax} ${ay} C ${cx1} ${ay} ${cx2} ${by} ${bx} ${by}`);
-        line.setAttribute('stroke', fg);
-        line.setAttribute('stroke-width', '1.5');
-        line.setAttribute('fill', 'none');
-        line.setAttribute('stroke-linecap', 'round');
-        line.classList.add('output-line');
-        svg.appendChild(line);
-      });
-    }
-
-    function viewOutput(agentId) {
-      const data = outputData.get(agentId);
-      if (!data) return;
-
-      const info = agentCards.get(agentId);
-      const outputType = info ? (info.outputType || 'Document') : 'Document';
-      const displayName = info ? info.displayName : 'Agent';
-      const isCode = outputType.toLowerCase().includes('code');
-
-      const viewer = document.getElementById('output-viewer');
-      document.getElementById('viewer-header').textContent = `${displayName} — ${outputType}`;
-
-      const contentEl = document.getElementById('viewer-content');
-      if (isCode) {
-        contentEl.innerHTML = '';
-        const pre = document.createElement('pre');
-        pre.style.margin = '0';
-        pre.style.whiteSpace = 'pre-wrap';
-        pre.style.wordBreak = 'break-word';
-        const code = document.createElement('code');
-        code.textContent = data.content;
-        code.style.fontFamily = "'SF Mono', 'Fira Code', 'Consolas', monospace";
-        code.style.fontSize = '13px';
-        code.style.lineHeight = '1.6';
-        pre.appendChild(code);
-        contentEl.appendChild(pre);
-      } else {
-        contentEl.textContent = data.content;
-      }
-
-      viewer.classList.add('visible');
-    }
-
-    function runOutput(agentId) {
-      const data = outputData.get(agentId);
-      if (!data) return;
-
-      const content = data.content;
-      // Wrap in a full HTML page if it's not already one
-      const html = /<html|<!doctype/i.test(content)
-        ? content
-        : `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Run Output</title></head><body>${content}</body></html>`;
-
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      // Revoke after a short delay so the tab has time to load
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-    }
-
-    function closeOutputViewer() {
-      document.getElementById('output-viewer').classList.remove('visible');
-    }
-
-    // Close viewer on Escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && document.getElementById('output-viewer').classList.contains('visible')) {
-        e.preventDefault();
-        closeOutputViewer();
-      }
-    });
-
-    function downloadOutput(agentId) {
-      const data = outputData.get(agentId);
-      if (!data) return;
-
-      const info = agentCards.get(agentId);
-      const outputType = info ? (info.outputType || 'Document') : 'Document';
-      const displayName = info ? info.displayName : 'output';
-      const ext = getDownloadExt(outputType, data.content);
-      const filename = `${displayName.toLowerCase().replace(/\s+/g, '-')}-${outputType.toLowerCase().replace(/\s+/g, '-')}${ext}`;
-
-      const blob = new Blob([data.content], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast('Downloaded ' + filename);
     }
 
     // ── Chat routing: always open individual chat ──
@@ -3180,10 +2640,8 @@
       const panel = document.getElementById('chat-panel');
       if (panel) panel.remove();
       openPanelId = null;
-      // Clear output nodes and connection lines
-      outputData.clear();
+      // Clear connection lines
       document.getElementById('link-lines').innerHTML = '';
-      document.querySelectorAll('.output-node').forEach(el => el.remove());
       // Remove all contact cards, sticky notes, and text nodes
       document.querySelectorAll('.agent-contact-card, .sticky-note, .text-node').forEach(el => el.remove());
       textNodeLinks.clear();
