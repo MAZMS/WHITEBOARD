@@ -818,6 +818,167 @@ Be specific — pick options, state numbers, make choices.`;
   }
 });
 
+// ── API: Autonomous pipeline — execute a goal (strategy + team plan) ──
+app.post('/api/agent/execute', async (req, res) => {
+  try {
+    resetIfNewDay();
+
+    const { goal } = req.body;
+    if (!goal || !goal.trim()) {
+      return res.status(400).json({ error: 'Goal is required.' });
+    }
+
+    const model = tokenUsage.settings.defaultModel;
+    const tier = getModelTier(model);
+
+    if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
+      return res.status(429).json({
+        error: `Daily ${tier} token limit reached.`,
+        usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
+      });
+    }
+
+    const prompt = `You are an autonomous AI system. The user gave you ONE command: "${goal.trim()}"
+
+You are the expert. Don't ask questions. EXECUTE.
+
+Create a concrete strategy and decide what specialist agents to spawn.
+
+Reply with JSON:
+{
+  "strategy": "A concise 2-3 sentence strategy for achieving this goal",
+  "agents": [
+    { "humanName": "unique first name", "role": "specific role title", "task": "exactly what this agent should produce — be specific and actionable" }
+  ]
+}
+
+Rules:
+- Max 3 agents. Focused team.
+- Each agent has a SPECIFIC task — not vague. "Build a Shopify dropshipping store in HTML" not "help with code"
+- The strategy is the plan. The agents execute it.
+- Be decisive. No maybes. No options. Just DO.
+- humanName should be a real-sounding diverse first name — mix cultures, genders.
+- role should be specific: "Shopify Developer", "Ad Copywriter", "SEO Strategist" — not generic.`;
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: prompt },
+        { role: 'user', content: goal.trim() },
+      ],
+      max_completion_tokens: 1024,
+      response_format: { type: 'json_object' },
+    });
+
+    const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    const raw = completion.choices[0]?.message?.content || '{}';
+
+    // Track usage
+    tokenUsage[tier] += usage.total_tokens;
+    tokenUsage.history.push({
+      timestamp: new Date().toISOString(),
+      model,
+      tier,
+      agent: 'pipeline-lead',
+      prompt_tokens: usage.prompt_tokens || 0,
+      completion_tokens: usage.completion_tokens || 0,
+      total: usage.total_tokens || 0,
+    });
+    persistUsage(tier, usage.total_tokens, model, 'pipeline-lead', usage);
+    logRequest({ agent: 'pipeline-lead', model, tier, tokens: usage.total_tokens });
+
+    const parsed = JSON.parse(raw);
+
+    res.json({
+      strategy: parsed.strategy || 'Execute the goal directly.',
+      agents: (parsed.agents || []).slice(0, 3).map(a => ({
+        humanName: a.humanName || 'Agent',
+        role: a.role || 'Specialist',
+        task: a.task || 'Produce the deliverable.',
+      })),
+      usage: {
+        prompt_tokens: usage.prompt_tokens,
+        completion_tokens: usage.completion_tokens,
+        total: usage.total_tokens,
+      },
+    });
+  } catch (err) {
+    console.error('Pipeline execute error:', err.message);
+    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
+  }
+});
+
+// ── API: Autonomous pipeline — specialist produces their deliverable ──
+app.post('/api/agent/produce', async (req, res) => {
+  try {
+    resetIfNewDay();
+
+    const { task, role, humanName, goal, strategy } = req.body;
+    if (!task) {
+      return res.status(400).json({ error: 'Task is required.' });
+    }
+
+    const model = tokenUsage.settings.defaultModel;
+    const tier = getModelTier(model);
+
+    if (tokenUsage[tier] >= DAILY_LIMITS[tier]) {
+      return res.status(429).json({
+        error: `Daily ${tier} token limit reached.`,
+        usage: { premium: tokenUsage.premium, mini: tokenUsage.mini },
+      });
+    }
+
+    const prompt = `You are ${humanName || 'Agent'}, a ${role || 'Specialist'}.
+Context: The goal is "${goal || 'Complete the task'}". The strategy is: "${strategy || 'Execute directly.'}"
+Your specific task: ${task}
+
+PRODUCE THE OUTPUT NOW. No chat. No questions. No preamble. Just the deliverable.
+If it's code, write complete runnable code.
+If it's a document, write the full document.
+If it's a plan, write the detailed plan.
+GO.`;
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: prompt },
+        { role: 'user', content: `Execute your task now: ${task}` },
+      ],
+      max_completion_tokens: 4096,
+    });
+
+    const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    const output = completion.choices[0]?.message?.content || '';
+
+    // Track usage
+    tokenUsage[tier] += usage.total_tokens;
+    tokenUsage.history.push({
+      timestamp: new Date().toISOString(),
+      model,
+      tier,
+      agent: `pipeline-${(role || 'specialist').toLowerCase().replace(/\s+/g, '-')}`,
+      prompt_tokens: usage.prompt_tokens || 0,
+      completion_tokens: usage.completion_tokens || 0,
+      total: usage.total_tokens || 0,
+    });
+    persistUsage(tier, usage.total_tokens, model, `pipeline-${(role || 'specialist').toLowerCase().replace(/\s+/g, '-')}`, usage);
+    logRequest({ agent: `pipeline-${(role || 'specialist').toLowerCase().replace(/\s+/g, '-')}`, model, tier, tokens: usage.total_tokens });
+
+    res.json({
+      output,
+      model,
+      usage: {
+        prompt_tokens: usage.prompt_tokens,
+        completion_tokens: usage.completion_tokens,
+        total: usage.total_tokens,
+      },
+    });
+  } catch (err) {
+    console.error('Pipeline produce error:', err.message);
+    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
+  }
+});
+
 // ── API: List available agents ──
 app.get('/api/agents', (req, res) => {
   res.json(getAllAgents());

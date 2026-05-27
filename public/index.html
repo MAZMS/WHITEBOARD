@@ -1295,6 +1295,207 @@
       to { stroke-dashoffset: 0; }
     }
 
+    /* ── Output text nodes (agent deliverables on canvas) ── */
+    .output-node {
+      position: absolute;
+      z-index: 30;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      font-size: 13px;
+      font-weight: 300;
+      color: var(--dim);
+      max-width: 280px;
+      word-wrap: break-word;
+      animation: textNodeAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      cursor: grab;
+      user-select: none;
+      transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                  background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 16px rgba(255,255,255,0.03);
+    }
+    [data-theme="light"] .output-node {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .output-node:active { cursor: grabbing; }
+    .output-node:hover {
+      transform: translateY(-2px);
+      border-color: var(--dim);
+    }
+    .output-node .output-label {
+      font-size: 10px;
+      color: var(--border);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .output-node .output-preview {
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow: hidden;
+      max-height: 90px;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+    }
+    .output-node .output-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .output-node .output-actions button {
+      flex: 1;
+      padding: 7px 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: none;
+      color: var(--fg);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .output-node .output-actions button:hover {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+    }
+    .output-node .output-actions button:active {
+      transform: scale(0.97);
+    }
+    .output-node .output-close-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: none;
+      border: none;
+      color: var(--border);
+      font-size: 15px;
+      cursor: pointer;
+      line-height: 1;
+      opacity: 0;
+      transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s;
+      z-index: 1;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .output-node:hover .output-close-btn { opacity: 1; }
+    .output-node .output-close-btn:hover { color: var(--fg); }
+
+    /* ── Output overlay (full-screen viewer) ── */
+    #output-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      animation: overlayFadeIn 0.3s ease forwards;
+    }
+    [data-theme="light"] #output-overlay {
+      background: rgba(0,0,0,0.4);
+    }
+    #output-overlay.visible {
+      display: flex;
+    }
+    #output-overlay .overlay-content {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 700px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 32px;
+      position: relative;
+      animation: textNodeAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      scrollbar-width: none;
+    }
+    #output-overlay .overlay-content::-webkit-scrollbar { display: none; }
+    #output-overlay .overlay-title {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    #output-overlay .overlay-role {
+      font-size: 11px;
+      color: var(--dim);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    #output-overlay .overlay-body {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--dim);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #output-overlay .overlay-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--dim);
+      font-size: 18px;
+      cursor: pointer;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s;
+    }
+    #output-overlay .overlay-close:hover {
+      color: var(--fg);
+      background: var(--surface);
+    }
+    #output-overlay .overlay-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+    #output-overlay .overlay-actions button {
+      padding: 10px 24px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: none;
+      color: var(--fg);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #output-overlay .overlay-actions button:hover {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+    }
+    @keyframes overlayFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* ── Pipeline progress indicator ── */
+    .card-status .working-text {
+      color: #f59e0b;
+      animation: pulse 1.5s infinite;
+    }
+
     /* ── Mobile responsive ── */
     @media (max-width: 640px) {
       /* Chat panel — full-screen on phone */
@@ -1386,15 +1587,16 @@
     <div class="help-row"><span>Close panel / bar</span> <kbd>Esc</kbd></div>
     <div class="help-row"><span>Clear board</span> <kbd>Ctrl+Shift+C</kbd></div>
     <h3>HOW IT WORKS</h3>
-    <div class="help-feature">Type a goal &mdash; AI assembles a team of agents</div>
-    <div class="help-feature">Click &ldquo;Message&rdquo; on a card to chat</div>
-    <div class="help-feature">Drag cards to reposition them</div>
-    <div class="help-feature">Clear chat with the button in chat header</div>
-    <div class="help-feature">Agents produce output nodes on the canvas</div>
-    <div class="help-feature">View or download agent outputs</div>
+    <div class="help-feature">Type a goal &mdash; AI creates a strategy + spawns a team</div>
+    <div class="help-feature">Agents work autonomously &mdash; no babysitting</div>
+    <div class="help-feature">Each agent produces a deliverable on the canvas</div>
+    <div class="help-feature">Click &ldquo;View&rdquo; on outputs to read the full content</div>
+    <div class="help-feature">Download or copy any agent output</div>
+    <div class="help-feature">Click &ldquo;Message&rdquo; to chat with an agent after</div>
+    <div class="help-feature">Drag anything to reposition</div>
     <div class="help-feature">Toggle dark / light mode (top-left)</div>
-    <h3>AGENTS</h3>
-    <div style="color:var(--dim);font-size:11px;line-height:1.8;">Agents are AI-generated with unique names and roles based on your goal. Each produces a tangible output artifact.</div>
+    <h3>PIPELINE</h3>
+    <div style="color:var(--dim);font-size:11px;line-height:1.8;">Goal &rarr; Strategy &rarr; Agent Team &rarr; Deliverables. Everything runs autonomously. No questions asked.</div>
   </div>
 
   <!-- Toast -->
@@ -1402,6 +1604,20 @@
 
   <!-- SVG overlay for connection lines -->
   <svg id="link-lines" width="100%" height="100%"></svg>
+
+  <!-- Output overlay (full-screen viewer for agent deliverables) -->
+  <div id="output-overlay" onclick="if(event.target===this)closeOutputOverlay()">
+    <div class="overlay-content">
+      <button class="overlay-close" onclick="closeOutputOverlay()">&times;</button>
+      <div class="overlay-title" id="overlay-title"></div>
+      <div class="overlay-role" id="overlay-role"></div>
+      <div class="overlay-body" id="overlay-body"></div>
+      <div class="overlay-actions">
+        <button onclick="downloadOverlayOutput()">Download</button>
+        <button onclick="copyOverlayOutput()">Copy</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     // ── Theme ──
@@ -1736,75 +1952,105 @@
         const val = commandInput.value.trim();
         if (!val) return;
         stopCmdGhost();
-        // Brief in-bar loading state before closing
+
+        // Brief in-bar loading state
         commandInput.disabled = true;
         commandInput.value = '';
-        commandInput.placeholder = 'Finding your agent...';
+        commandInput.placeholder = 'Executing...';
         const hintEl = commandBar.querySelector('.hint');
         if (hintEl) hintEl.style.display = 'none';
 
-        // Create the text node on the whiteboard immediately
+        // 1. Create the goal text node on the whiteboard
         const textNodeId = createTextNode(val);
 
         // Hide empty state hint
-        const hint = document.getElementById('empty-hint');
-        if (hint) hint.classList.add('hidden');
+        const emptyHint = document.getElementById('empty-hint');
+        if (emptyHint) emptyHint.classList.add('hidden');
 
-        // Close after a beat so the user sees the state
+        // Close command bar after a beat
         await new Promise(r => setTimeout(r, 600));
         commandInput.disabled = false;
         commandInput.placeholder = 'Type your goal...';
         if (hintEl) hintEl.style.display = '';
         closeCommand();
+
+        // 2. Call the autonomous pipeline
         try {
-          const res = await fetch('/api/agent/pick', {
+          const res = await fetch('/api/agent/execute', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ goal: val }),
           });
           if (!res.ok) {
-            const err = await res.json();
-            toast(err.error || 'Failed to find an agent');
+            const err = await res.json().catch(() => ({}));
+            toast(err.error || 'Pipeline failed');
             return;
           }
           const data = await res.json();
 
-          // Position agent card to the RIGHT of the text node
+          // 3. Create strategy text node linked to the goal node
           const textEl = document.getElementById(textNodeId);
           const textRect = textEl ? textEl.getBoundingClientRect() : null;
-          const cardX = textRect
-            ? Math.round(textEl.offsetLeft + textRect.width + 60)
-            : Math.round(window.innerWidth / 2 - 90);
-          const cardY = textRect
-            ? Math.round(textEl.offsetTop + textRect.height / 2 - 80)
-            : Math.round(window.innerHeight / 2 - 80);
+          const stratX = textRect
+            ? Math.round(textEl.offsetLeft + textRect.width + 80)
+            : Math.round(window.innerWidth / 2 + 50);
+          const stratY = textRect
+            ? Math.round(textEl.offsetTop)
+            : Math.round(window.innerHeight / 2 - 20);
 
-          const agentId = summonAgent(data.agent, {
-            displayName: data.displayName,
-            role: data.role,
-            outputType: data.outputType || 'Document',
-            greeting: data.greeting,
-            goal: val,
-            x: cardX,
-            y: cardY,
-          });
+          const stratNodeId = createStrategyNode(data.strategy, stratX, stratY);
 
-          // Link text node to agent card and draw the connector line
-          textNodeLinks.set(textNodeId, agentId);
+          // Link goal -> strategy
+          textNodeLinks.set(textNodeId, stratNodeId);
           requestAnimationFrame(() => drawAllLines());
 
-          // Show notification badge on the card
-          showCardNotification(agentId, 1);
+          // 4. Spawn agent cards connected to the strategy, staggered 500ms
+          const stratEl = document.getElementById(stratNodeId);
+          const stratRect = stratEl ? stratEl.getBoundingClientRect() : null;
+          const baseX = stratRect
+            ? Math.round(stratEl.offsetLeft + stratRect.width + 80)
+            : stratX + 350;
 
-          // Auto-open the agent's chat after a brief pause
-          await new Promise(r => setTimeout(r, 500));
-          openChat(agentId);
+          const agentPromises = [];
 
-          // Trigger Agent Mode auto-reply on the greeting if enabled
-          if (agentModeOn) {
-            autoReplyRounds.set(agentId, 0);
-            setTimeout(() => autoReplyLoop(agentId), 300);
+          for (let i = 0; i < data.agents.length; i++) {
+            const agentDef = data.agents[i];
+            const verticalSpread = (i - (data.agents.length - 1) / 2) * 200;
+            const cardX = baseX;
+            const cardY = stratRect
+              ? Math.round(stratEl.offsetTop + stratRect.height / 2 - 80 + verticalSpread)
+              : Math.round(window.innerHeight / 2 - 80 + verticalSpread);
+
+            // Stagger agent spawn
+            await new Promise(r => setTimeout(r, 500));
+
+            const agentId = summonAgent('custom', {
+              displayName: agentDef.humanName,
+              role: agentDef.role,
+              outputType: inferOutputTypeClient(agentDef.role),
+              greeting: `Working on: ${agentDef.task}`,
+              goal: val,
+              x: cardX,
+              y: cardY,
+            });
+
+            // Link strategy -> agent card
+            pipelineLinks.set(stratNodeId + '|' + agentId, { from: stratNodeId, to: agentId });
+            requestAnimationFrame(() => drawAllLines());
+
+            // Set card status to "working..."
+            setCardWorking(agentId, true);
+
+            // Fire off produce call IN PARALLEL
+            agentPromises.push(
+              producePipelineOutput(agentId, agentDef, val, data.strategy)
+            );
           }
+
+          // Wait for all agents to finish
+          await Promise.allSettled(agentPromises);
+          toast('Pipeline complete');
+
         } catch (err) {
           toast('Connection error: ' + err.message);
         }
@@ -1815,6 +2061,12 @@
     document.addEventListener('keydown', (e) => {
       if (!started) return;
       if (commandOpen) return;
+      // Close output overlay on Escape
+      if (e.key === 'Escape' && currentOverlayId) {
+        e.preventDefault();
+        closeOutputOverlay();
+        return;
+      }
       // Let Escape through even when input is focused (to close chat panel)
       if (e.key === 'Escape' && openPanelId) {
         e.preventDefault();
@@ -2530,8 +2782,11 @@
     }
 
     // ── Text node system (user goals on canvas) ──
-    const textNodeLinks = new Map(); // textNodeId -> agentId (to draw connector lines)
+    const textNodeLinks = new Map(); // textNodeId -> targetId (to draw connector lines)
+    const pipelineLinks = new Map(); // "fromId|toId" -> { from, to } (strategy -> agent links)
+    const outputLinks = new Map(); // "agentId|outputId" -> { from, to } (agent -> output links)
     const textNodeLinesAnimated = new Set(); // track which links have played the draw-on animation
+    const outputStore = new Map(); // outputNodeId -> { fullText, name, role }
 
     function createTextNode(text) {
       const node = document.createElement('div');
@@ -2661,50 +2916,68 @@
     }
 
     // ── Connection line drawing ──
+    function drawConnectorLine(svg, fromEl, toEl, linkKey) {
+      const fromRect = fromEl.getBoundingClientRect();
+      const toRect = toEl.getBoundingClientRect();
+      if (fromRect.width === 0 || toRect.width === 0) return;
+
+      const ax = fromRect.right;
+      const ay = fromRect.top + fromRect.height / 2;
+      const bx = toRect.left;
+      const by = toRect.top + toRect.height / 2;
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const cx1 = ax + (bx - ax) * 0.4;
+      const cx2 = bx - (bx - ax) * 0.4;
+      line.setAttribute('d', `M ${ax} ${ay} C ${cx1} ${ay}, ${cx2} ${by}, ${bx} ${by}`);
+      line.classList.add('connector-line');
+      svg.appendChild(line);
+
+      if (linkKey && !textNodeLinesAnimated.has(linkKey)) {
+        textNodeLinesAnimated.add(linkKey);
+        const len = line.getTotalLength ? line.getTotalLength() : 300;
+        line.style.strokeDasharray = len;
+        line.style.strokeDashoffset = len;
+        line.classList.add('draw-on');
+        line.addEventListener('animationend', () => {
+          line.style.strokeDasharray = '';
+          line.style.strokeDashoffset = '';
+          line.classList.remove('draw-on');
+        }, { once: true });
+      }
+    }
+
     function drawAllLines() {
       const svg = document.getElementById('link-lines');
       if (!svg) return;
       svg.innerHTML = '';
 
-      // Draw text-node -> agent card connector lines
-      textNodeLinks.forEach((agentId, textNodeId) => {
+      // 1. Draw text-node / goal -> strategy / agent card connector lines
+      textNodeLinks.forEach((targetId, textNodeId) => {
         const textNode = document.getElementById(textNodeId);
-        const info = agentCards.get(agentId);
-        if (!textNode || !info || !info.element) return;
+        // Target could be an agent card or a strategy node
+        const info = agentCards.get(targetId);
+        const targetEl = info ? info.element : document.getElementById(targetId);
+        if (!textNode || !targetEl) return;
+        drawConnectorLine(svg, textNode, targetEl, textNodeId);
+      });
 
-        const textRect = textNode.getBoundingClientRect();
-        const cardRect = info.element.getBoundingClientRect();
+      // 2. Draw strategy -> agent card links (pipeline)
+      pipelineLinks.forEach(({ from, to }, key) => {
+        const fromEl = document.getElementById(from);
+        const info = agentCards.get(to);
+        const toEl = info ? info.element : document.getElementById(to);
+        if (!fromEl || !toEl) return;
+        drawConnectorLine(svg, fromEl, toEl, key);
+      });
 
-        // Skip if either element is hidden / zero-sized
-        if (textRect.width === 0 || cardRect.width === 0) return;
-
-        // Line from right edge of text node to left edge of agent card
-        const ax = textRect.right;
-        const ay = textRect.top + textRect.height / 2;
-        const bx = cardRect.left;
-        const by = cardRect.top + cardRect.height / 2;
-
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const cx1 = ax + (bx - ax) * 0.4;
-        const cx2 = bx - (bx - ax) * 0.4;
-        line.setAttribute('d', `M ${ax} ${ay} C ${cx1} ${ay}, ${cx2} ${by}, ${bx} ${by}`);
-        line.classList.add('connector-line');
-        svg.appendChild(line);
-
-        // Draw-on animation: only on first appearance, not while dragging
-        if (!textNodeLinesAnimated.has(textNodeId)) {
-          textNodeLinesAnimated.add(textNodeId);
-          const len = line.getTotalLength ? line.getTotalLength() : 300;
-          line.style.strokeDasharray = len;
-          line.style.strokeDashoffset = len;
-          line.classList.add('draw-on');
-          // After animation completes, remove dasharray so dragging looks clean
-          line.addEventListener('animationend', () => {
-            line.style.strokeDasharray = '';
-            line.style.strokeDashoffset = '';
-            line.classList.remove('draw-on');
-          }, { once: true });
-        }
+      // 3. Draw agent card -> output node links
+      outputLinks.forEach(({ from, to }, key) => {
+        const info = agentCards.get(from);
+        const fromEl = info ? info.element : document.getElementById(from);
+        const toEl = document.getElementById(to);
+        if (!fromEl || !toEl) return;
+        drawConnectorLine(svg, fromEl, toEl, key);
       });
     }
 
@@ -2807,6 +3080,272 @@
       startPlaceholderRotation(info.role, lastGoalText);
     }
 
+    // ── Pipeline helpers ──
+
+    // Infer output type from role string (client-side version)
+    function inferOutputTypeClient(role) {
+      const r = (role || '').toLowerCase();
+      if (/ceo|director|planner|manager|lead|strategist|consultant/.test(r)) return 'Business Plan';
+      if (/coder|developer|engineer|programmer/.test(r)) return 'Code';
+      if (/writer|author|copywriter|editor|blogger/.test(r)) return 'Document';
+      if (/designer|artist|illustrator|ux|ui/.test(r)) return 'Mockup';
+      if (/researcher|analyst|scientist|investigator/.test(r)) return 'Report';
+      if (/coach|trainer|mentor|tutor/.test(r)) return 'Guide';
+      if (/marketer|advertiser|seo|growth/.test(r)) return 'Strategy';
+      return 'Document';
+    }
+
+    // Create a strategy text node on the whiteboard
+    function createStrategyNode(strategyText, x, y) {
+      const node = document.createElement('div');
+      node.className = 'text-node';
+      const nodeId = 'strat-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+      node.id = nodeId;
+
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'text-node-close';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.onclick = () => dismissTextNode(nodeId);
+      node.appendChild(closeBtn);
+
+      const seedDot = document.createElement('span');
+      seedDot.className = 'seed-dot';
+      node.appendChild(seedDot);
+
+      const label = document.createElement('span');
+      label.style.cssText = 'font-size:10px;color:var(--border);letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;';
+      label.textContent = 'Strategy';
+
+      const content = document.createElement('span');
+      content.style.cssText = 'font-size:14px;font-weight:300;display:block;';
+      content.textContent = strategyText.length > 200 ? strategyText.slice(0, 200) + '...' : strategyText;
+
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(label);
+      wrapper.appendChild(content);
+      node.appendChild(wrapper);
+
+      node.style.left = x + 'px';
+      node.style.top = y + 'px';
+      node.style.maxWidth = '320px';
+
+      document.body.appendChild(node);
+      makeDraggable(node);
+
+      // Ripple effect
+      requestAnimationFrame(() => {
+        const rect = node.getBoundingClientRect();
+        const ripple = document.createElement('div');
+        ripple.className = 'text-node-ripple';
+        ripple.style.left = node.style.left;
+        ripple.style.top = node.style.top;
+        ripple.style.width = rect.width + 'px';
+        ripple.style.height = rect.height + 'px';
+        document.body.appendChild(ripple);
+        ripple.addEventListener('animationend', () => ripple.remove());
+      });
+
+      return nodeId;
+    }
+
+    // Set card to "working..." or back to "Online"
+    function setCardWorking(agentId, working) {
+      const info = agentCards.get(agentId);
+      if (!info || !info.element) return;
+      const statusEl = info.element.querySelector('.card-status');
+      const dot = info.element.querySelector('.dot');
+      if (working) {
+        if (dot) dot.classList.add('streaming');
+        if (statusEl) statusEl.innerHTML = '<span class="dot streaming"></span> <span class="working-text">working...</span>';
+      } else {
+        if (dot) dot.classList.remove('streaming');
+        if (statusEl) statusEl.innerHTML = '<span class="dot"></span> Done';
+      }
+    }
+
+    // Call /api/agent/produce and create an output node when done
+    async function producePipelineOutput(agentId, agentDef, goal, strategy) {
+      try {
+        const res = await fetch('/api/agent/produce', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            task: agentDef.task,
+            role: agentDef.role,
+            humanName: agentDef.humanName,
+            goal: goal,
+            strategy: strategy,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          setCardWorking(agentId, false);
+          toast(`${agentDef.humanName} failed: ${err.error || 'Error'}`);
+          return;
+        }
+
+        const data = await res.json();
+        setCardWorking(agentId, false);
+
+        // Create output node to the RIGHT of the agent card
+        const info = agentCards.get(agentId);
+        if (!info || !info.element) return;
+
+        const cardRect = info.element.getBoundingClientRect();
+        const outX = Math.round(info.element.offsetLeft + cardRect.width + 60);
+        const outY = Math.round(info.element.offsetTop + cardRect.height / 2 - 60);
+
+        const outputId = createOutputNode(data.output, agentDef.humanName, agentDef.role, outX, outY);
+
+        // Link agent -> output
+        outputLinks.set(agentId + '|' + outputId, { from: agentId, to: outputId });
+        requestAnimationFrame(() => drawAllLines());
+
+      } catch (err) {
+        setCardWorking(agentId, false);
+        toast(`${agentDef.humanName}: connection error`);
+      }
+    }
+
+    // Create an output node on the whiteboard
+    function createOutputNode(fullText, agentName, agentRole, x, y) {
+      const node = document.createElement('div');
+      node.className = 'output-node';
+      const nodeId = 'output-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+      node.id = nodeId;
+
+      // Store full output for viewing later
+      outputStore.set(nodeId, { fullText, name: agentName, role: agentRole });
+
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'output-close-btn';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.onclick = () => dismissOutputNode(nodeId);
+      node.appendChild(closeBtn);
+
+      const label = document.createElement('div');
+      label.className = 'output-label';
+      label.textContent = agentRole;
+      node.appendChild(label);
+
+      const preview = document.createElement('div');
+      preview.className = 'output-preview';
+      preview.textContent = fullText.length > 150 ? fullText.slice(0, 150) + '...' : fullText;
+      node.appendChild(preview);
+
+      const actions = document.createElement('div');
+      actions.className = 'output-actions';
+
+      const viewBtn = document.createElement('button');
+      viewBtn.textContent = 'View';
+      viewBtn.onclick = (e) => { e.stopPropagation(); openOutputOverlay(nodeId); };
+
+      const downloadBtn = document.createElement('button');
+      downloadBtn.textContent = 'Download';
+      downloadBtn.onclick = (e) => { e.stopPropagation(); downloadOutput(nodeId); };
+
+      // If it looks like code, add a Run button
+      const isCode = /```|<!DOCTYPE|<html|function\s|const\s|import\s|class\s/.test(fullText.slice(0, 500));
+      if (isCode) {
+        const runBtn = document.createElement('button');
+        runBtn.textContent = 'Run';
+        runBtn.onclick = (e) => { e.stopPropagation(); runOutput(nodeId); };
+        actions.appendChild(runBtn);
+      }
+
+      actions.appendChild(viewBtn);
+      actions.appendChild(downloadBtn);
+      node.appendChild(actions);
+
+      node.style.left = x + 'px';
+      node.style.top = y + 'px';
+
+      document.body.appendChild(node);
+      makeDraggable(node);
+
+      return nodeId;
+    }
+
+    function dismissOutputNode(nodeId) {
+      const node = document.getElementById(nodeId);
+      if (node) {
+        node.style.animation = 'cardDismiss 0.3s cubic-bezier(0.4, 0, 1, 1) forwards';
+        setTimeout(() => node.remove(), 300);
+      }
+      outputStore.delete(nodeId);
+      // Remove any links involving this output
+      for (const [key] of outputLinks) {
+        if (key.endsWith('|' + nodeId)) outputLinks.delete(key);
+      }
+      requestAnimationFrame(() => drawAllLines());
+    }
+
+    // ── Output overlay ──
+    let currentOverlayId = null;
+
+    function openOutputOverlay(nodeId) {
+      const data = outputStore.get(nodeId);
+      if (!data) return;
+      currentOverlayId = nodeId;
+
+      document.getElementById('overlay-title').textContent = data.name;
+      document.getElementById('overlay-role').textContent = data.role;
+      document.getElementById('overlay-body').textContent = data.fullText;
+      document.getElementById('output-overlay').classList.add('visible');
+    }
+
+    function closeOutputOverlay() {
+      document.getElementById('output-overlay').classList.remove('visible');
+      currentOverlayId = null;
+    }
+
+    function downloadOverlayOutput() {
+      if (!currentOverlayId) return;
+      downloadOutput(currentOverlayId);
+    }
+
+    function copyOverlayOutput() {
+      if (!currentOverlayId) return;
+      const data = outputStore.get(currentOverlayId);
+      if (!data) return;
+      navigator.clipboard.writeText(data.fullText).then(() => toast('Copied to clipboard')).catch(() => toast('Copy failed'));
+    }
+
+    function downloadOutput(nodeId) {
+      const data = outputStore.get(nodeId);
+      if (!data) return;
+      const isCode = /```|<!DOCTYPE|<html|function\s|const\s|import\s|class\s/.test(data.fullText.slice(0, 500));
+      const ext = isCode ? '.html' : '.txt';
+      let content = data.fullText;
+      // Strip markdown code fences if present
+      if (isCode && content.startsWith('```')) {
+        content = content.replace(/^```[^\n]*\n/, '').replace(/\n```\s*$/, '');
+      }
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.name.toLowerCase().replace(/\s+/g, '-') + '-output' + ext;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Downloaded');
+    }
+
+    function runOutput(nodeId) {
+      const data = outputStore.get(nodeId);
+      if (!data) return;
+      let content = data.fullText;
+      // Strip markdown code fences if present
+      if (content.startsWith('```')) {
+        content = content.replace(/^```[^\n]*\n/, '').replace(/\n```\s*$/, '');
+      }
+      const blob = new Blob([content], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      toast('Running in new tab');
+    }
+
     // ── Clear board ──
     function clearBoard() {
       canvas.innerHTML = '';
@@ -2815,11 +3354,16 @@
       const panel = document.getElementById('chat-panel');
       if (panel) panel.remove();
       openPanelId = null;
+      // Close output overlay if open
+      closeOutputOverlay();
       // Clear connection lines
       document.getElementById('link-lines').innerHTML = '';
-      // Remove all contact cards, sticky notes, and text nodes
-      document.querySelectorAll('.agent-contact-card, .sticky-note, .text-node').forEach(el => el.remove());
+      // Remove all contact cards, sticky notes, text nodes, and output nodes
+      document.querySelectorAll('.agent-contact-card, .sticky-note, .text-node, .output-node').forEach(el => el.remove());
       textNodeLinks.clear();
+      pipelineLinks.clear();
+      outputLinks.clear();
+      outputStore.clear();
       textNodeLinesAnimated.clear();
       agentCards.clear();
       conversationMap.clear();
