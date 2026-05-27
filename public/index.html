@@ -1390,6 +1390,67 @@
     .output-node:hover .output-close-btn { opacity: 1; }
     .output-node .output-close-btn:hover { color: var(--fg); }
 
+    /* ── URL nodes (live deploy links on canvas) ── */
+    .url-node {
+      position: absolute;
+      z-index: 35;
+      background: var(--bg);
+      border: 1px solid var(--fg);
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-size: 13px;
+      cursor: grab;
+      user-select: none;
+      animation: cardBounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      box-shadow: 0 0 15px rgba(255,255,255,0.1);
+      transition: box-shadow 0.3s, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .url-node:active { cursor: grabbing; }
+    .url-node:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 20px rgba(255,255,255,0.15);
+    }
+    [data-theme="light"] .url-node {
+      box-shadow: 0 0 15px rgba(0,0,0,0.06);
+    }
+    [data-theme="light"] .url-node:hover {
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    .url-node .url-label {
+      font-size: 9px;
+      color: var(--dim);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .url-node a {
+      color: var(--fg);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .url-node a:hover { text-decoration: underline; }
+    .url-node .url-close-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: none;
+      border: none;
+      color: var(--border);
+      font-size: 15px;
+      cursor: pointer;
+      line-height: 1;
+      opacity: 0;
+      transition: color 0.25s, opacity 0.2s;
+      z-index: 1;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .url-node:hover .url-close-btn { opacity: 1; }
+    .url-node .url-close-btn:hover { color: var(--fg); }
+
     /* ── Output overlay (full-screen viewer) ── */
     #output-overlay {
       position: fixed;
@@ -2787,6 +2848,7 @@
     const outputLinks = new Map(); // "agentId|outputId" -> { from, to } (agent -> output links)
     const textNodeLinesAnimated = new Set(); // track which links have played the draw-on animation
     const outputStore = new Map(); // outputNodeId -> { fullText, name, role }
+    const urlLinks = new Map(); // "outputId|urlId" -> { from, to } (output -> url links)
 
     function createTextNode(text) {
       const node = document.createElement('div');
@@ -2975,6 +3037,14 @@
       outputLinks.forEach(({ from, to }, key) => {
         const info = agentCards.get(from);
         const fromEl = info ? info.element : document.getElementById(from);
+        const toEl = document.getElementById(to);
+        if (!fromEl || !toEl) return;
+        drawConnectorLine(svg, fromEl, toEl, key);
+      });
+
+      // 4. Draw output node -> url node links
+      urlLinks.forEach(({ from, to }, key) => {
+        const fromEl = document.getElementById(from);
         const toEl = document.getElementById(to);
         if (!fromEl || !toEl) return;
         drawConnectorLine(svg, fromEl, toEl, key);
@@ -3245,13 +3315,18 @@
       downloadBtn.textContent = 'Download';
       downloadBtn.onclick = (e) => { e.stopPropagation(); downloadOutput(nodeId); };
 
-      // If it looks like code, add a Run button
+      // If it looks like code, add Run + Deploy buttons
       const isCode = /```|<!DOCTYPE|<html|function\s|const\s|import\s|class\s/.test(fullText.slice(0, 500));
       if (isCode) {
         const runBtn = document.createElement('button');
         runBtn.textContent = 'Run';
         runBtn.onclick = (e) => { e.stopPropagation(); runOutput(nodeId); };
         actions.appendChild(runBtn);
+
+        const deployBtn = document.createElement('button');
+        deployBtn.textContent = 'Deploy';
+        deployBtn.onclick = (e) => { e.stopPropagation(); deployOutput(nodeId); };
+        actions.appendChild(deployBtn);
       }
 
       actions.appendChild(viewBtn);
@@ -3346,6 +3421,101 @@
       toast('Running in new tab');
     }
 
+    // ── Deploy output to Vercel ──
+    async function deployOutput(nodeId) {
+      const data = outputStore.get(nodeId);
+      if (!data) return;
+
+      toast('Deploying to Vercel...');
+
+      let content = data.fullText;
+      // Strip markdown code fences if present
+      if (content.startsWith('```')) {
+        content = content.replace(/^```[^\n]*\n/, '').replace(/\n```\s*$/, '');
+      }
+
+      const name = (lastGoalText || 'project').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').slice(0, 40);
+
+      try {
+        const res = await fetch('/api/deploy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: content, name }),
+        });
+
+        const result = await res.json();
+        if (result.error) {
+          toast('Deploy failed: ' + result.error);
+          return;
+        }
+
+        // Create a URL node on the whiteboard connected to the output
+        createUrlNode(result.url, nodeId);
+        toast('Live at ' + result.url);
+      } catch (err) {
+        toast('Deploy failed: ' + err.message);
+      }
+    }
+
+    // Create a URL node on the whiteboard linked to an output node
+    function createUrlNode(url, outputNodeId) {
+      const node = document.createElement('div');
+      node.className = 'url-node';
+      const nodeId = 'url-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+      node.id = nodeId;
+
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'url-close-btn';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.onclick = () => dismissUrlNode(nodeId);
+      node.appendChild(closeBtn);
+
+      const label = document.createElement('div');
+      label.className = 'url-label';
+      label.textContent = 'live';
+      node.appendChild(label);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = url.replace('https://', '');
+      node.appendChild(link);
+
+      // Position below the output node
+      const outputEl = document.getElementById(outputNodeId);
+      if (outputEl) {
+        const rect = outputEl.getBoundingClientRect();
+        node.style.left = outputEl.offsetLeft + 'px';
+        node.style.top = (outputEl.offsetTop + rect.height + 30) + 'px';
+      } else {
+        node.style.left = '200px';
+        node.style.top = '400px';
+      }
+
+      document.body.appendChild(node);
+      makeDraggable(node);
+
+      // Link output -> url
+      urlLinks.set(outputNodeId + '|' + nodeId, { from: outputNodeId, to: nodeId });
+      requestAnimationFrame(() => drawAllLines());
+
+      return nodeId;
+    }
+
+    function dismissUrlNode(nodeId) {
+      const node = document.getElementById(nodeId);
+      if (node) {
+        node.style.animation = 'cardDismiss 0.3s cubic-bezier(0.4, 0, 1, 1) forwards';
+        setTimeout(() => node.remove(), 300);
+      }
+      // Remove any links involving this url node
+      for (const [key] of urlLinks) {
+        if (key.endsWith('|' + nodeId)) urlLinks.delete(key);
+      }
+      requestAnimationFrame(() => drawAllLines());
+    }
+
     // ── Clear board ──
     function clearBoard() {
       canvas.innerHTML = '';
@@ -3358,11 +3528,12 @@
       closeOutputOverlay();
       // Clear connection lines
       document.getElementById('link-lines').innerHTML = '';
-      // Remove all contact cards, sticky notes, text nodes, and output nodes
-      document.querySelectorAll('.agent-contact-card, .sticky-note, .text-node, .output-node').forEach(el => el.remove());
+      // Remove all contact cards, sticky notes, text nodes, output nodes, and url nodes
+      document.querySelectorAll('.agent-contact-card, .sticky-note, .text-node, .output-node, .url-node').forEach(el => el.remove());
       textNodeLinks.clear();
       pipelineLinks.clear();
       outputLinks.clear();
+      urlLinks.clear();
       outputStore.clear();
       textNodeLinesAnimated.clear();
       agentCards.clear();

@@ -984,6 +984,56 @@ app.get('/api/agents', (req, res) => {
   res.json(getAllAgents());
 });
 
+// ── API: Deploy output to Vercel ──
+app.post('/api/deploy', async (req, res) => {
+  try {
+    const { code, name } = req.body;
+    if (!code) {
+      return res.status(400).json({ error: 'No code to deploy.' });
+    }
+
+    const vercelToken = process.env.VERCEL_TOKEN;
+    if (!vercelToken) {
+      return res.status(500).json({ error: 'Vercel token not configured' });
+    }
+
+    const response = await fetch('https://api.vercel.com/v13/deployments', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${vercelToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: name || 'ai-project',
+        files: [
+          {
+            file: 'index.html',
+            data: Buffer.from(code).toString('base64'),
+            encoding: 'base64',
+          },
+        ],
+        projectSettings: {
+          framework: null,
+        },
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      return res.status(400).json({ error: data.error.message || 'Deploy failed' });
+    }
+
+    res.json({
+      url: `https://${data.url}`,
+      deploymentId: data.id,
+    });
+  } catch (err) {
+    console.error('Deploy error:', err.message);
+    res.status(500).json({ error: safeErrorMessage(err) });
+  }
+});
+
 // ── Health check ──
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
