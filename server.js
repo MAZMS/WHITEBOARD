@@ -2,8 +2,105 @@ const express = require('express');
 const OpenAI = require('openai');
 const path = require('path');
 const { getSystemPrompt, getAllAgents } = require('./agents');
+const pool = require('./db');
 
 const app = express();
+
+// ── Postgres helpers ──
+let dbReady = false;
+
+async function initDatabase() {
+  if (!pool) {
+    console.log('DATABASE_URL not set — running in memory-only mode');
+    return;
+  }
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS token_usage (
+        id SERIAL PRIMARY KEY,
+        date TEXT NOT NULL,
+        premium_used INTEGER DEFAULT 0,
+        mini_used INTEGER DEFAULT 0,
+        default_model TEXT DEFAULT 'gpt-5.4',
+        UNIQUE(date)
+      );
+      CREATE TABLE IF NOT EXISTS token_history (
+        id SERIAL PRIMARY KEY,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        date TEXT NOT NULL,
+        model TEXT,
+        tier TEXT,
+        agent TEXT,
+        prompt_tokens INTEGER DEFAULT 0,
+        completion_tokens INTEGER DEFAULT 0,
+        total_tokens INTEGER DEFAULT 0
+      );
+    `);
+    dbReady = true;
+    console.log('Postgres tables ready');
+  } catch (err) {
+    console.error('Postgres init failed — falling back to memory:', err.message);
+  }
+}
+
+async function loadUsageFromDb() {
+  if (!dbReady) return;
+  try {
+    const today = todayStr();
+    const usageResult = await pool.query('SELECT * FROM token_usage WHERE date = $1', [today]);
+    const row = usageResult.rows[0];
+    if (row) {
+      tokenUsage.premium = row.premium_used || 0;
+      tokenUsage.mini = row.mini_used || 0;
+      tokenUsage.settings.defaultModel = row.default_model || 'gpt-5.4';
+    }
+    const historyResult = await pool.query(
+      'SELECT * FROM token_history WHERE date = $1 ORDER BY created_at DESC LIMIT 100',
+      [today],
+    );
+    tokenUsage.history = historyResult.rows.map((r) => ({
+      timestamp: r.created_at,
+      model: r.model,
+      tier: r.tier,
+      agent: r.agent,
+      prompt_tokens: r.prompt_tokens,
+      completion_tokens: r.completion_tokens,
+      total: r.total_tokens,
+    }));
+    tokenUsage.date = today;
+    console.log(`Loaded usage from DB: premium=${tokenUsage.premium}, mini=${tokenUsage.mini}, history=${tokenUsage.history.length} rows`);
+  } catch (err) {
+    console.error('Failed to load usage from DB:', err.message);
+  }
+}
+
+async function persistUsage(tier, tokens, model, agentName, usage) {
+  if (!dbReady) return;
+  try {
+    // Upsert daily totals — use separate queries per tier to stay fully parameterized
+    if (tier === 'premium') {
+      await pool.query(`
+        INSERT INTO token_usage (date, premium_used, default_model)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (date) DO UPDATE SET premium_used = token_usage.premium_used + $2
+      `, [todayStr(), tokens, tokenUsage.settings.defaultModel]);
+    } else {
+      await pool.query(`
+        INSERT INTO token_usage (date, mini_used, default_model)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (date) DO UPDATE SET mini_used = token_usage.mini_used + $2
+      `, [todayStr(), tokens, tokenUsage.settings.defaultModel]);
+    }
+
+    // Insert history record
+    await pool.query(`
+      INSERT INTO token_history (date, model, tier, agent, prompt_tokens, completion_tokens, total_tokens)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [todayStr(), model, tier, agentName, usage.prompt_tokens || 0, usage.completion_tokens || 0, usage.total_tokens || 0]);
+  } catch (err) {
+    console.error('Failed to persist usage to DB:', err.message);
+  }
+}
 
 // ── Security headers ──
 app.use((req, res, next) => {
@@ -104,7 +201,7 @@ app.post('/api/agent', async (req, res) => {
     const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
     const reply = completion.choices[0]?.message?.content || '';
 
-    // Track usage
+    // Track usage (in-memory + DB)
     tokenUsage[tier] += usage.total_tokens;
     tokenUsage.history.push({
       timestamp: new Date().toISOString(),
@@ -116,6 +213,7 @@ app.post('/api/agent', async (req, res) => {
       total: usage.total_tokens,
     });
 
+    persistUsage(tier, usage.total_tokens, model, agent || 'custom', usage);
     logRequest({ agent, model, tier, tokens: usage.total_tokens });
 
     res.json({
@@ -200,6 +298,7 @@ app.post('/api/agent/stream', async (req, res) => {
           completion_tokens: chunk.usage.completion_tokens || 0,
           total: totalTokens,
         });
+        persistUsage(tier, totalTokens, model, agent || 'custom', chunk.usage);
       }
     }
 
@@ -219,8 +318,59 @@ app.post('/api/agent/stream', async (req, res) => {
 });
 
 // ── Admin API: Get usage stats ──
-app.get('/api/admin/usage', (req, res) => {
+app.get('/api/admin/usage', async (req, res) => {
   resetIfNewDay();
+
+  // Try to serve fresh data from DB; fall back to in-memory cache
+  if (dbReady) {
+    try {
+      const today = todayStr();
+      const usageResult = await pool.query('SELECT * FROM token_usage WHERE date = $1', [today]);
+      const row = usageResult.rows[0] || { premium_used: 0, mini_used: 0, default_model: tokenUsage.settings.defaultModel };
+      const historyResult = await pool.query(
+        'SELECT * FROM token_history WHERE date = $1 ORDER BY created_at DESC LIMIT 100',
+        [today],
+      );
+      const premium = row.premium_used || 0;
+      const mini = row.mini_used || 0;
+
+      // Sync in-memory cache
+      tokenUsage.premium = premium;
+      tokenUsage.mini = mini;
+      tokenUsage.settings.defaultModel = row.default_model || 'gpt-5.4';
+
+      return res.json({
+        date: today,
+        premium: {
+          used: premium,
+          limit: DAILY_LIMITS.premium,
+          remaining: Math.max(0, DAILY_LIMITS.premium - premium),
+          percent: Math.round((premium / DAILY_LIMITS.premium) * 100),
+        },
+        mini: {
+          used: mini,
+          limit: DAILY_LIMITS.mini,
+          remaining: Math.max(0, DAILY_LIMITS.mini - mini),
+          percent: Math.round((mini / DAILY_LIMITS.mini) * 100),
+        },
+        history: historyResult.rows.map((r) => ({
+          timestamp: r.created_at,
+          model: r.model,
+          tier: r.tier,
+          agent: r.agent,
+          prompt_tokens: r.prompt_tokens,
+          completion_tokens: r.completion_tokens,
+          total: r.total_tokens,
+        })),
+        settings: tokenUsage.settings,
+        models: { premium: PREMIUM_MODELS, mini: MINI_MODELS },
+      });
+    } catch (err) {
+      console.error('DB read failed in /api/admin/usage, falling back to memory:', err.message);
+    }
+  }
+
+  // Fallback: serve from in-memory cache
   res.json({
     date: tokenUsage.date,
     premium: {
@@ -242,20 +392,43 @@ app.get('/api/admin/usage', (req, res) => {
 });
 
 // ── Admin API: Reset daily usage ──
-app.post('/api/admin/reset', (req, res) => {
+app.post('/api/admin/reset', async (req, res) => {
   tokenUsage.premium = 0;
   tokenUsage.mini = 0;
   tokenUsage.history = [];
   tokenUsage.date = todayStr();
+
+  if (dbReady) {
+    try {
+      const today = todayStr();
+      await pool.query('DELETE FROM token_usage WHERE date = $1', [today]);
+      await pool.query('DELETE FROM token_history WHERE date = $1', [today]);
+    } catch (err) {
+      console.error('DB reset failed:', err.message);
+    }
+  }
+
   console.log(`[${new Date().toISOString()}] Admin reset: usage counters cleared`);
   res.json({ message: 'Usage reset', date: todayStr() });
 });
 
 // ── Admin API: Update settings ──
-app.post('/api/admin/settings', (req, res) => {
+app.post('/api/admin/settings', async (req, res) => {
   const { defaultModel } = req.body;
   if (defaultModel) {
     tokenUsage.settings.defaultModel = defaultModel;
+
+    if (dbReady) {
+      try {
+        await pool.query(`
+          INSERT INTO token_usage (date, default_model)
+          VALUES ($1, $2)
+          ON CONFLICT (date) DO UPDATE SET default_model = $2
+        `, [todayStr(), defaultModel]);
+      } catch (err) {
+        console.error('DB settings update failed:', err.message);
+      }
+    }
   }
   res.json({ settings: tokenUsage.settings });
 });
@@ -322,6 +495,7 @@ If the goal doesn't match any existing agent well, use agent key "custom" and th
       completion_tokens: usage.completion_tokens || 0,
       total: usage.total_tokens || 0,
     });
+    persistUsage('mini', usage.total_tokens || 0, 'gpt-4o-mini', 'router', usage);
 
     const raw = completion.choices[0]?.message?.content || '{}';
     const parsed = JSON.parse(raw);
@@ -370,14 +544,24 @@ function safeErrorMessage(err) {
 }
 
 // ── Graceful shutdown ──
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down...');
+  if (pool) {
+    try { await pool.end(); } catch (_) { /* ignore */ }
+  }
   process.exit(0);
 });
 
+// ── Start server ──
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Whiteboard: http://localhost:${PORT}`);
-  console.log(`Admin:      http://localhost:${PORT}/admin`);
-});
+
+(async () => {
+  await initDatabase();
+  await loadUsageFromDb();
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Whiteboard: http://localhost:${PORT}`);
+    console.log(`Admin:      http://localhost:${PORT}/admin`);
+  });
+})();
