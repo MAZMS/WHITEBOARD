@@ -2199,20 +2199,22 @@
       hideSuggestionBar();
       suggestionStopped = false;
       suggestionCycle = 0;
+      const gen = ++suggestionGeneration;
 
       // Generate suggestions tailored to this role and goal
       activeSuggestions = getSuggestions(role, goal);
 
       suggestionBarEl.classList.add('visible');
-      cycleSuggestion();
+      cycleSuggestion(gen);
     }
 
-    function cycleSuggestion() {
-      if (suggestionStopped) return;
+    function cycleSuggestion(gen) {
+      if (suggestionStopped || gen !== suggestionGeneration) return;
       if (suggestionCycle >= activeSuggestions.length) {
         // Done cycling — fade out the bar
         suggestionTextEl.classList.add('fade-out');
         suggestionTimer = setTimeout(() => {
+          if (gen !== suggestionGeneration) return;
           suggestionBarEl.classList.remove('visible');
           suggestionTextEl.classList.remove('show', 'fade-out');
           currentSuggestion = '';
@@ -2225,21 +2227,24 @@
 
       // Typewriter in, hold 3s, fade out 0.4s, then next
       typewriterSuggestion(currentSuggestion, () => {
-        if (suggestionStopped) return;
+        if (suggestionStopped || gen !== suggestionGeneration) return;
         // Fade out
         suggestionTextEl.classList.add('fade-out');
         suggestionTimer = setTimeout(() => {
-          if (suggestionStopped) return;
+          if (suggestionStopped || gen !== suggestionGeneration) return;
           suggestionTextEl.classList.remove('show', 'fade-out');
           suggestionTextEl.innerHTML = '';
           // Small gap before next
-          suggestionTimer = setTimeout(cycleSuggestion, 100);
+          suggestionTimer = setTimeout(() => cycleSuggestion(gen), 100);
         }, 400);
       });
     }
 
+    let suggestionGeneration = 0; // generation counter to kill stale cycles
+
     function hideSuggestionBar() {
       suggestionStopped = true;
+      suggestionGeneration++;
       clearTimeout(suggestionTimer);
       clearTimeout(suggestionTypeTimer);
       suggestionTimer = null;
