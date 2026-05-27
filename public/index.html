@@ -1072,6 +1072,20 @@
                   border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
+    /* ── LEAD badge on team leader card ── */
+    .agent-contact-card .lead-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--bg);
+      background: var(--fg);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
     /* ── Link button on agent cards ── */
     .agent-contact-card .card-link-btn {
       position: absolute;
@@ -1268,7 +1282,7 @@
     <div class="help-row"><span>Close panel / bar</span> <kbd>Esc</kbd></div>
     <div class="help-row"><span>Clear board</span> <kbd>Ctrl+Shift+C</kbd></div>
     <h3>HOW IT WORKS</h3>
-    <div class="help-feature">Type a goal &mdash; AI picks the right agent</div>
+    <div class="help-feature">Type a goal &mdash; AI assembles a team of agents</div>
     <div class="help-feature">Click &ldquo;Message&rdquo; on a card to chat</div>
     <div class="help-feature">Drag cards to reposition them</div>
     <div class="help-feature">Clear chat with the button in chat header</div>
@@ -1617,7 +1631,7 @@
         // Brief in-bar loading state before closing
         commandInput.disabled = true;
         commandInput.value = '';
-        commandInput.placeholder = 'Finding the right person...';
+        commandInput.placeholder = 'Assembling your team...';
         const hintEl = commandBar.querySelector('.hint');
         if (hintEl) hintEl.style.display = 'none';
         // Close after a beat so the user sees the state
@@ -1627,23 +1641,18 @@
         if (hintEl) hintEl.style.display = '';
         closeCommand();
         try {
-          const res = await fetch('/api/agent/pick', {
+          const res = await fetch('/api/agent/plan-team', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ goal: val }),
           });
           if (!res.ok) {
             const err = await res.json();
-            toast(err.error || 'Failed to pick agent');
+            toast(err.error || 'Failed to plan team');
             return;
           }
           const data = await res.json();
-          summonAgent(data.agent, {
-            displayName: data.displayName,
-            role: data.role,
-            greeting: data.greeting,
-            goal: val,
-          });
+          summonTeam(data.team, val);
         } catch (err) {
           toast('Connection error: ' + err.message);
         }
@@ -1929,7 +1938,7 @@
       const role = opts.role || (name.charAt(0).toUpperCase() + name.slice(1));
       const greeting = opts.greeting || agent.desc;
       const goal = opts.goal || '';
-      const agentId = 'agent-' + Date.now();
+      const agentId = 'agent-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
 
       // Initialize conversation history with the greeting
       conversationMap.set(agentId, [
@@ -1949,6 +1958,9 @@
       card.style.left = pos.x + 'px';
       card.style.top = pos.y + 'px';
 
+      const isLead = opts.isLead || false;
+      const leadBadgeHtml = isLead ? '<div class="lead-badge">LEAD</div>' : '';
+
       card.innerHTML = `
         <button class="card-link-btn" onclick="toggleLink('${agentId}')" title="Link agents">+</button>
         <button class="card-close-btn" onclick="dismissAgent('${agentId}')">&times;</button>
@@ -1956,6 +1968,7 @@
           <div class="avatar-head"></div>
           <div class="avatar-body"></div>
         </div>
+        ${leadBadgeHtml}
         <div class="card-name">${displayName}</div>
         <div class="card-role">${role}</div>
         <div class="card-status"><span class="dot"></span> Online</div>
@@ -1966,7 +1979,7 @@
       makeDraggable(card);
 
       // Track the card
-      agentCards.set(agentId, { name, displayName, role, element: card });
+      agentCards.set(agentId, { name, displayName, role, isLead, element: card });
 
       // Hide empty state hint on first agent
       const hint = document.getElementById('empty-hint');
@@ -1976,6 +1989,79 @@
       saveConversations();
 
       lastGoalText = goal;
+
+      return agentId;
+    }
+
+    // ── Team summoning: spawns multiple agents, links them, opens shared chat ──
+    async function summonTeam(team, goal) {
+      if (!team || !Array.isArray(team) || team.length < 2) return;
+
+      const spawnedIds = [];
+
+      // Spawn each agent with a stagger
+      for (let i = 0; i < team.length; i++) {
+        const member = team[i];
+        const isLead = i === 0;
+
+        // Wait between spawns for staggered effect
+        if (i > 0) await new Promise(r => setTimeout(r, 300));
+
+        const agentId = summonAgent('custom', {
+          displayName: member.humanName,
+          role: member.role,
+          greeting: member.greeting,
+          goal: goal,
+          isLead: isLead,
+        });
+
+        spawnedIds.push(agentId);
+      }
+
+      // Auto-link all spawned agents with a brief delay
+      await new Promise(r => setTimeout(r, 400));
+      for (const id of spawnedIds) {
+        if (!linkedAgents.has(id)) {
+          linkedAgents.add(id);
+        }
+      }
+      updateLinkVisuals();
+      triggerLinkPulse();
+
+      // Auto-open the shared chat after all cards are in
+      await new Promise(r => setTimeout(r, 800));
+
+      // Initialize the group conversation with greetings
+      const groupKey = getGroupKey();
+      const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const names = [];
+      linkedAgents.forEach(id => {
+        const info = agentCards.get(id);
+        if (info) names.push(info.displayName);
+      });
+
+      const greetingMessages = [
+        { role: 'system-info', content: `${names.join(', ')} joined the conversation`, time: now },
+      ];
+
+      // Add each agent's greeting as an assistant message
+      for (let i = 0; i < spawnedIds.length; i++) {
+        const info = agentCards.get(spawnedIds[i]);
+        if (info && team[i]) {
+          greetingMessages.push({
+            role: 'assistant',
+            content: team[i].greeting,
+            agent: info.displayName,
+            time: now,
+          });
+        }
+      }
+
+      groupConversationMap.set(groupKey, greetingMessages);
+      saveGroupConversations();
+
+      // Open the shared chat — greetings will render from the history
+      openSharedChat(spawnedIds[0]);
     }
 
     // ── Input placeholder rotation ──

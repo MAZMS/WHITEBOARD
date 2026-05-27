@@ -526,14 +526,87 @@ If the goal doesn't match any existing agent well, use agent key "custom" and th
   }
 });
 
+// ── API: Plan a team of agents for a goal ──
+app.post('/api/agent/plan-team', async (req, res) => {
+  try {
+    const { goal } = req.body;
+    if (!goal || !goal.trim()) {
+      return res.status(400).json({ error: 'Goal is required.' });
+    }
+
+    const planPrompt = `You are a team builder. Given a goal, design a small team (2-4 agents max) to accomplish it.
+
+The FIRST agent is always the LEAD — they coordinate the others. Give them a leadership role like "CEO", "Director", "Team Lead", etc.
+
+The other agents are specialists that the lead needs.
+
+Reply with JSON only:
+{
+  "team": [
+    { "humanName": "unique name", "role": "CEO", "greeting": "casual greeting about the goal", "reason": "why this role is needed" },
+    { "humanName": "unique name", "role": "Marketing Strategist", "greeting": "casual greeting", "reason": "why needed" },
+    { "humanName": "unique name", "role": "Financial Analyst", "greeting": "casual greeting", "reason": "why needed" }
+  ]
+}
+
+Rules:
+- First agent is ALWAYS the lead/coordinator
+- 2-4 agents total (keep it focused, not bloated)
+- Each name is unique, diverse, real-sounding
+- Roles are SPECIFIC to the goal (not generic)
+- Greetings sound like a real person joining a team chat — casual, warm, lowercase ok
+- NEVER use phrases like "I'd be happy to help", "Great question", "Let's dive in", "Absolutely!", "Of course!" — sound like a real friend in a group chat
+- The lead's greeting should acknowledge they're taking charge and reference the specific goal
+- Sub-agent greetings should mention their specialty and how it connects to the goal`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: planPrompt },
+        { role: 'user', content: goal.trim() },
+      ],
+      max_completion_tokens: 512,
+      response_format: { type: 'json_object' },
+    });
+
+    const usage = completion.usage || { total_tokens: 0 };
+    resetIfNewDay();
+    tokenUsage.mini += usage.total_tokens || 0;
+    tokenUsage.history.push({
+      timestamp: new Date().toISOString(),
+      model: 'gpt-4o-mini',
+      tier: 'mini',
+      agent: 'team-planner',
+      prompt_tokens: usage.prompt_tokens || 0,
+      completion_tokens: usage.completion_tokens || 0,
+      total: usage.total_tokens || 0,
+    });
+    persistUsage('mini', usage.total_tokens || 0, 'gpt-4o-mini', 'team-planner', usage);
+
+    const raw = completion.choices[0]?.message?.content || '{}';
+    const parsed = JSON.parse(raw);
+
+    // Validate and cap at 4 agents
+    if (!parsed.team || !Array.isArray(parsed.team) || parsed.team.length < 2) {
+      return res.status(500).json({ error: 'AI returned an invalid team plan.' });
+    }
+    parsed.team = parsed.team.slice(0, 4);
+
+    res.json(parsed);
+  } catch (err) {
+    console.error('Plan-team error:', err.message);
+    res.status(err.status || 500).json({ error: safeErrorMessage(err) });
+  }
+});
+
 // ── API: Group chat — multiple agents respond in sequence ──
 app.post('/api/agent/group', async (req, res) => {
   try {
     resetIfNewDay();
 
     const { agents: agentList, message, messages: msgHistory } = req.body;
-    if (!agentList || !Array.isArray(agentList) || agentList.length < 2 || agentList.length > 3) {
-      return res.status(400).json({ error: 'Provide 2-3 agents for a group chat.' });
+    if (!agentList || !Array.isArray(agentList) || agentList.length < 2 || agentList.length > 6) {
+      return res.status(400).json({ error: 'Provide 2-6 agents for a group chat.' });
     }
 
     const model = tokenUsage.settings.defaultModel;
