@@ -1387,6 +1387,8 @@
       hideGhost();
       cmdGhostStopped = false;
       cmdGhostCurrent = '';
+      // Clear placeholder so it never overlaps with ghost text
+      commandInput.placeholder = '';
       // Lead with context-aware prompt, then cycle through goal suggestions
       const leadIn = agentCards.size > 0
         ? 'what else do you need help with?'
@@ -1485,6 +1487,10 @@
       const kbdEl = cmdGhost.querySelector('kbd');
       if (kbdEl) kbdEl.classList.remove('visible');
       cmdGhostCurrent = '';
+      // Restore placeholder when ghost stops (if input is empty)
+      if (commandInput.value === '') {
+        commandInput.placeholder = 'Type your goal...';
+      }
     }
 
     commandInput.addEventListener('input', () => {
@@ -1496,7 +1502,8 @@
         hideGhost();
         cmdGhostCurrent = '';
       } else {
-        // Input cleared -- restart 8s idle wait
+        // Input cleared -- restore placeholder and restart 8s idle wait
+        commandInput.placeholder = 'Type your goal...';
         startGhostIdleTimer();
       }
     });
@@ -1506,7 +1513,7 @@
       commandBar.classList.add('visible');
       commandBackdrop.classList.add('visible');
       commandInput.value = '';
-      commandInput.placeholder = '';
+      commandInput.placeholder = 'Type your goal...';
       startGhostIdleTimer();
       // Immediate auto-focus with a microtask to ensure DOM is ready
       requestAnimationFrame(() => commandInput.focus());
@@ -1543,7 +1550,7 @@
         // Close after a beat so the user sees the state
         await new Promise(r => setTimeout(r, 600));
         commandInput.disabled = false;
-        commandInput.placeholder = '';
+        commandInput.placeholder = 'Type your goal...';
         if (hintEl) hintEl.style.display = '';
         closeCommand();
         try {
