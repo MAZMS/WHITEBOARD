@@ -1,7 +1,7 @@
 {
-  "name": "greatlibraryai",
-  "version": "1.0.0",
-  "description": "Whiteboard agent system powered by OpenAI",
+  "name": "whiteboard",
+  "version": "2.0.0",
+  "description": "Clean aesthetic whiteboard with AI image generation and Postgres persistence",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
