@@ -34,7 +34,7 @@
       --shadow-sm: 0 1px 3px rgba(0,0,0,.2); --shadow-md: 0 4px 12px rgba(0,0,0,.25);
       --shadow-lg: 0 12px 40px rgba(0,0,0,.35); --shadow-xl: 0 24px 48px rgba(0,0,0,.4);
       --toolbar-bg: rgba(20,21,31,.9);
-      --grid-color: #1a1b28;
+      --grid-color: #252638;
       --note-yellow: #292520; --note-yellow-border: #854d0e;
       --note-blue: #172033; --note-blue-border: #1e40af;
       --note-green: #14261a; --note-green-border: #166534;
@@ -55,8 +55,8 @@
     /* ── Dot Grid ── */
     #whiteboard {
       position: absolute; inset: 0; z-index: 1;
-      background-image: radial-gradient(circle, var(--grid-color) 1px, transparent 1px);
-      background-size: 28px 28px;
+      background-image: radial-gradient(circle, var(--grid-color) 1.2px, transparent 1.2px);
+      background-size: 32px 32px;
       transition: background .4s var(--ease);
     }
     #draw-canvas { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
@@ -474,18 +474,26 @@
   (function(){
     const s = localStorage.getItem('wb-theme');
     if(s==='dark') document.documentElement.setAttribute('data-theme','dark');
-    updateThemeIcon();
+    updateThemeIcon(); setTimeout(updatePenColors,0);
   })();
   function toggleTheme(){
     const d = document.documentElement.getAttribute('data-theme')==='dark';
     if(d){ document.documentElement.removeAttribute('data-theme'); localStorage.setItem('wb-theme','light'); }
     else{ document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('wb-theme','dark'); }
-    updateThemeIcon();
+    updateThemeIcon(); updatePenColors();
   }
   function updateThemeIcon(){
     const d = document.documentElement.getAttribute('data-theme')==='dark';
     document.getElementById('sun-icon').style.display = d?'none':'block';
     document.getElementById('moon-icon').style.display = d?'block':'none';
+  }
+  function updatePenColors(){
+    const d = document.documentElement.getAttribute('data-theme')==='dark';
+    const first = document.querySelector('.c-dot[data-color="#1a1a2e"]');
+    if(first){
+      if(d){ first.style.background='#e4e5ea'; first.dataset.color='#e4e5ea'; if(penColor==='#1a1a2e') penColor='#e4e5ea'; }
+      else{ first.style.background='#1a1a2e'; first.dataset.color='#1a1a2e'; if(penColor==='#e4e5ea') penColor='#1a1a2e'; }
+    }
   }
 
   // ═══════════════════════ CANVAS ═══════════════════════
