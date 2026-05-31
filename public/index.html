@@ -18,7 +18,7 @@
       --shadow-lg: 0 12px 40px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
       --shadow-xl: 0 24px 48px rgba(0,0,0,.12);
       --toolbar-bg: rgba(255,255,255,.88);
-      --grid-color: #e8eaef;
+      --grid-color: #d5d8e0;
       --note-yellow: #fef9c3; --note-yellow-border: #fde047;
       --note-blue: #dbeafe; --note-blue-border: #93c5fd;
       --note-green: #dcfce7; --note-green-border: #86efac;
@@ -61,6 +61,13 @@
     }
     #draw-canvas { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
     #draw-canvas.active { pointer-events: auto; cursor: crosshair; }
+    #draw-canvas.eraser { cursor: none; }
+    #eraser-cursor {
+      position: fixed; width: 40px; height: 40px; border-radius: 50%;
+      border: 2px solid var(--fg); pointer-events: none; z-index: 1000;
+      transform: translate(-50%,-50%); display: none; opacity: .5;
+      transition: opacity .1s;
+    }
 
     /* ── Top Bar ── */
     #topbar {
@@ -334,6 +341,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
         Save
       </button>
+      <button class="tb" onclick="exportBoard()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
       <button class="tb" onclick="clearBoard()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
         Clear
@@ -458,6 +469,7 @@
     </div>
   </div>
 
+  <div id="eraser-cursor"></div>
   <div id="toast"></div>
 
   <script>
@@ -505,9 +517,18 @@
     tool=t;
     document.querySelectorAll('.t-btn[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));
     canvas.classList.toggle('active', t==='pen'||t==='eraser');
+    canvas.classList.toggle('eraser', t==='eraser');
     document.getElementById('pen-opts').classList.toggle('visible', t==='pen');
+    document.getElementById('eraser-cursor').style.display = t==='eraser'?'block':'none';
     if(selected) deselect();
   }
+  // Track eraser cursor
+  document.addEventListener('mousemove',e=>{
+    if(tool==='eraser'){
+      const ec=document.getElementById('eraser-cursor');
+      ec.style.left=e.clientX+'px'; ec.style.top=e.clientY+'px';
+    }
+  });
 
   document.addEventListener('keydown', e=>{
     if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable) return;
@@ -807,6 +828,105 @@
   function openModal(id){ document.getElementById(id).classList.add('visible'); const inp=document.getElementById(id).querySelector('input'); if(inp) inp.focus(); }
   function closeModals(){ document.querySelectorAll('.m-overlay').forEach(m=>m.classList.remove('visible')); }
   let toastT; function toast(m){ const t=document.getElementById('toast'); clearTimeout(toastT); t.classList.remove('show'); void t.offsetWidth; t.textContent=m; t.classList.add('show'); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
+
+  // ═══════════════════════ EXPORT ═══════════════════════
+  function exportBoard(){
+    if(elements.length===0){ toast('Nothing to export'); return; }
+    // Create offscreen canvas combining drawings + DOM elements screenshot
+    const exp=document.createElement('canvas');
+    exp.width=window.innerWidth; exp.height=window.innerHeight;
+    const ectx=exp.getContext('2d');
+    // Fill background
+    const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+    ectx.fillStyle=isDark?'#0c0c14':'#f8f9fa'; ectx.fillRect(0,0,exp.width,exp.height);
+    // Draw grid dots
+    ectx.fillStyle=isDark?'#252638':'#d5d8e0';
+    for(let x=0;x<exp.width;x+=32) for(let y=0;y<exp.height;y+=32){ ectx.beginPath(); ectx.arc(x,y,1.2,0,Math.PI*2); ectx.fill(); }
+    // Draw pen strokes
+    elements.filter(el=>el.type==='drawing').forEach(el=>{
+      const p=el.data.path; if(p.length<2) return;
+      ectx.beginPath(); ectx.moveTo(p[0].x,p[0].y);
+      for(let i=1;i<p.length-1;i++){
+        const mx=(p[i].x+p[i+1].x)/2,my=(p[i].y+p[i+1].y)/2;
+        ectx.quadraticCurveTo(p[i].x,p[i].y,mx,my);
+      }
+      if(p.length>1) ectx.lineTo(p[p.length-1].x,p[p.length-1].y);
+      ectx.strokeStyle=el.data.color||'#1a1a2e'; ectx.lineWidth=el.data.size||2;
+      ectx.lineCap='round'; ectx.lineJoin='round'; ectx.stroke();
+    });
+    // Draw text/notes as rectangles with text
+    elements.filter(el=>el.type!=='drawing').forEach(el=>{
+      if(el.type==='note'){
+        const colors={'':'#fef9c3',blue:'#dbeafe',green:'#dcfce7',pink:'#fce7f3'};
+        ectx.fillStyle=isDark?'#292520':(colors[el.data.color||'']||'#fef9c3');
+        ectx.fillRect(el.x,el.y,el.width||220,el.height||140);
+        ectx.strokeStyle=isDark?'#854d0e':'#fde047';
+        ectx.strokeRect(el.x,el.y,el.width||220,el.height||140);
+        if(el.data.text){ ectx.fillStyle=isDark?'#e4e5ea':'#1a1a2e'; ectx.font='13px Inter,sans-serif';
+          const lines=el.data.text.split('\n');
+          lines.forEach((line,i)=>ectx.fillText(line,el.x+14,el.y+28+i*20));
+        }
+      } else if(el.type==='text'&&el.data.text){
+        ectx.fillStyle=isDark?'#e4e5ea':'#1a1a2e'; ectx.font='18px Inter,sans-serif';
+        ectx.fillText(el.data.text.replace(/<[^>]*>/g,''),el.x+8,el.y+24);
+      } else if(el.type==='shape'){
+        ectx.strokeStyle=isDark?'#e4e5ea':'#1a1a2e'; ectx.lineWidth=2;
+        if(el.data.shape==='circle'){
+          ectx.beginPath(); ectx.ellipse(el.x+(el.width||120)/2,el.y+(el.height||120)/2,(el.width||120)/2,(el.height||120)/2,0,0,Math.PI*2); ectx.stroke();
+        } else { ectx.strokeRect(el.x,el.y,el.width||120,el.height||120); }
+      }
+    });
+    // Download
+    const link=document.createElement('a');
+    link.download=(document.getElementById('board-name').value||'whiteboard')+'.png';
+    link.href=exp.toDataURL('image/png');
+    link.click(); toast('Exported as PNG');
+  }
+
+  // ═══════════════════════ TOUCH SUPPORT ═══════════════════════
+  function getTouchPos(e){ const t=e.touches[0]; return {x:t.clientX,y:t.clientY}; }
+
+  canvas.addEventListener('touchstart',e=>{
+    if(tool==='pen'){ e.preventDefault(); const p=getTouchPos(e); isDrawing=true; drawPath=[p]; ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.strokeStyle=penColor; ctx.lineWidth=penSize; ctx.lineCap='round'; ctx.lineJoin='round'; }
+    else if(tool==='eraser'){ e.preventDefault(); const p=getTouchPos(e); isDrawing=true; eraseAt(p.x,p.y); }
+  },{passive:false});
+
+  canvas.addEventListener('touchmove',e=>{
+    if(!isDrawing) return; e.preventDefault();
+    const p=getTouchPos(e);
+    if(tool==='pen'){
+      drawPath.push(p);
+      if(drawPath.length>2){
+        const l=drawPath.length, p0=drawPath[l-3], p1=drawPath[l-2], p2=drawPath[l-1];
+        const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
+        ctx.quadraticCurveTo(p1.x,p1.y,mx,my); ctx.stroke();
+      } else { ctx.lineTo(p.x,p.y); ctx.stroke(); }
+    } else if(tool==='eraser') eraseAt(p.x,p.y);
+  },{passive:false});
+
+  canvas.addEventListener('touchend',e=>{
+    if(isDrawing&&tool==='pen'&&drawPath.length>1){
+      pushUndo();
+      elements.push({id:genId(),type:'drawing',x:0,y:0,data:{path:drawPath,color:penColor,size:penSize},z_index:zIdx++});
+      schedSave(); updateEmpty();
+    }
+    isDrawing=false; drawPath=[];
+  });
+
+  // ═══════════════════════ BOARD NAME AUTO-SAVE ═══════════════════════
+  document.getElementById('board-name').addEventListener('blur',()=>{ if(boardId) schedSave(); });
+  document.getElementById('board-name').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); e.target.blur(); }});
+
+  // ═══════════════════════ DRAG UNDO ═══════════════════════
+  // Override drag start to push undo
+  const origDragHandler = document.onmouseup;
+  wb.addEventListener('mousedown',e=>{
+    if(tool==='select' && e.target!==wb){
+      // Push undo when starting a drag on an element
+      const el=e.target.closest('.b-el');
+      if(el) pushUndo();
+    }
+  },true);
 
   // ═══════════════════════ INIT ═══════════════════════
   (async function(){
