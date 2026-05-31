@@ -177,6 +177,16 @@
       resize: none; outline: none;
     }
     .sticky textarea::placeholder { color: var(--dim); }
+    .sticky .resize-handle {
+      position: absolute; bottom: 0; right: 0; width: 16px; height: 16px;
+      cursor: nwse-resize; opacity: 0; transition: opacity .15s;
+    }
+    .sticky:hover .resize-handle { opacity: .4; }
+    .sticky .resize-handle::after {
+      content: ''; position: absolute; bottom: 4px; right: 4px;
+      width: 8px; height: 8px; border-right: 2px solid var(--dim);
+      border-bottom: 2px solid var(--dim);
+    }
     .el-actions {
       position: absolute; top: -12px; right: -8px;
       display: flex; gap: 3px; opacity: 0; transition: opacity .12s var(--ease);
@@ -532,6 +542,7 @@
 
   document.addEventListener('keydown', e=>{
     if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable) return;
+    if(document.querySelector('.m-overlay.visible')) { if(e.key==='Escape') closeModals(); return; }
     const k=e.key.toLowerCase();
     if(k==='v') setTool('select');
     else if(k==='p') setTool('pen');
@@ -637,6 +648,7 @@
     const color = noteColors[noteColorIdx % noteColors.length]; noteColorIdx++;
     const el={id:genId(),type:'note',x,y,width:220,height:140,data:{text:'',color},z_index:zIdx++};
     elements.push(el); renderEl(el); schedSave(); updateEmpty();
+    setTimeout(()=>{ const d=document.getElementById(el.id); if(d){ const ta=d.querySelector('textarea'); if(ta) ta.focus(); }},50);
   }
 
   function addShape(x,y){
@@ -666,7 +678,7 @@
     else if(el.type==='note'){
       d.classList.add('sticky'); if(el.data.color) d.classList.add(el.data.color);
       if(el.width) d.style.width=el.width+'px';
-      d.innerHTML=`<div class="el-actions"><button class="el-act" onclick="cycleNoteColor('${el.id}')">&#9632;</button><button class="el-act" onclick="deleteEl('${el.id}')">&times;</button></div><textarea placeholder="Write something...">${el.data.text||''}</textarea>`;
+      d.innerHTML=`<div class="el-actions"><button class="el-act" onclick="cycleNoteColor('${el.id}')">&#9632;</button><button class="el-act" onclick="deleteEl('${el.id}')">&times;</button></div><textarea placeholder="Write something...">${el.data.text||''}</textarea><div class="resize-handle" data-resize="${el.id}"></div>`;
       const ta=d.querySelector('textarea');
       ta.addEventListener('input',()=>{ const f=elements.find(e=>e.id===el.id); if(f) f.data.text=ta.value; schedSave(); });
       ta.addEventListener('mousedown',e=>e.stopPropagation());
@@ -704,6 +716,27 @@
     if(dom){ dom.style.left=el.x+'px'; dom.style.top=el.y+'px'; }
   });
   document.addEventListener('mouseup',()=>{ if(drag){ schedSave(); drag=null; }});
+
+  // Resize sticky notes
+  let resizeState = null;
+  document.addEventListener('mousedown',e=>{
+    const handle = e.target.closest('.resize-handle');
+    if(!handle) return;
+    e.preventDefault(); e.stopPropagation();
+    const id = handle.dataset.resize;
+    const el = elements.find(x=>x.id===id); if(!el) return;
+    pushUndo();
+    resizeState = { id, sx:e.clientX, sy:e.clientY, ow:el.width||220, oh:el.height||140 };
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!resizeState) return;
+    const el = elements.find(x=>x.id===resizeState.id); if(!el) return;
+    el.width = Math.max(160, resizeState.ow + (e.clientX - resizeState.sx));
+    el.height = Math.max(100, resizeState.oh + (e.clientY - resizeState.sy));
+    const dom = document.getElementById(el.id);
+    if(dom){ dom.style.width=el.width+'px'; dom.style.height=el.height+'px'; }
+  });
+  document.addEventListener('mouseup',()=>{ if(resizeState){ schedSave(); resizeState=null; }});
 
   // Select
   function select(id){ deselect(); selected=id; const d=document.getElementById(id); if(d) d.classList.add('selected'); }
