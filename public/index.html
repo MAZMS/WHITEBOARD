@@ -4,372 +4,352 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Whiteboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg: #fafafa; --fg: #1a1a1a; --dim: #888; --border: #e2e2e2;
-      --surface: #fff; --surface-hover: #f5f5f5; --accent: #2d2d2d;
-      --shadow: rgba(0,0,0,.06); --shadow-lg: rgba(0,0,0,.1);
-      --toolbar-bg: rgba(255,255,255,.92); --overlay-bg: rgba(0,0,0,.3);
+      --bg: #f8f9fa; --fg: #1a1a2e; --dim: #8b8fa3; --muted: #c1c4d0;
+      --border: #e4e6ed; --surface: #ffffff; --surface-alt: #f0f1f5;
+      --accent: #4f46e5; --accent-soft: rgba(79,70,229,.08);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.06), 0 2px 4px rgba(0,0,0,.04);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+      --shadow-xl: 0 24px 48px rgba(0,0,0,.12);
+      --toolbar-bg: rgba(255,255,255,.88);
+      --grid-color: #e8eaef;
+      --note-yellow: #fef9c3; --note-yellow-border: #fde047;
+      --note-blue: #dbeafe; --note-blue-border: #93c5fd;
+      --note-green: #dcfce7; --note-green-border: #86efac;
+      --note-pink: #fce7f3; --note-pink-border: #f9a8d4;
       --radius: 12px; --radius-sm: 8px; --radius-xs: 6px;
-      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       --ease: cubic-bezier(.16,1,.3,1); --ease-bounce: cubic-bezier(.34,1.56,.64,1);
     }
     [data-theme="dark"] {
-      --bg: #0a0a0a; --fg: #e8e8e8; --dim: #666; --border: #222;
-      --surface: #141414; --surface-hover: #1a1a1a; --accent: #e0e0e0;
-      --shadow: rgba(0,0,0,.3); --shadow-lg: rgba(0,0,0,.5);
-      --toolbar-bg: rgba(20,20,20,.92); --overlay-bg: rgba(0,0,0,.6);
+      --bg: #0c0c14; --fg: #e4e5ea; --dim: #6b6f82; --muted: #3a3d4e;
+      --border: #1e2030; --surface: #14151f; --surface-alt: #1a1b28;
+      --accent: #818cf8; --accent-soft: rgba(129,140,248,.1);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.2); --shadow-md: 0 4px 12px rgba(0,0,0,.25);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,.35); --shadow-xl: 0 24px 48px rgba(0,0,0,.4);
+      --toolbar-bg: rgba(20,21,31,.9);
+      --grid-color: #1a1b28;
+      --note-yellow: #292520; --note-yellow-border: #854d0e;
+      --note-blue: #172033; --note-blue-border: #1e40af;
+      --note-green: #14261a; --note-green-border: #166534;
+      --note-pink: #261320; --note-pink-border: #9d174d;
     }
     body {
       font-family: var(--font); background: var(--bg); color: var(--fg);
-      overflow: hidden; height: 100vh; width: 100vw; cursor: default;
-      transition: background .3s var(--ease), color .3s var(--ease);
-      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+      overflow: hidden; height: 100vh; width: 100vw;
+      transition: background .4s var(--ease), color .4s var(--ease);
+      -webkit-font-smoothing: antialiased;
     }
     * { scrollbar-width: none; } *::-webkit-scrollbar { display: none; }
-    button { font-family: var(--font); cursor: pointer; }
+    button { font-family: var(--font); cursor: pointer; border: none; background: none; }
     button:focus-visible, input:focus-visible, textarea:focus-visible {
       outline: 2px solid var(--accent); outline-offset: 2px;
     }
 
-    /* ── Canvas ── */
+    /* ── Dot Grid ── */
     #whiteboard {
       position: absolute; inset: 0; z-index: 1;
-      background-image: radial-gradient(circle, var(--border) .5px, transparent .5px);
-      background-size: 24px 24px;
-      transition: background .3s var(--ease);
+      background-image: radial-gradient(circle, var(--grid-color) 1px, transparent 1px);
+      background-size: 28px 28px;
+      transition: background .4s var(--ease);
     }
-    #draw-canvas {
-      position: absolute; inset: 0; z-index: 2;
-      pointer-events: none;
-    }
+    #draw-canvas { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
     #draw-canvas.active { pointer-events: auto; cursor: crosshair; }
+
+    /* ── Top Bar ── */
+    #topbar {
+      position: fixed; top: 12px; left: 12px; right: 12px; z-index: 90;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: var(--toolbar-bg);
+      backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      border: 1px solid var(--border); border-radius: 14px;
+      box-shadow: var(--shadow-md); transition: all .3s var(--ease);
+    }
+    #topbar-left { display: flex; align-items: center; gap: 8px; }
+    #topbar-right { display: flex; align-items: center; gap: 6px; }
+    #board-name {
+      font-size: 13px; font-weight: 600; background: none; border: none;
+      color: var(--fg); padding: 6px 10px; border-radius: var(--radius-xs);
+      transition: all .2s var(--ease); min-width: 100px; letter-spacing: -.2px;
+    }
+    #board-name:hover { background: var(--accent-soft); }
+    #board-name:focus { background: var(--surface-alt); outline: 2px solid var(--accent); }
+    .tb { display: flex; align-items: center; justify-content: center; gap: 5px;
+      height: 32px; padding: 0 10px; border-radius: var(--radius-xs);
+      color: var(--dim); font-size: 12px; font-weight: 500;
+      transition: all .2s var(--ease); }
+    .tb:hover { background: var(--accent-soft); color: var(--fg); }
+    .tb svg { width: 15px; height: 15px; }
+    .tb-icon { width: 32px; height: 32px; padding: 0; border-radius: var(--radius-xs);
+      display: flex; align-items: center; justify-content: center; color: var(--dim);
+      transition: all .2s var(--ease); }
+    .tb-icon:hover { background: var(--accent-soft); color: var(--fg); }
+    .tb-icon svg { width: 16px; height: 16px; }
+    .save-ind { font-size: 11px; color: var(--dim); padding: 0 6px;
+      transition: opacity .3s var(--ease); font-weight: 500; }
+    .save-ind.saved { color: var(--accent); }
 
     /* ── Toolbar ── */
     #toolbar {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
       z-index: 100; display: flex; align-items: center; gap: 2px;
-      background: var(--toolbar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      background: var(--toolbar-bg); backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
       border: 1px solid var(--border); border-radius: 16px; padding: 6px;
-      box-shadow: 0 4px 24px var(--shadow-lg), 0 0 0 1px var(--shadow);
-      transition: all .3s var(--ease);
+      box-shadow: var(--shadow-lg); transition: all .3s var(--ease);
     }
-    .tool-btn {
+    .t-btn {
       display: flex; align-items: center; justify-content: center;
-      width: 42px; height: 42px; border-radius: var(--radius-sm);
-      border: none; background: none; color: var(--dim); font-size: 18px;
-      transition: all .2s var(--ease); position: relative;
+      width: 40px; height: 40px; border-radius: 10px; color: var(--dim);
+      font-size: 18px; transition: all .15s var(--ease); position: relative;
     }
-    .tool-btn:hover { background: var(--surface-hover); color: var(--fg); }
-    .tool-btn.active { background: var(--fg); color: var(--bg); }
-    .tool-btn svg { width: 20px; height: 20px; }
-    .tool-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
-    .tool-btn .tooltip {
-      position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    .t-btn:hover { background: var(--accent-soft); color: var(--fg); }
+    .t-btn.active { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(79,70,229,.3); }
+    [data-theme="dark"] .t-btn.active { box-shadow: 0 2px 8px rgba(129,140,248,.25); }
+    .t-btn svg { width: 18px; height: 18px; }
+    .t-sep { width: 1px; height: 20px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+    .t-btn .tt {
+      position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
       background: var(--fg); color: var(--bg); font-size: 11px; font-weight: 500;
-      padding: 4px 10px; border-radius: var(--radius-xs); white-space: nowrap;
-      opacity: 0; pointer-events: none; transition: opacity .15s var(--ease);
+      padding: 5px 10px; border-radius: var(--radius-xs); white-space: nowrap;
+      opacity: 0; pointer-events: none; transition: opacity .12s var(--ease);
+      box-shadow: var(--shadow-md); letter-spacing: .2px;
     }
-    .tool-btn:hover .tooltip { opacity: 1; }
+    .t-btn .tt span { font-size: 10px; opacity: .6; margin-left: 4px; }
+    .t-btn:hover .tt { opacity: 1; }
 
-    /* ── Top bar ── */
-    #topbar {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 90;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 20px; background: var(--toolbar-bg);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
-      transition: all .3s var(--ease);
+    /* ── Pen Options ── */
+    #pen-opts {
+      position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+      z-index: 99; background: var(--toolbar-bg); backdrop-filter: blur(24px);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 8px 12px; display: none; gap: 6px; align-items: center;
+      box-shadow: var(--shadow-lg); animation: slideUp .25s var(--ease);
     }
-    #topbar-left { display: flex; align-items: center; gap: 12px; }
-    #topbar-right { display: flex; align-items: center; gap: 8px; }
-    #board-name {
-      font-size: 14px; font-weight: 600; background: none; border: none;
-      color: var(--fg); padding: 6px 10px; border-radius: var(--radius-xs);
-      transition: background .2s var(--ease); min-width: 120px;
+    #pen-opts.visible { display: flex; }
+    .c-dot {
+      width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent;
+      cursor: pointer; transition: all .12s var(--ease); flex-shrink: 0;
     }
-    #board-name:hover { background: var(--surface-hover); }
-    #board-name:focus { background: var(--surface); outline: 2px solid var(--accent); }
-    .topbar-btn {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      height: 34px; padding: 0 12px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--surface); color: var(--dim);
-      font-size: 12px; font-weight: 500; transition: all .2s var(--ease);
-    }
-    .topbar-btn:hover { border-color: var(--dim); color: var(--fg); }
-    .topbar-btn svg { width: 16px; height: 16px; }
-    .topbar-icon-btn {
+    .c-dot:hover { transform: scale(1.2); }
+    .c-dot.active { border-color: var(--fg); transform: scale(1.1); box-shadow: 0 0 0 2px var(--bg); }
+    .sz-btn {
+      width: 28px; height: 28px; border-radius: var(--radius-xs);
+      border: 1px solid var(--border); color: var(--dim);
+      font-size: 10px; font-weight: 700; transition: all .12s var(--ease);
       display: flex; align-items: center; justify-content: center;
-      width: 34px; height: 34px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--surface); color: var(--dim);
-      transition: all .2s var(--ease);
     }
-    .topbar-icon-btn:hover { border-color: var(--dim); color: var(--fg); }
-    .topbar-icon-btn svg { width: 16px; height: 16px; }
-    .save-indicator {
-      font-size: 11px; color: var(--dim); padding: 0 8px;
-      transition: opacity .3s var(--ease);
-    }
+    .sz-btn:hover { border-color: var(--dim); color: var(--fg); }
+    .sz-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-    /* ── Board elements ── */
-    .board-element {
-      position: absolute; z-index: 10; cursor: grab; user-select: none;
-      transition: box-shadow .2s var(--ease);
-    }
-    .board-element:active { cursor: grabbing; }
-    .board-element.selected {
-      outline: 2px solid var(--accent); outline-offset: 2px;
-    }
+    /* ── Board Elements ── */
+    .b-el { position: absolute; z-index: 10; cursor: grab; user-select: none; }
+    .b-el:active { cursor: grabbing; }
+    .b-el.selected { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius); }
 
-    /* ── Sticky Note ── */
-    .sticky-note {
-      min-width: 200px; min-height: 120px; padding: 16px;
-      border-radius: var(--radius); border: 1px solid var(--border);
-      background: var(--surface); box-shadow: 0 2px 8px var(--shadow);
-      font-size: 14px; line-height: 1.6;
+    /* Sticky Note */
+    .sticky {
+      width: 220px; min-height: 140px; padding: 14px 16px;
+      border-radius: var(--radius); border: 1px solid var(--note-yellow-border);
+      background: var(--note-yellow); box-shadow: var(--shadow-md);
+      transition: box-shadow .2s var(--ease), transform .15s var(--ease);
     }
-    .sticky-note:hover { box-shadow: 0 4px 16px var(--shadow-lg); }
-    .sticky-note textarea {
-      width: 100%; height: 100%; min-height: 80px; border: none; background: none;
-      color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.6;
+    .sticky:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+    .sticky.blue { background: var(--note-blue); border-color: var(--note-blue-border); }
+    .sticky.green { background: var(--note-green); border-color: var(--note-green-border); }
+    .sticky.pink { background: var(--note-pink); border-color: var(--note-pink-border); }
+    .sticky textarea {
+      width: 100%; height: 100%; min-height: 100px; border: none; background: none;
+      color: var(--fg); font-family: var(--font); font-size: 13px; line-height: 1.65;
       resize: none; outline: none;
     }
-    .sticky-note .note-actions {
-      position: absolute; top: -10px; right: -10px;
-      display: flex; gap: 4px; opacity: 0; transition: opacity .15s var(--ease);
+    .sticky textarea::placeholder { color: var(--dim); }
+    .el-actions {
+      position: absolute; top: -12px; right: -8px;
+      display: flex; gap: 3px; opacity: 0; transition: opacity .12s var(--ease);
     }
-    .sticky-note:hover .note-actions { opacity: 1; }
-    .note-action-btn {
-      width: 24px; height: 24px; border-radius: 50%;
-      background: var(--fg); color: var(--bg); border: none;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; transition: transform .15s var(--ease);
+    .b-el:hover .el-actions { opacity: 1; }
+    .el-act {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--fg); color: var(--bg); display: flex;
+      align-items: center; justify-content: center;
+      font-size: 11px; box-shadow: var(--shadow-sm);
+      transition: transform .12s var(--ease);
     }
-    .note-action-btn:hover { transform: scale(1.15); }
+    .el-act:hover { transform: scale(1.15); }
 
-    /* ── Image element ── */
-    .image-element {
-      border-radius: var(--radius); overflow: hidden;
-      border: 1px solid var(--border); background: var(--surface);
-      box-shadow: 0 2px 8px var(--shadow);
+    /* Text */
+    .txt-el { min-width: 80px; padding: 6px 10px; font-size: 18px; font-weight: 400; line-height: 1.5; }
+    .txt-el [contenteditable] { outline: none; min-width: 40px; min-height: 1em; }
+    .txt-el [contenteditable]:empty::before {
+      content: 'Type here...'; color: var(--muted); font-style: italic;
     }
-    .image-element:hover { box-shadow: 0 4px 16px var(--shadow-lg); }
-    .image-element img {
-      display: block; max-width: 400px; max-height: 400px;
-      object-fit: contain; pointer-events: none;
-    }
-    .image-element .img-actions {
-      position: absolute; top: -10px; right: -10px;
-      display: flex; gap: 4px; opacity: 0; transition: opacity .15s var(--ease);
-    }
-    .image-element:hover .img-actions { opacity: 1; }
 
-    /* ── Text element ── */
-    .text-element {
-      min-width: 100px; padding: 8px 12px;
-      font-size: 18px; font-weight: 400; line-height: 1.5;
+    /* Image */
+    .img-el {
+      border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border);
+      background: var(--surface); box-shadow: var(--shadow-md);
+      transition: box-shadow .2s var(--ease), transform .15s var(--ease);
     }
-    .text-element [contenteditable] {
-      outline: none; min-width: 60px; min-height: 1em;
-    }
-    .text-element .text-actions {
-      position: absolute; top: -10px; right: -10px;
-      display: flex; gap: 4px; opacity: 0; transition: opacity .15s var(--ease);
-    }
-    .text-element:hover .text-actions { opacity: 1; }
+    .img-el:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+    .img-el img { display: block; max-width: 400px; max-height: 400px; object-fit: contain; pointer-events: none; }
 
-    /* ── Shape element ── */
-    .shape-element {
-      border: 2px solid var(--fg); background: none;
-    }
-    .shape-element.circle { border-radius: 50%; }
-    .shape-element .shape-actions {
-      position: absolute; top: -10px; right: -10px;
-      display: flex; gap: 4px; opacity: 0; transition: opacity .15s var(--ease);
-    }
-    .shape-element:hover .shape-actions { opacity: 1; }
+    /* Shape */
+    .shp-el { border: 2px solid var(--fg); background: none; transition: border-color .2s; }
+    .shp-el.circle { border-radius: 50%; }
 
-    /* ── Modal / Overlay ── */
-    .modal-overlay {
-      position: fixed; inset: 0; z-index: 500; background: var(--overlay-bg);
-      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-      display: none; align-items: center; justify-content: center;
-      animation: fadeIn .2s var(--ease);
+    /* ── Modals ── */
+    .m-overlay {
+      position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,.35);
+      backdrop-filter: blur(6px); display: none; align-items: center;
+      justify-content: center; animation: fadeIn .15s var(--ease);
     }
-    .modal-overlay.visible { display: flex; }
+    .m-overlay.visible { display: flex; }
     .modal {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; padding: 32px; width: 90%; max-width: 520px;
-      box-shadow: 0 24px 48px var(--shadow-lg);
-      animation: modalIn .3s var(--ease-bounce);
+      border-radius: 20px; padding: 28px; width: 90%; max-width: 480px;
+      box-shadow: var(--shadow-xl); animation: modalIn .3s var(--ease-bounce);
     }
-    .modal h2 {
-      font-size: 18px; font-weight: 600; margin-bottom: 4px;
-    }
-    .modal p { font-size: 13px; color: var(--dim); margin-bottom: 20px; }
-    .modal-input {
-      width: 100%; padding: 12px 16px; border: 1px solid var(--border);
+    .modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 4px; letter-spacing: -.3px; }
+    .modal p { font-size: 13px; color: var(--dim); margin-bottom: 18px; line-height: 1.5; }
+    .m-input {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--border);
       border-radius: var(--radius-sm); background: var(--bg); color: var(--fg);
-      font-family: var(--font); font-size: 14px; transition: border-color .2s var(--ease);
+      font-family: var(--font); font-size: 13px; transition: border-color .2s var(--ease);
     }
-    .modal-input:focus { border-color: var(--accent); outline: none; }
-    .modal-input::placeholder { color: var(--dim); }
-    .modal-actions {
-      display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end;
-    }
-    .modal-btn {
-      padding: 10px 20px; border-radius: var(--radius-sm); font-size: 13px;
-      font-weight: 500; transition: all .2s var(--ease); border: 1px solid var(--border);
+    .m-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+    .m-input::placeholder { color: var(--muted); }
+    .m-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+    .m-btn {
+      padding: 9px 18px; border-radius: var(--radius-sm); font-size: 13px;
+      font-weight: 500; transition: all .15s var(--ease); border: 1px solid var(--border);
       background: var(--surface); color: var(--fg);
     }
-    .modal-btn:hover { background: var(--surface-hover); }
-    .modal-btn.primary {
-      background: var(--fg); color: var(--bg); border-color: var(--fg);
-    }
-    .modal-btn.primary:hover { opacity: .85; }
-
-    /* ── Image grid in modal ── */
-    .image-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-      margin-top: 16px; max-height: 300px; overflow-y: auto;
-    }
-    .image-grid-item {
+    .m-btn:hover { background: var(--surface-alt); }
+    .m-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .m-btn.primary:hover { opacity: .9; }
+    .m-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .img-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 14px; max-height: 260px; overflow-y: auto; }
+    .img-grid-item {
       aspect-ratio: 4/3; border-radius: var(--radius-sm); overflow: hidden;
-      border: 2px solid transparent; cursor: pointer;
-      transition: all .2s var(--ease);
+      border: 2px solid transparent; cursor: pointer; transition: all .15s var(--ease);
     }
-    .image-grid-item:hover { border-color: var(--accent); transform: scale(1.03); }
-    .image-grid-item.selected { border-color: var(--accent); }
-    .image-grid-item img {
-      width: 100%; height: 100%; object-fit: cover;
+    .img-grid-item:hover { border-color: var(--accent); transform: scale(1.03); }
+    .img-grid-item.selected { border-color: var(--accent); }
+    .img-grid-item img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ── Boards Panel ── */
+    #boards-panel {
+      position: fixed; left: 0; top: 0; bottom: 0; width: 260px; z-index: 200;
+      background: var(--surface); border-right: 1px solid var(--border);
+      transform: translateX(-100%); transition: transform .3s var(--ease);
+      display: flex; flex-direction: column; box-shadow: var(--shadow-lg);
     }
+    #boards-panel.visible { transform: translateX(0); }
+    .bp-header {
+      padding: 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .bp-header h3 { font-size: 14px; font-weight: 700; letter-spacing: -.2px; }
+    #boards-list { flex: 1; overflow-y: auto; padding: 6px; }
+    .b-item {
+      padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer;
+      font-size: 13px; color: var(--dim); transition: all .12s var(--ease);
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;
+    }
+    .b-item:hover { background: var(--accent-soft); color: var(--fg); }
+    .b-item.active { background: var(--accent); color: #fff; }
+    .b-item .b-date { font-size: 10px; opacity: .6; }
+    #new-board-btn {
+      margin: 8px; padding: 10px; border-radius: var(--radius-sm);
+      border: 1px dashed var(--border); color: var(--dim);
+      font-size: 13px; font-weight: 500; transition: all .15s var(--ease);
+    }
+    #new-board-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+    /* ── Empty State ── */
+    #empty-state {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      z-index: 3; text-align: center; pointer-events: none; transition: opacity .5s var(--ease);
+    }
+    #empty-state.hidden { opacity: 0; }
+    #empty-state h2 { font-size: 22px; font-weight: 300; color: var(--muted); margin-bottom: 8px; letter-spacing: -.3px; }
+    #empty-state p { font-size: 13px; color: var(--muted); opacity: .7; }
 
     /* ── Toast ── */
     #toast {
-      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+      position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%) translateY(12px);
       z-index: 999; background: var(--fg); color: var(--bg);
-      font-size: 13px; font-weight: 500; padding: 10px 20px;
-      border-radius: var(--radius-sm); opacity: 0; pointer-events: none;
-      transition: all .3s var(--ease); box-shadow: 0 4px 16px var(--shadow-lg);
+      font-size: 13px; font-weight: 500; padding: 8px 18px;
+      border-radius: 10px; opacity: 0; pointer-events: none;
+      transition: all .25s var(--ease); box-shadow: var(--shadow-lg);
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* ── Loading spinner ── */
-    .spinner {
-      width: 20px; height: 20px; border: 2px solid var(--border);
-      border-top-color: var(--fg); border-radius: 50%;
-      animation: spin .6s linear infinite;
-    }
-    .spinner-sm { width: 14px; height: 14px; }
-
-    /* ── Boards panel ── */
-    #boards-panel {
-      position: fixed; left: 0; top: 0; bottom: 0; width: 280px; z-index: 200;
-      background: var(--surface); border-right: 1px solid var(--border);
-      transform: translateX(-100%); transition: transform .3s var(--ease);
-      display: flex; flex-direction: column;
-    }
-    #boards-panel.visible { transform: translateX(0); }
-    #boards-panel-header {
-      padding: 16px 20px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    #boards-panel-header h3 {
-      font-size: 14px; font-weight: 600;
-    }
-    #boards-list {
-      flex: 1; overflow-y: auto; padding: 8px;
-    }
-    .board-item {
-      padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer;
-      font-size: 13px; color: var(--dim); transition: all .15s var(--ease);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .board-item:hover { background: var(--surface-hover); color: var(--fg); }
-    .board-item.active { background: var(--fg); color: var(--bg); }
-    .board-item .board-date { font-size: 10px; opacity: .6; }
-    #new-board-btn {
-      margin: 8px; padding: 10px; border-radius: var(--radius-sm);
-      border: 1px dashed var(--border); background: none; color: var(--dim);
-      font-size: 13px; transition: all .2s var(--ease);
-    }
-    #new-board-btn:hover { border-color: var(--dim); color: var(--fg); }
-
-    /* ── Color picker (pen) ── */
-    #pen-options {
-      position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%);
-      z-index: 99; background: var(--toolbar-bg); backdrop-filter: blur(20px);
-      border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 10px 14px; display: none; gap: 8px; align-items: center;
-      box-shadow: 0 4px 16px var(--shadow-lg);
-    }
-    #pen-options.visible { display: flex; }
-    .color-dot {
-      width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent;
-      cursor: pointer; transition: all .15s var(--ease);
-    }
-    .color-dot:hover { transform: scale(1.2); }
-    .color-dot.active { border-color: var(--fg); transform: scale(1.15); }
-    .pen-size-btn {
-      width: 32px; height: 32px; border-radius: var(--radius-xs);
-      border: 1px solid var(--border); background: none; color: var(--dim);
-      font-size: 11px; font-weight: 600; transition: all .15s var(--ease);
-    }
-    .pen-size-btn:hover { border-color: var(--dim); color: var(--fg); }
-    .pen-size-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    /* ── Spinner ── */
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%; animation: spin .5s linear infinite;
+      display: inline-block; vertical-align: middle; }
 
     /* ── Animations ── */
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes modalIn { 0% { opacity: 0; transform: scale(.95) translateY(8px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes modalIn { 0% { opacity: 0; transform: scale(.96) translateY(6px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
     @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes elementIn { 0% { opacity: 0; transform: scale(.9); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    @keyframes elIn { 0% { opacity: 0; transform: scale(.92); } 100% { opacity: 1; transform: scale(1); } }
+    .el-enter { animation: elIn .25s var(--ease-bounce); }
 
-    .element-enter { animation: elementIn .3s var(--ease-bounce); }
-
-    /* ── Responsive ── */
     @media (max-width: 640px) {
-      #toolbar { bottom: 12px; padding: 4px; gap: 1px; }
-      .tool-btn { width: 36px; height: 36px; font-size: 15px; }
-      #topbar { padding: 8px 12px; }
-      #boards-panel { width: 240px; }
+      #toolbar { bottom: 8px; padding: 4px; }
+      .t-btn { width: 36px; height: 36px; }
+      #topbar { top: 6px; left: 6px; right: 6px; padding: 6px 8px; }
+      #boards-panel { width: 220px; }
     }
   </style>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <!-- Top bar -->
   <div id="topbar">
     <div id="topbar-left">
-      <button class="topbar-icon-btn" onclick="toggleBoardsPanel()" title="Boards">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <button class="tb-icon" onclick="toggleBoardsPanel()" title="Boards">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
       </button>
       <input id="board-name" value="Untitled Board" spellcheck="false" />
-      <span class="save-indicator" id="save-indicator"></span>
+      <span class="save-ind" id="save-ind"></span>
     </div>
     <div id="topbar-right">
-      <button class="topbar-btn" onclick="saveBoard()" id="save-btn">
+      <button class="tb" onclick="undo()" title="Undo (Ctrl+Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      </button>
+      <button class="tb" onclick="redo()" title="Redo (Ctrl+Shift+Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+      <button class="tb" onclick="saveBoard()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
         Save
       </button>
-      <button class="topbar-btn" onclick="clearBoard()">
+      <button class="tb" onclick="clearBoard()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
         Clear
       </button>
-      <button class="topbar-icon-btn" onclick="toggleTheme()" title="Toggle theme">
-        <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <button class="tb-icon" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">
+        <svg id="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
       </button>
     </div>
   </div>
 
-  <!-- Boards side panel -->
+  <!-- Boards Panel -->
   <div id="boards-panel">
-    <div id="boards-panel-header">
+    <div class="bp-header">
       <h3>Boards</h3>
-      <button class="topbar-icon-btn" onclick="toggleBoardsPanel()" style="border:none;background:none;">
+      <button class="tb-icon" onclick="toggleBoardsPanel()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -378,800 +358,453 @@
   </div>
 
   <!-- Whiteboard -->
-  <div id="whiteboard" onmousedown="onCanvasMouseDown(event)"></div>
+  <div id="whiteboard" onmousedown="onCanvasDown(event)"></div>
   <canvas id="draw-canvas"></canvas>
+
+  <!-- Empty State -->
+  <div id="empty-state">
+    <h2>Start creating</h2>
+    <p>Pick a tool below, or just click to add a note</p>
+  </div>
 
   <!-- Toolbar -->
   <div id="toolbar">
-    <button class="tool-btn active" data-tool="select" onclick="setTool('select')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
-      <span class="tooltip">Select (V)</span>
+    <button class="t-btn active" data-tool="select" onclick="setTool('select')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
+      <span class="tt">Select <span>V</span></span>
     </button>
-    <button class="tool-btn" data-tool="pen" onclick="setTool('pen')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
-      <span class="tooltip">Draw (P)</span>
+    <button class="t-btn" data-tool="pen" onclick="setTool('pen')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="2" x2="22" y2="6"/><path d="M7.5 20.5L19 9l-4-4L3.5 16.5 2 22z"/></svg>
+      <span class="tt">Pen <span>P</span></span>
     </button>
-    <button class="tool-btn" data-tool="text" onclick="setTool('text')">
+    <button class="t-btn" data-tool="text" onclick="setTool('text')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4,7 4,4 20,4 20,7"/><line x1="9.5" y1="20" x2="14.5" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-      <span class="tooltip">Text (T)</span>
+      <span class="tt">Text <span>T</span></span>
     </button>
-    <button class="tool-btn" data-tool="note" onclick="setTool('note')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
-      <span class="tooltip">Sticky Note (N)</span>
+    <button class="t-btn" data-tool="note" onclick="setTool('note')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15.5 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V8.5L15.5 3z"/><polyline points="14,3 14,9 21,9"/></svg>
+      <span class="tt">Note <span>N</span></span>
     </button>
-    <button class="tool-btn" data-tool="shape" onclick="setTool('shape')">
+    <button class="t-btn" data-tool="shape" onclick="setTool('shape')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-      <span class="tooltip">Shape (S)</span>
+      <span class="tt">Shape <span>S</span></span>
     </button>
-    <div class="tool-sep"></div>
-    <button class="tool-btn" onclick="openImageGenModal()">
+    <div class="t-sep"></div>
+    <button class="t-btn" onclick="openModal('img-gen')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
-      <span class="tooltip">AI Image (I)</span>
+      <span class="tt">AI Image <span>I</span></span>
     </button>
-    <button class="tool-btn" onclick="openWebCaptureModal()">
+    <button class="t-btn" onclick="openModal('web-cap')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-      <span class="tooltip">Web Image (W)</span>
+      <span class="tt">Web Image <span>W</span></span>
     </button>
-    <div class="tool-sep"></div>
-    <button class="tool-btn" data-tool="eraser" onclick="setTool('eraser')">
+    <div class="t-sep"></div>
+    <button class="t-btn" data-tool="eraser" onclick="setTool('eraser')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8L14.8 1.4c.8-.8 2-.8 2.8 0L21 4.8c.8.8.8 2 0 2.8L12 16"/><line x1="6" y1="20" x2="20" y2="20"/></svg>
-      <span class="tooltip">Eraser (E)</span>
+      <span class="tt">Eraser <span>E</span></span>
     </button>
   </div>
 
-  <!-- Pen options bar -->
-  <div id="pen-options">
-    <div class="color-dot active" style="background:#1a1a1a" data-color="#1a1a1a" onclick="setPenColor(this)"></div>
-    <div class="color-dot" style="background:#e74c3c" data-color="#e74c3c" onclick="setPenColor(this)"></div>
-    <div class="color-dot" style="background:#3498db" data-color="#3498db" onclick="setPenColor(this)"></div>
-    <div class="color-dot" style="background:#2ecc71" data-color="#2ecc71" onclick="setPenColor(this)"></div>
-    <div class="color-dot" style="background:#f39c12" data-color="#f39c12" onclick="setPenColor(this)"></div>
-    <div class="color-dot" style="background:#9b59b6" data-color="#9b59b6" onclick="setPenColor(this)"></div>
-    <div class="tool-sep"></div>
-    <button class="pen-size-btn active" data-size="2" onclick="setPenSize(this)">S</button>
-    <button class="pen-size-btn" data-size="4" onclick="setPenSize(this)">M</button>
-    <button class="pen-size-btn" data-size="8" onclick="setPenSize(this)">L</button>
+  <!-- Pen Options -->
+  <div id="pen-opts">
+    <div class="c-dot active" style="background:#1a1a2e" data-color="#1a1a2e" onclick="setPenColor(this)"></div>
+    <div class="c-dot" style="background:#ef4444" data-color="#ef4444" onclick="setPenColor(this)"></div>
+    <div class="c-dot" style="background:#3b82f6" data-color="#3b82f6" onclick="setPenColor(this)"></div>
+    <div class="c-dot" style="background:#22c55e" data-color="#22c55e" onclick="setPenColor(this)"></div>
+    <div class="c-dot" style="background:#f59e0b" data-color="#f59e0b" onclick="setPenColor(this)"></div>
+    <div class="c-dot" style="background:#a855f7" data-color="#a855f7" onclick="setPenColor(this)"></div>
+    <div class="t-sep" style="height:18px"></div>
+    <button class="sz-btn active" data-size="2" onclick="setPenSize(this)">S</button>
+    <button class="sz-btn" data-size="4" onclick="setPenSize(this)">M</button>
+    <button class="sz-btn" data-size="8" onclick="setPenSize(this)">L</button>
   </div>
 
-  <!-- AI Image Generation Modal -->
-  <div class="modal-overlay" id="image-gen-modal" onclick="if(event.target===this)closeModals()">
+  <!-- AI Image Modal -->
+  <div class="m-overlay" id="img-gen" onclick="if(event.target===this)closeModals()">
     <div class="modal">
-      <h2>Generate Image with AI</h2>
-      <p>Describe the image you want to create</p>
-      <input class="modal-input" id="image-gen-prompt" placeholder="A serene mountain landscape at sunset..." />
-      <div style="margin-top:12px">
-        <select class="modal-input" id="image-gen-size" style="cursor:pointer;">
-          <option value="1024x1024">Square (1024x1024)</option>
-          <option value="1792x1024">Landscape (1792x1024)</option>
-          <option value="1024x1792">Portrait (1024x1792)</option>
-        </select>
+      <h2>Generate with AI</h2>
+      <p>Describe the image you'd like to create</p>
+      <input class="m-input" id="img-gen-prompt" placeholder="A mountain lake reflecting the northern lights..." />
+      <select class="m-input" id="img-gen-size" style="margin-top:10px;cursor:pointer">
+        <option value="1024x1024">Square (1024x1024)</option>
+        <option value="1792x1024">Landscape (1792x1024)</option>
+        <option value="1024x1792">Portrait (1024x1792)</option>
+      </select>
+      <div id="img-gen-preview" style="margin-top:14px;text-align:center;display:none">
+        <img id="img-gen-result" style="max-width:100%;border-radius:10px" />
       </div>
-      <div id="image-gen-preview" style="margin-top:16px;text-align:center;display:none;">
-        <img id="image-gen-result" style="max-width:100%;border-radius:8px;border:1px solid var(--border);" />
-      </div>
-      <div class="modal-actions">
-        <button class="modal-btn" onclick="closeModals()">Cancel</button>
-        <button class="modal-btn primary" id="image-gen-btn" onclick="generateImage()">Generate</button>
+      <div class="m-actions">
+        <button class="m-btn" onclick="closeModals()">Cancel</button>
+        <button class="m-btn primary" id="img-gen-btn" onclick="generateImage()">Generate</button>
       </div>
     </div>
   </div>
 
-  <!-- Web Image Capture Modal -->
-  <div class="modal-overlay" id="web-capture-modal" onclick="if(event.target===this)closeModals()">
+  <!-- Web Capture Modal -->
+  <div class="m-overlay" id="web-cap" onclick="if(event.target===this)closeModals()">
     <div class="modal">
-      <h2>Capture Image from Web</h2>
-      <p>Paste an image URL to add it to your board</p>
-      <input class="modal-input" id="web-capture-url" placeholder="https://example.com/image.jpg" />
-      <div id="web-capture-preview" style="margin-top:16px;text-align:center;display:none;">
-        <img id="web-capture-result" style="max-width:100%;border-radius:8px;border:1px solid var(--border);" />
+      <h2>Add from Web</h2>
+      <p>Paste an image URL or search for one</p>
+      <input class="m-input" id="web-url" placeholder="https://example.com/photo.jpg" />
+      <div style="margin-top:12px;display:flex;gap:6px">
+        <input class="m-input" id="web-q" placeholder="Search images..." style="flex:1" />
+        <button class="m-btn" onclick="searchImages()">Search</button>
       </div>
-      <div style="margin-top:16px">
-        <p style="margin-bottom:8px;font-size:12px;color:var(--dim)">Or search for images:</p>
-        <div style="display:flex;gap:8px;">
-          <input class="modal-input" id="web-search-query" placeholder="Search for images..." style="flex:1" />
-          <button class="modal-btn" onclick="searchImages()">Search</button>
-        </div>
-        <div class="image-grid" id="web-search-grid"></div>
-      </div>
-      <div class="modal-actions">
-        <button class="modal-btn" onclick="closeModals()">Cancel</button>
-        <button class="modal-btn primary" id="web-capture-btn" onclick="captureImage()">Add to Board</button>
+      <div class="img-grid" id="web-grid"></div>
+      <div class="m-actions">
+        <button class="m-btn" onclick="closeModals()">Cancel</button>
+        <button class="m-btn primary" id="web-cap-btn" onclick="captureImage()">Add to Board</button>
       </div>
     </div>
   </div>
 
-  <!-- Toast -->
   <div id="toast"></div>
 
   <script>
-    // ══════════════════════════════════════════
-    //  STATE
-    // ══════════════════════════════════════════
-    let currentTool = 'select';
-    let currentBoardId = null;
-    let elements = [];
-    let selectedElement = null;
-    let dragState = null;
-    let drawingPath = [];
-    let penColor = '#1a1a1a';
-    let penSize = 2;
-    let zCounter = 10;
-    let saveTimeout = null;
-    let boardsPanelOpen = false;
+  // ═══════════════════════ STATE ═══════════════════════
+  let tool = 'select', boardId = null, elements = [], selected = null;
+  let drag = null, zIdx = 10, saveTimer = null, bpOpen = false;
+  let undoStack = [], redoStack = [], penColor = '#1a1a2e', penSize = 2;
+  let isDrawing = false, drawPath = [];
+  const canvas = document.getElementById('draw-canvas');
+  const ctx = canvas.getContext('2d');
+  const wb = document.getElementById('whiteboard');
 
-    const canvas = document.getElementById('draw-canvas');
-    const ctx = canvas.getContext('2d');
-    const whiteboard = document.getElementById('whiteboard');
+  // ═══════════════════════ THEME ═══════════════════════
+  (function(){
+    const s = localStorage.getItem('wb-theme');
+    if(s==='dark') document.documentElement.setAttribute('data-theme','dark');
+    updateThemeIcon();
+  })();
+  function toggleTheme(){
+    const d = document.documentElement.getAttribute('data-theme')==='dark';
+    if(d){ document.documentElement.removeAttribute('data-theme'); localStorage.setItem('wb-theme','light'); }
+    else{ document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('wb-theme','dark'); }
+    updateThemeIcon();
+  }
+  function updateThemeIcon(){
+    const d = document.documentElement.getAttribute('data-theme')==='dark';
+    document.getElementById('sun-icon').style.display = d?'none':'block';
+    document.getElementById('moon-icon').style.display = d?'block':'none';
+  }
 
-    // ── Theme ──
-    (function() {
-      const saved = localStorage.getItem('wb-theme');
-      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-    })();
+  // ═══════════════════════ CANVAS ═══════════════════════
+  function resizeCanvas(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; redraw(); }
+  window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
-    function toggleTheme() {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      if (isDark) {
-        document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem('wb-theme', 'light');
-      } else {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('wb-theme', 'dark');
-      }
-      // Update pen color for dark mode
-      if (!isDark) {
-        const darkDot = document.querySelector('.color-dot[data-color="#1a1a1a"]');
-        if (darkDot && penColor === '#1a1a1a') {
-          penColor = '#e8e8e8';
-        }
-      } else {
-        if (penColor === '#e8e8e8') penColor = '#1a1a1a';
-      }
-    }
+  // ═══════════════════════ TOOLS ═══════════════════════
+  function setTool(t){
+    tool=t;
+    document.querySelectorAll('.t-btn[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));
+    canvas.classList.toggle('active', t==='pen'||t==='eraser');
+    document.getElementById('pen-opts').classList.toggle('visible', t==='pen');
+    if(selected) deselect();
+  }
 
-    // ── Canvas sizing ──
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      redrawCanvas();
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+  document.addEventListener('keydown', e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable) return;
+    const k=e.key.toLowerCase();
+    if(k==='v') setTool('select');
+    else if(k==='p') setTool('pen');
+    else if(k==='t') setTool('text');
+    else if(k==='n') setTool('note');
+    else if(k==='s'&&!e.ctrlKey) setTool('shape');
+    else if(k==='e') setTool('eraser');
+    else if(k==='i') openModal('img-gen');
+    else if(k==='w') openModal('web-cap');
+    else if(k==='escape'){ closeModals(); deselect(); }
+    else if(k==='delete'||k==='backspace'){ if(selected) deleteEl(selected); }
+    if(e.ctrlKey&&k==='z'&&!e.shiftKey){ e.preventDefault(); undo(); }
+    if(e.ctrlKey&&k==='z'&&e.shiftKey){ e.preventDefault(); redo(); }
+    if(e.ctrlKey&&k==='s'){ e.preventDefault(); saveBoard(); }
+  });
 
-    // ══════════════════════════════════════════
-    //  TOOLS
-    // ══════════════════════════════════════════
-    function setTool(tool) {
-      currentTool = tool;
-      document.querySelectorAll('.tool-btn[data-tool]').forEach(b => {
-        b.classList.toggle('active', b.dataset.tool === tool);
-      });
-      canvas.classList.toggle('active', tool === 'pen' || tool === 'eraser');
-      document.getElementById('pen-options').classList.toggle('visible', tool === 'pen');
-      if (selectedElement) deselectElement();
-    }
+  // ═══════════════════════ PEN (smooth curves) ═══════════════════════
+  function setPenColor(el){ document.querySelectorAll('.c-dot').forEach(d=>d.classList.remove('active')); el.classList.add('active'); penColor=el.dataset.color; }
+  function setPenSize(el){ document.querySelectorAll('.sz-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); penSize=+el.dataset.size; }
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-      const key = e.key.toLowerCase();
-      if (key === 'v') setTool('select');
-      else if (key === 'p') setTool('pen');
-      else if (key === 't') setTool('text');
-      else if (key === 'n') setTool('note');
-      else if (key === 's' && !e.ctrlKey) setTool('shape');
-      else if (key === 'e') setTool('eraser');
-      else if (key === 'i') openImageGenModal();
-      else if (key === 'w') openWebCaptureModal();
-      else if (key === 'escape') { closeModals(); deselectElement(); }
-      else if (key === 'delete' || key === 'backspace') {
-        if (selectedElement) deleteElement(selectedElement);
-      }
-      if (e.ctrlKey && key === 's') { e.preventDefault(); saveBoard(); }
-    });
+  canvas.addEventListener('mousedown', e=>{
+    if(tool==='pen'){ isDrawing=true; drawPath=[{x:e.clientX,y:e.clientY}]; ctx.beginPath(); ctx.moveTo(e.clientX,e.clientY); ctx.strokeStyle=penColor; ctx.lineWidth=penSize; ctx.lineCap='round'; ctx.lineJoin='round'; }
+    else if(tool==='eraser'){ isDrawing=true; eraseAt(e.clientX,e.clientY); }
+  });
 
-    // ══════════════════════════════════════════
-    //  PEN / DRAWING
-    // ══════════════════════════════════════════
-    function setPenColor(el) {
-      document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
-      el.classList.add('active');
-      penColor = el.dataset.color;
-    }
-
-    function setPenSize(el) {
-      document.querySelectorAll('.pen-size-btn').forEach(b => b.classList.remove('active'));
-      el.classList.add('active');
-      penSize = parseInt(el.dataset.size);
-    }
-
-    let isDrawing = false;
-
-    canvas.addEventListener('mousedown', (e) => {
-      if (currentTool === 'pen') {
-        isDrawing = true;
-        drawingPath = [{ x: e.clientX, y: e.clientY }];
-        ctx.beginPath();
-        ctx.moveTo(e.clientX, e.clientY);
-        ctx.strokeStyle = penColor;
-        ctx.lineWidth = penSize;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-      } else if (currentTool === 'eraser') {
-        isDrawing = true;
-        eraseAt(e.clientX, e.clientY);
-      }
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-      if (!isDrawing) return;
-      if (currentTool === 'pen') {
-        drawingPath.push({ x: e.clientX, y: e.clientY });
-        ctx.lineTo(e.clientX, e.clientY);
+  canvas.addEventListener('mousemove', e=>{
+    if(!isDrawing) return;
+    if(tool==='pen'){
+      drawPath.push({x:e.clientX,y:e.clientY});
+      // Smooth quadratic curve to midpoint
+      if(drawPath.length>2){
+        const l=drawPath.length, p0=drawPath[l-3], p1=drawPath[l-2], p2=drawPath[l-1];
+        const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
+        ctx.quadraticCurveTo(p1.x,p1.y,mx,my);
         ctx.stroke();
-      } else if (currentTool === 'eraser') {
-        eraseAt(e.clientX, e.clientY);
-      }
+      } else { ctx.lineTo(e.clientX,e.clientY); ctx.stroke(); }
+    } else if(tool==='eraser') eraseAt(e.clientX,e.clientY);
+  });
+
+  canvas.addEventListener('mouseup', ()=>{
+    if(isDrawing&&tool==='pen'&&drawPath.length>1){
+      pushUndo();
+      elements.push({ id:genId(), type:'drawing', x:0, y:0, data:{path:drawPath,color:penColor,size:penSize}, z_index:zIdx++ });
+      schedSave(); updateEmpty();
+    }
+    isDrawing=false; drawPath=[];
+  });
+
+  function eraseAt(x,y){
+    const r=20; ctx.clearRect(x-r,y-r,r*2,r*2);
+    const before=elements.length;
+    elements=elements.filter(el=>{
+      if(el.type!=='drawing') return true;
+      return !el.data.path.some(p=>Math.hypot(p.x-x,p.y-y)<r);
     });
+    if(elements.length!==before){ redraw(); schedSave(); }
+  }
 
-    canvas.addEventListener('mouseup', () => {
-      if (isDrawing && currentTool === 'pen' && drawingPath.length > 1) {
-        elements.push({
-          id: genId(), type: 'drawing', x: 0, y: 0,
-          data: { path: drawingPath, color: penColor, size: penSize },
-          z_index: zCounter++,
-        });
-        scheduleSave();
+  function redraw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    elements.filter(el=>el.type==='drawing').forEach(el=>{
+      const p=el.data.path; if(p.length<2) return;
+      ctx.beginPath(); ctx.moveTo(p[0].x,p[0].y);
+      // Smooth quadratic curves through midpoints
+      for(let i=1;i<p.length-1;i++){
+        const mx=(p[i].x+p[i+1].x)/2, my=(p[i].y+p[i+1].y)/2;
+        ctx.quadraticCurveTo(p[i].x,p[i].y,mx,my);
       }
-      isDrawing = false;
-      drawingPath = [];
+      if(p.length>1) ctx.lineTo(p[p.length-1].x,p[p.length-1].y);
+      ctx.strokeStyle=el.data.color||'#1a1a2e'; ctx.lineWidth=el.data.size||2;
+      ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
     });
+  }
 
-    function eraseAt(x, y) {
-      const radius = 20;
-      ctx.clearRect(x - radius, y - radius, radius * 2, radius * 2);
-      // Remove drawing elements near the eraser
-      elements = elements.filter(el => {
-        if (el.type !== 'drawing') return true;
-        return !el.data.path.some(p => Math.hypot(p.x - x, p.y - y) < radius);
-      });
+  // ═══════════════════════ UNDO / REDO ═══════════════════════
+  function pushUndo(){ undoStack.push(JSON.parse(JSON.stringify(elements))); if(undoStack.length>30) undoStack.shift(); redoStack=[]; }
+  function undo(){ if(!undoStack.length) return; redoStack.push(JSON.parse(JSON.stringify(elements))); elements=undoStack.pop(); renderAll(); schedSave(); }
+  function redo(){ if(!redoStack.length) return; undoStack.push(JSON.parse(JSON.stringify(elements))); elements=redoStack.pop(); renderAll(); schedSave(); }
+
+  // ═══════════════════════ ELEMENTS ═══════════════════════
+  function genId(){ return 'el-'+Date.now()+'-'+Math.random().toString(36).slice(2,6); }
+  const noteColors = ['','blue','green','pink'];
+  let noteColorIdx = 0;
+
+  function onCanvasDown(e){
+    if(tool==='pen'||tool==='eraser') return;
+    if(e.target!==wb) return;
+    const x=e.clientX, y=e.clientY-50;
+    pushUndo();
+    if(tool==='text'){ addText(x,y); setTool('select'); }
+    else if(tool==='note'){ addNote(x,y); setTool('select'); }
+    else if(tool==='shape'){ addShape(x,y); setTool('select'); }
+    else if(tool==='select') deselect();
+  }
+
+  function addText(x,y){
+    const el={id:genId(),type:'text',x,y,data:{text:''},z_index:zIdx++};
+    elements.push(el); renderEl(el); schedSave(); updateEmpty();
+    setTimeout(()=>{ const d=document.getElementById(el.id); if(d){ const e=d.querySelector('[contenteditable]'); if(e) e.focus(); }},50);
+  }
+
+  function addNote(x,y){
+    const color = noteColors[noteColorIdx % noteColors.length]; noteColorIdx++;
+    const el={id:genId(),type:'note',x,y,width:220,height:140,data:{text:'',color},z_index:zIdx++};
+    elements.push(el); renderEl(el); schedSave(); updateEmpty();
+  }
+
+  function addShape(x,y){
+    const el={id:genId(),type:'shape',x,y,width:120,height:120,data:{shape:'rect'},z_index:zIdx++};
+    elements.push(el); renderEl(el); schedSave(); updateEmpty();
+  }
+
+  function addImage(src,x,y){
+    pushUndo();
+    const el={id:genId(),type:'image',x:x||200,y:y||200,data:{src},z_index:zIdx++};
+    elements.push(el); renderEl(el); schedSave(); updateEmpty();
+  }
+
+  // ═══════════════════════ RENDERING ═══════════════════════
+  function renderEl(el){
+    const old=document.getElementById(el.id); if(old) old.remove();
+    const d=document.createElement('div');
+    d.id=el.id; d.className='b-el el-enter'; d.style.left=el.x+'px'; d.style.top=el.y+'px'; d.style.zIndex=el.z_index||10;
+
+    if(el.type==='text'){
+      d.classList.add('txt-el');
+      d.innerHTML=`<div class="el-actions"><button class="el-act" onclick="deleteEl('${el.id}')">&times;</button></div><div contenteditable="true">${el.data.text||''}</div>`;
+      const ed=d.querySelector('[contenteditable]');
+      ed.addEventListener('input',()=>{ const f=elements.find(e=>e.id===el.id); if(f) f.data.text=ed.innerHTML; schedSave(); });
+      ed.addEventListener('mousedown',e=>e.stopPropagation());
+    }
+    else if(el.type==='note'){
+      d.classList.add('sticky'); if(el.data.color) d.classList.add(el.data.color);
+      if(el.width) d.style.width=el.width+'px';
+      d.innerHTML=`<div class="el-actions"><button class="el-act" onclick="cycleNoteColor('${el.id}')">&#9632;</button><button class="el-act" onclick="deleteEl('${el.id}')">&times;</button></div><textarea placeholder="Write something...">${el.data.text||''}</textarea>`;
+      const ta=d.querySelector('textarea');
+      ta.addEventListener('input',()=>{ const f=elements.find(e=>e.id===el.id); if(f) f.data.text=ta.value; schedSave(); });
+      ta.addEventListener('mousedown',e=>e.stopPropagation());
+    }
+    else if(el.type==='image'){
+      d.classList.add('img-el');
+      d.innerHTML=`<div class="el-actions"><button class="el-act" onclick="deleteEl('${el.id}')">&times;</button></div><img src="${el.data.src}" alt="" />`;
+    }
+    else if(el.type==='shape'){
+      d.classList.add('shp-el'); if(el.data.shape==='circle') d.classList.add('circle');
+      d.style.width=(el.width||120)+'px'; d.style.height=(el.height||120)+'px';
+      d.innerHTML=`<div class="el-actions"><button class="el-act" onclick="toggleShape('${el.id}')">&cir;</button><button class="el-act" onclick="deleteEl('${el.id}')">&times;</button></div>`;
     }
 
-    function redrawCanvas() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      elements.filter(el => el.type === 'drawing').forEach(el => {
-        const path = el.data.path;
-        if (path.length < 2) return;
-        ctx.beginPath();
-        ctx.moveTo(path[0].x, path[0].y);
-        for (let i = 1; i < path.length; i++) {
-          ctx.lineTo(path[i].x, path[i].y);
-        }
-        ctx.strokeStyle = el.data.color || '#1a1a1a';
-        ctx.lineWidth = el.data.size || 2;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-      });
-    }
-
-    // ══════════════════════════════════════════
-    //  ELEMENT CREATION
-    // ══════════════════════════════════════════
-    function genId() { return 'el-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6); }
-
-    function onCanvasMouseDown(e) {
-      if (currentTool === 'pen' || currentTool === 'eraser') return;
-      if (e.target !== whiteboard) return;
-
-      const x = e.clientX;
-      const y = e.clientY - 50; // offset for topbar
-
-      if (currentTool === 'text') {
-        addTextElement(x, y);
-        setTool('select');
-      } else if (currentTool === 'note') {
-        addStickyNote(x, y);
-        setTool('select');
-      } else if (currentTool === 'shape') {
-        addShape(x, y);
-        setTool('select');
-      } else if (currentTool === 'select') {
-        deselectElement();
-      }
-    }
-
-    function addTextElement(x, y) {
-      const el = { id: genId(), type: 'text', x, y, data: { text: '' }, z_index: zCounter++ };
-      elements.push(el);
-      renderElement(el);
-      scheduleSave();
-      // Focus the text
-      setTimeout(() => {
-        const dom = document.getElementById(el.id);
-        if (dom) {
-          const editable = dom.querySelector('[contenteditable]');
-          if (editable) editable.focus();
-        }
-      }, 50);
-    }
-
-    function addStickyNote(x, y) {
-      const el = { id: genId(), type: 'note', x, y, width: 240, height: 160, data: { text: '' }, z_index: zCounter++ };
-      elements.push(el);
-      renderElement(el);
-      scheduleSave();
-    }
-
-    function addShape(x, y) {
-      const el = { id: genId(), type: 'shape', x, y, width: 120, height: 120, data: { shape: 'rect' }, z_index: zCounter++ };
-      elements.push(el);
-      renderElement(el);
-      scheduleSave();
-    }
-
-    function addImageElement(src, x, y) {
-      const el = { id: genId(), type: 'image', x: x || 200, y: y || 200, data: { src }, z_index: zCounter++ };
-      elements.push(el);
-      renderElement(el);
-      scheduleSave();
-    }
-
-    // ══════════════════════════════════════════
-    //  ELEMENT RENDERING
-    // ══════════════════════════════════════════
-    function renderElement(el) {
-      const existing = document.getElementById(el.id);
-      if (existing) existing.remove();
-
-      const div = document.createElement('div');
-      div.id = el.id;
-      div.className = 'board-element element-enter';
-      div.style.left = el.x + 'px';
-      div.style.top = el.y + 'px';
-      div.style.zIndex = el.z_index || 10;
-
-      if (el.type === 'text') {
-        div.classList.add('text-element');
-        div.innerHTML = `
-          <div class="text-actions">
-            <button class="note-action-btn" onclick="deleteElement('${el.id}')">&times;</button>
-          </div>
-          <div contenteditable="true" data-placeholder="Type here...">${el.data.text || ''}</div>
-        `;
-        const editable = div.querySelector('[contenteditable]');
-        editable.addEventListener('input', () => {
-          const found = elements.find(e => e.id === el.id);
-          if (found) found.data.text = editable.innerHTML;
-          scheduleSave();
-        });
-        editable.addEventListener('mousedown', (e) => e.stopPropagation());
-      }
-
-      else if (el.type === 'note') {
-        div.classList.add('sticky-note');
-        if (el.width) div.style.width = el.width + 'px';
-        if (el.height) div.style.height = el.height + 'px';
-        div.innerHTML = `
-          <div class="note-actions">
-            <button class="note-action-btn" onclick="deleteElement('${el.id}')">&times;</button>
-          </div>
-          <textarea placeholder="Write something...">${el.data.text || ''}</textarea>
-        `;
-        const ta = div.querySelector('textarea');
-        ta.addEventListener('input', () => {
-          const found = elements.find(e => e.id === el.id);
-          if (found) found.data.text = ta.value;
-          scheduleSave();
-        });
-        ta.addEventListener('mousedown', (e) => e.stopPropagation());
-      }
-
-      else if (el.type === 'image') {
-        div.classList.add('image-element');
-        div.innerHTML = `
-          <div class="img-actions">
-            <button class="note-action-btn" onclick="deleteElement('${el.id}')">&times;</button>
-          </div>
-          <img src="${el.data.src}" alt="Board image" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22><rect fill=%22%23eee%22 width=%22200%22 height=%22150%22/><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-family=%22sans-serif%22>Image failed</text></svg>'" />
-        `;
-      }
-
-      else if (el.type === 'shape') {
-        div.classList.add('shape-element');
-        if (el.data.shape === 'circle') div.classList.add('circle');
-        div.style.width = (el.width || 120) + 'px';
-        div.style.height = (el.height || 120) + 'px';
-        div.innerHTML = `
-          <div class="shape-actions">
-            <button class="note-action-btn" onclick="toggleShapeType('${el.id}')">&cir;</button>
-            <button class="note-action-btn" onclick="deleteElement('${el.id}')">&times;</button>
-          </div>
-        `;
-      }
-
-      // Dragging
-      div.addEventListener('mousedown', (e) => {
-        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.isContentEditable) return;
-        if (currentTool !== 'select') return;
-        selectElement(el.id);
-        dragState = {
-          id: el.id,
-          startX: e.clientX,
-          startY: e.clientY,
-          origX: el.x,
-          origY: el.y,
-        };
-        div.style.zIndex = ++zCounter;
-        e.preventDefault();
-      });
-
-      whiteboard.appendChild(div);
-    }
-
-    function renderAllElements() {
-      // Remove all existing DOM elements
-      whiteboard.querySelectorAll('.board-element').forEach(el => el.remove());
-      elements.filter(el => el.type !== 'drawing').forEach(renderElement);
-      redrawCanvas();
-    }
-
-    // ── Drag handling ──
-    document.addEventListener('mousemove', (e) => {
-      if (!dragState) return;
-      const dx = e.clientX - dragState.startX;
-      const dy = e.clientY - dragState.startY;
-      const el = elements.find(el => el.id === dragState.id);
-      if (!el) return;
-      el.x = dragState.origX + dx;
-      el.y = dragState.origY + dy;
-      const dom = document.getElementById(el.id);
-      if (dom) {
-        dom.style.left = el.x + 'px';
-        dom.style.top = el.y + 'px';
-      }
+    d.addEventListener('mousedown',e=>{
+      if(e.target.tagName==='BUTTON'||e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.isContentEditable) return;
+      if(tool!=='select') return;
+      select(el.id); drag={id:el.id,sx:e.clientX,sy:e.clientY,ox:el.x,oy:el.y}; d.style.zIndex=++zIdx; e.preventDefault();
     });
+    wb.appendChild(d);
+  }
 
-    document.addEventListener('mouseup', () => {
-      if (dragState) {
-        scheduleSave();
-        dragState = null;
-      }
-    });
+  function renderAll(){
+    wb.querySelectorAll('.b-el').forEach(e=>e.remove());
+    elements.filter(e=>e.type!=='drawing').forEach(renderEl);
+    redraw(); updateEmpty();
+  }
 
-    // ── Selection ──
-    function selectElement(id) {
-      deselectElement();
-      selectedElement = id;
-      const dom = document.getElementById(id);
-      if (dom) dom.classList.add('selected');
+  // Drag
+  document.addEventListener('mousemove',e=>{
+    if(!drag) return;
+    const el=elements.find(x=>x.id===drag.id); if(!el) return;
+    el.x=drag.ox+(e.clientX-drag.sx); el.y=drag.oy+(e.clientY-drag.sy);
+    const dom=document.getElementById(el.id);
+    if(dom){ dom.style.left=el.x+'px'; dom.style.top=el.y+'px'; }
+  });
+  document.addEventListener('mouseup',()=>{ if(drag){ schedSave(); drag=null; }});
+
+  // Select
+  function select(id){ deselect(); selected=id; const d=document.getElementById(id); if(d) d.classList.add('selected'); }
+  function deselect(){ if(selected){ const d=document.getElementById(selected); if(d) d.classList.remove('selected'); } selected=null; }
+
+  function deleteEl(id){
+    pushUndo();
+    elements=elements.filter(e=>e.id!==id);
+    const d=document.getElementById(id);
+    if(d){ d.style.transition='opacity .15s,transform .15s'; d.style.opacity='0'; d.style.transform='scale(.9)'; setTimeout(()=>d.remove(),150); }
+    if(selected===id) selected=null;
+    schedSave(); redraw(); updateEmpty();
+  }
+
+  function toggleShape(id){ const el=elements.find(e=>e.id===id); if(!el) return; el.data.shape=el.data.shape==='rect'?'circle':'rect'; renderEl(el); schedSave(); }
+  function cycleNoteColor(id){
+    const el=elements.find(e=>e.id===id); if(!el) return;
+    const colors=['','blue','green','pink'];
+    const i=colors.indexOf(el.data.color||'');
+    el.data.color=colors[(i+1)%colors.length];
+    renderEl(el); schedSave();
+  }
+
+  function updateEmpty(){
+    const has=elements.length>0;
+    document.getElementById('empty-state').classList.toggle('hidden',has);
+  }
+
+  // ═══════════════════════ PERSISTENCE ═══════════════════════
+  function schedSave(){ clearTimeout(saveTimer); si('Unsaved...'); saveTimer=setTimeout(autoSave,2000); }
+  function si(t,saved){ const el=document.getElementById('save-ind'); el.textContent=t; el.classList.toggle('saved',!!saved); }
+
+  async function autoSave(){
+    if(!boardId){
+      try{ const r=await fetch('/api/boards',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('board-name').value})}); boardId=(await r.json()).id; }
+      catch(e){ return; }
     }
+    await saveBoard();
+  }
 
-    function deselectElement() {
-      if (selectedElement) {
-        const dom = document.getElementById(selectedElement);
-        if (dom) dom.classList.remove('selected');
-      }
-      selectedElement = null;
+  async function saveBoard(){
+    if(!boardId){
+      try{ const r=await fetch('/api/boards',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('board-name').value})}); boardId=(await r.json()).id; }
+      catch(e){ toast('Save failed'); return; }
     }
+    try{
+      await fetch(`/api/boards/${boardId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('board-name').value})});
+      await fetch(`/api/boards/${boardId}/elements`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({elements})});
+      si('Saved',true); setTimeout(()=>{ const el=document.getElementById('save-ind'); if(el.textContent==='Saved') si(''); },2500);
+    } catch(e){ toast('Save failed'); }
+  }
 
-    function deleteElement(id) {
-      elements = elements.filter(el => el.id !== id);
-      const dom = document.getElementById(id);
-      if (dom) {
-        dom.style.transition = 'opacity .2s, transform .2s';
-        dom.style.opacity = '0';
-        dom.style.transform = 'scale(.9)';
-        setTimeout(() => dom.remove(), 200);
-      }
-      if (selectedElement === id) selectedElement = null;
-      scheduleSave();
-      redrawCanvas();
-    }
+  async function loadBoard(id){
+    try{
+      const r=await fetch(`/api/boards/${id}`); const b=await r.json();
+      boardId=b.id; document.getElementById('board-name').value=b.name;
+      elements=(b.elements||[]).map(e=>({...e,data:typeof e.data==='string'?JSON.parse(e.data):e.data}));
+      zIdx=Math.max(10,...elements.map(e=>e.z_index||0))+1;
+      undoStack=[]; redoStack=[]; renderAll(); toast('Board loaded');
+    } catch(e){ toast('Failed to load'); }
+  }
 
-    function toggleShapeType(id) {
-      const el = elements.find(e => e.id === id);
-      if (!el) return;
-      el.data.shape = el.data.shape === 'rect' ? 'circle' : 'rect';
-      renderElement(el);
-      scheduleSave();
-    }
+  async function loadBoardsList(){
+    try{
+      const r=await fetch('/api/boards'); const boards=await r.json();
+      const list=document.getElementById('boards-list');
+      if(!boards.length){ list.innerHTML='<div style="padding:24px;text-align:center;color:var(--dim);font-size:13px">No boards yet</div>'; return; }
+      list.innerHTML=boards.map(b=>`<div class="b-item ${b.id===boardId?'active':''}" onclick="loadBoard('${b.id}');toggleBoardsPanel()"><span>${b.name}</span><span class="b-date">${new Date(b.updated_at).toLocaleDateString()}</span></div>`).join('');
+    } catch(e){}
+  }
 
-    // ══════════════════════════════════════════
-    //  BOARD PERSISTENCE
-    // ══════════════════════════════════════════
-    function scheduleSave() {
-      clearTimeout(saveTimeout);
-      document.getElementById('save-indicator').textContent = 'Unsaved changes';
-      saveTimeout = setTimeout(() => autoSave(), 3000);
-    }
+  function createNewBoard(){ boardId=null; elements=[]; undoStack=[]; redoStack=[]; document.getElementById('board-name').value='Untitled Board'; renderAll(); toggleBoardsPanel(); toast('New board'); }
+  function clearBoard(){ pushUndo(); elements=[]; selected=null; renderAll(); schedSave(); toast('Cleared'); }
+  function toggleBoardsPanel(){ bpOpen=!bpOpen; document.getElementById('boards-panel').classList.toggle('visible',bpOpen); if(bpOpen) loadBoardsList(); }
 
-    async function autoSave() {
-      if (!currentBoardId) {
-        // Create board first
-        try {
-          const res = await fetch('/api/boards', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: document.getElementById('board-name').value }),
-          });
-          const board = await res.json();
-          currentBoardId = board.id;
-        } catch (e) {
-          console.error('Failed to create board:', e);
-          return;
-        }
-      }
-      await saveBoard();
-    }
+  // ═══════════════════════ AI IMAGE ═══════════════════════
+  async function generateImage(){
+    const prompt=document.getElementById('img-gen-prompt').value.trim(); if(!prompt) return;
+    const btn=document.getElementById('img-gen-btn');
+    btn.innerHTML='<span class="spinner"></span> Generating...'; btn.disabled=true;
+    try{
+      const r=await fetch('/api/ai/generate-image',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,size:document.getElementById('img-gen-size').value,boardId})});
+      const d=await r.json(); if(d.error){ toast(d.error); return; }
+      document.getElementById('img-gen-preview').style.display='block';
+      document.getElementById('img-gen-result').src=d.url;
+      addImage(d.url,window.innerWidth/2-200,window.innerHeight/2-150);
+      toast('Image generated'); setTimeout(closeModals,1200);
+    } catch(e){ toast('Failed: '+e.message); }
+    finally{ btn.innerHTML='Generate'; btn.disabled=false; }
+  }
+  document.getElementById('img-gen-prompt').addEventListener('keydown',e=>{ if(e.key==='Enter') generateImage(); });
 
-    async function saveBoard() {
-      if (!currentBoardId) {
-        try {
-          const res = await fetch('/api/boards', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: document.getElementById('board-name').value }),
-          });
-          const board = await res.json();
-          currentBoardId = board.id;
-        } catch (e) {
-          toast('Failed to create board');
-          return;
-        }
-      }
+  // ═══════════════════════ WEB CAPTURE ═══════════════════════
+  let selWebImg=null;
+  async function captureImage(){
+    const url=document.getElementById('web-url').value.trim()||selWebImg; if(!url){ toast('Enter a URL'); return; }
+    const btn=document.getElementById('web-cap-btn');
+    btn.innerHTML='<span class="spinner"></span> Loading...'; btn.disabled=true;
+    try{
+      const r=await fetch('/api/ai/capture-image',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,boardId})});
+      const d=await r.json(); if(d.error){ toast(d.error); return; }
+      addImage(d.dataUrl,window.innerWidth/2-200,window.innerHeight/2-150);
+      toast('Image added'); setTimeout(closeModals,800);
+    } catch(e){ toast('Failed: '+e.message); }
+    finally{ btn.innerHTML='Add to Board'; btn.disabled=false; }
+  }
+  async function searchImages(){
+    const q=document.getElementById('web-q').value.trim(); if(!q) return;
+    const g=document.getElementById('web-grid');
+    g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px"><span class="spinner"></span></div>';
+    try{
+      const r=await fetch('/api/ai/search-images',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})});
+      const d=await r.json();
+      g.innerHTML=d.images.map(i=>`<div class="img-grid-item" onclick="selSearchImg(this,'${i.url}')"><img src="${i.thumb}" alt="${i.alt}" loading="lazy"/></div>`).join('');
+    } catch(e){ g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:16px;color:var(--dim)">Search failed</div>'; }
+  }
+  function selSearchImg(el,url){ document.querySelectorAll('.img-grid-item').forEach(i=>i.classList.remove('selected')); el.classList.add('selected'); selWebImg=url; document.getElementById('web-url').value=url; }
+  document.getElementById('web-url').addEventListener('keydown',e=>{ if(e.key==='Enter') captureImage(); });
+  document.getElementById('web-q').addEventListener('keydown',e=>{ if(e.key==='Enter') searchImages(); });
 
-      try {
-        // Save board name
-        await fetch(`/api/boards/${currentBoardId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: document.getElementById('board-name').value }),
-        });
+  // ═══════════════════════ MODALS & TOAST ═══════════════════════
+  function openModal(id){ document.getElementById(id).classList.add('visible'); const inp=document.getElementById(id).querySelector('input'); if(inp) inp.focus(); }
+  function closeModals(){ document.querySelectorAll('.m-overlay').forEach(m=>m.classList.remove('visible')); }
+  let toastT; function toast(m){ const t=document.getElementById('toast'); clearTimeout(toastT); t.classList.remove('show'); void t.offsetWidth; t.textContent=m; t.classList.add('show'); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
 
-        // Bulk save elements
-        await fetch(`/api/boards/${currentBoardId}/elements`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ elements }),
-        });
-
-        document.getElementById('save-indicator').textContent = 'Saved';
-        setTimeout(() => {
-          const si = document.getElementById('save-indicator');
-          if (si.textContent === 'Saved') si.textContent = '';
-        }, 2000);
-      } catch (e) {
-        console.error('Save failed:', e);
-        toast('Save failed');
-      }
-    }
-
-    async function loadBoard(boardId) {
-      try {
-        const res = await fetch(`/api/boards/${boardId}`);
-        const board = await res.json();
-        currentBoardId = board.id;
-        document.getElementById('board-name').value = board.name;
-        elements = (board.elements || []).map(el => ({
-          ...el,
-          data: typeof el.data === 'string' ? JSON.parse(el.data) : el.data,
-        }));
-        zCounter = Math.max(10, ...elements.map(el => el.z_index || 0)) + 1;
-        renderAllElements();
-        toast('Board loaded');
-      } catch (e) {
-        console.error('Load failed:', e);
-        toast('Failed to load board');
-      }
-    }
-
-    async function loadBoardsList() {
-      try {
-        const res = await fetch('/api/boards');
-        const boards = await res.json();
-        const list = document.getElementById('boards-list');
-        if (boards.length === 0) {
-          list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--dim);font-size:13px;">No boards yet</div>';
-          return;
-        }
-        list.innerHTML = boards.map(b => `
-          <div class="board-item ${b.id === currentBoardId ? 'active' : ''}" onclick="loadBoard('${b.id}');toggleBoardsPanel();">
-            <span>${b.name}</span>
-            <span class="board-date">${new Date(b.updated_at).toLocaleDateString()}</span>
-          </div>
-        `).join('');
-      } catch (e) {
-        console.error('Failed to load boards:', e);
-      }
-    }
-
-    async function createNewBoard() {
-      currentBoardId = null;
-      elements = [];
-      document.getElementById('board-name').value = 'Untitled Board';
-      renderAllElements();
-      toggleBoardsPanel();
-      toast('New board created');
-    }
-
-    function clearBoard() {
-      elements = [];
-      selectedElement = null;
-      renderAllElements();
-      scheduleSave();
-      toast('Board cleared');
-    }
-
-    // ══════════════════════════════════════════
-    //  BOARDS PANEL
-    // ══════════════════════════════════════════
-    function toggleBoardsPanel() {
-      boardsPanelOpen = !boardsPanelOpen;
-      document.getElementById('boards-panel').classList.toggle('visible', boardsPanelOpen);
-      if (boardsPanelOpen) loadBoardsList();
-    }
-
-    // ══════════════════════════════════════════
-    //  AI IMAGE GENERATION
-    // ══════════════════════════════════════════
-    function openImageGenModal() {
-      document.getElementById('image-gen-modal').classList.add('visible');
-      document.getElementById('image-gen-prompt').focus();
-      document.getElementById('image-gen-preview').style.display = 'none';
-    }
-
-    async function generateImage() {
-      const prompt = document.getElementById('image-gen-prompt').value.trim();
-      if (!prompt) return;
-      const size = document.getElementById('image-gen-size').value;
-      const btn = document.getElementById('image-gen-btn');
-      btn.innerHTML = '<div class="spinner spinner-sm" style="display:inline-block;vertical-align:middle;margin-right:6px;border-top-color:var(--bg)"></div> Generating...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/ai/generate-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, size, boardId: currentBoardId }),
-        });
-        const data = await res.json();
-        if (data.error) { toast(data.error); return; }
-
-        // Show preview
-        document.getElementById('image-gen-preview').style.display = 'block';
-        document.getElementById('image-gen-result').src = data.url;
-
-        // Add to board
-        addImageElement(data.url, window.innerWidth / 2 - 200, window.innerHeight / 2 - 200);
-        toast('Image generated and added to board');
-        setTimeout(() => closeModals(), 1500);
-      } catch (e) {
-        toast('Generation failed: ' + e.message);
-      } finally {
-        btn.innerHTML = 'Generate';
-        btn.disabled = false;
-      }
-    }
-
-    // Enter key in prompt
-    document.getElementById('image-gen-prompt').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') generateImage();
-    });
-
-    // ══════════════════════════════════════════
-    //  WEB IMAGE CAPTURE
-    // ══════════════════════════════════════════
-    let selectedWebImage = null;
-
-    function openWebCaptureModal() {
-      document.getElementById('web-capture-modal').classList.add('visible');
-      document.getElementById('web-capture-url').focus();
-      document.getElementById('web-capture-preview').style.display = 'none';
-      document.getElementById('web-search-grid').innerHTML = '';
-      selectedWebImage = null;
-    }
-
-    async function captureImage() {
-      const url = document.getElementById('web-capture-url').value.trim() || selectedWebImage;
-      if (!url) { toast('Enter an image URL'); return; }
-
-      const btn = document.getElementById('web-capture-btn');
-      btn.innerHTML = '<div class="spinner spinner-sm" style="display:inline-block;vertical-align:middle;margin-right:6px;border-top-color:var(--bg)"></div> Capturing...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/ai/capture-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, boardId: currentBoardId }),
-        });
-        const data = await res.json();
-        if (data.error) { toast(data.error); return; }
-
-        addImageElement(data.dataUrl, window.innerWidth / 2 - 200, window.innerHeight / 2 - 200);
-        toast('Image captured and added to board');
-        setTimeout(() => closeModals(), 1000);
-      } catch (e) {
-        toast('Capture failed: ' + e.message);
-      } finally {
-        btn.innerHTML = 'Add to Board';
-        btn.disabled = false;
-      }
-    }
-
-    async function searchImages() {
-      const query = document.getElementById('web-search-query').value.trim();
-      if (!query) return;
-
-      const grid = document.getElementById('web-search-grid');
-      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;"><div class="spinner" style="margin:0 auto;"></div></div>';
-
-      try {
-        const res = await fetch('/api/ai/search-images', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query }),
-        });
-        const data = await res.json();
-
-        grid.innerHTML = data.images.map(img => `
-          <div class="image-grid-item" onclick="selectSearchImage(this, '${img.url}')">
-            <img src="${img.thumb}" alt="${img.alt}" loading="lazy" />
-          </div>
-        `).join('');
-      } catch (e) {
-        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--dim);">Search failed</div>';
-      }
-    }
-
-    function selectSearchImage(el, url) {
-      document.querySelectorAll('.image-grid-item').forEach(i => i.classList.remove('selected'));
-      el.classList.add('selected');
-      selectedWebImage = url;
-      document.getElementById('web-capture-url').value = url;
-    }
-
-    document.getElementById('web-capture-url').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') captureImage();
-    });
-    document.getElementById('web-search-query').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') searchImages();
-    });
-
-    // ══════════════════════════════════════════
-    //  MODALS & TOAST
-    // ══════════════════════════════════════════
-    function closeModals() {
-      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('visible'));
-    }
-
-    let toastTimer;
-    function toast(msg) {
-      const t = document.getElementById('toast');
-      clearTimeout(toastTimer);
-      t.classList.remove('show');
-      void t.offsetWidth;
-      t.textContent = msg;
-      t.classList.add('show');
-      toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
-    }
-
-    // ══════════════════════════════════════════
-    //  INIT
-    // ══════════════════════════════════════════
-    (async function init() {
-      // Try to load last board
-      try {
-        const res = await fetch('/api/boards');
-        const boards = await res.json();
-        if (boards.length > 0) {
-          await loadBoard(boards[0].id);
-        }
-      } catch (e) {
-        console.log('No saved boards, starting fresh');
-      }
-    })();
+  // ═══════════════════════ INIT ═══════════════════════
+  (async function(){
+    try{ const r=await fetch('/api/boards'); const b=await r.json(); if(b.length>0) await loadBoard(b[0].id); else updateEmpty(); }
+    catch(e){ updateEmpty(); }
+  })();
   </script>
 </body>
 </html>
